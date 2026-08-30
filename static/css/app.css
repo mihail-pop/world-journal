@@ -491,6 +491,43 @@ h1 {
     font-weight: 400;
 }
 
+.news-filter {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.25rem;
+    margin-bottom: 1rem;
+}
+
+.news-filter button {
+    min-width: 0;
+    min-height: 2.4rem;
+    padding: 0.35rem 0.45rem;
+    border: 1px solid var(--overview-border);
+    border-radius: 4px;
+    background: var(--button-bg);
+    color: var(--text-primary);
+    cursor: pointer;
+    font-size: 0.72rem;
+    overflow-wrap: anywhere;
+}
+
+.news-filter button[aria-pressed="true"] {
+    border-color: var(--special-color);
+    color: var(--text-secondary);
+}
+
+.news-provider-section + .news-provider-section {
+    margin-top: 1.25rem;
+    padding-top: 1.25rem;
+    border-top: 1px solid var(--overview-border);
+}
+
+.news-provider-heading h4 {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 0.95rem;
+}
+
 .country-news-meta {
     display: flex;
     flex-wrap: wrap;
@@ -514,6 +551,42 @@ h1 {
 .country-news-item {
     padding: 0.9rem 0;
     border-top: 1px solid var(--overview-border);
+}
+
+.news-source-badge {
+    display: inline-block;
+    width: fit-content;
+    max-width: 100%;
+    margin-bottom: 0.35rem;
+    color: var(--special-color-hover);
+    font-size: 0.68rem;
+    font-weight: 700;
+    overflow-wrap: anywhere;
+    text-transform: uppercase;
+}
+
+.news-item-attribution {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.25rem 0.55rem;
+    margin-bottom: 0.35rem;
+}
+
+.news-item-attribution .news-source-badge {
+    margin-bottom: 0;
+}
+
+.news-section-label,
+.news-match-label {
+    color: var(--text-primary);
+    font-size: 0.68rem;
+}
+
+.news-match-label {
+    padding-left: 0.55rem;
+    border-left: 1px solid var(--overview-border);
+    color: var(--special-color-hover);
 }
 
 .country-news-item:first-child {
@@ -558,6 +631,15 @@ h1 {
 
 .country-news-message.is-error p {
     margin: 0;
+}
+
+.country-news-message.is-warning p {
+    margin: 0;
+}
+
+.regional-source-status {
+    padding-left: 1rem;
+    margin: 0.45rem 0 0;
 }
 
 .news-retry {

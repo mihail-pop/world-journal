@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+         xmlns="http://purl.org/rss/1.0/"
+         xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <channel rdf:about="https://example.com/rdf">
+    <title>RDF fixture</title>
+    <link>https://example.com/</link>
+    <description>Fixture</description>
+    <items><rdf:Seq><rdf:li rdf:resource="https://example.com/rdf-germany"/></rdf:Seq></items>
+  </channel>
+  <item rdf:about="https://example.com/rdf-germany">
+    <title>Germany holds regional election</title>
+    <link>https://example.com/rdf-germany</link>
+    <dc:date>2026-08-30T08:00:00Z</dc:date>
+  </item>
+</rdf:RDF>

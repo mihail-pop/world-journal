@@ -1,0 +1,101 @@
+{
+  "schema_version": 2,
+  "ambiguous_canonical_codes": ["GE", "JO", "TD", "TR"],
+  "countries": {
+    "AE": {
+      "name_aliases": ["United Arab Emirates"],
+      "related_terms": ["Emirati"],
+      "acronyms": ["UAE", "U.A.E."]
+    },
+    "CD": {
+      "name_aliases": ["Democratic Republic of the Congo", "DR Congo", "Congo-Kinshasa"],
+      "related_terms": [],
+      "acronyms": ["DRC"]
+    },
+    "CG": {
+      "name_aliases": ["Republic of the Congo", "Congo-Brazzaville"],
+      "related_terms": [],
+      "acronyms": []
+    },
+    "CI": {
+      "name_aliases": ["Ivory Coast", "Côte d’Ivoire", "Cote d'Ivoire"],
+      "related_terms": ["Ivorian"],
+      "acronyms": []
+    },
+    "CN": {
+      "name_aliases": ["China"],
+      "related_terms": ["Chinese"],
+      "acronyms": []
+    },
+    "CZ": {
+      "name_aliases": ["Czechia", "Czech Republic"],
+      "related_terms": ["Czech"],
+      "acronyms": []
+    },
+    "GE": {
+      "name_aliases": [],
+      "related_terms": ["Georgian"],
+      "acronyms": []
+    },
+    "GB": {
+      "name_aliases": ["United Kingdom", "Britain"],
+      "related_terms": ["British"],
+      "acronyms": ["UK", "U.K."]
+    },
+    "IR": {
+      "name_aliases": ["Iran"],
+      "related_terms": ["Iranian"],
+      "acronyms": []
+    },
+    "JO": {
+      "name_aliases": [],
+      "related_terms": ["Jordanian"],
+      "acronyms": []
+    },
+    "KP": {
+      "name_aliases": ["North Korea"],
+      "related_terms": ["North Korean"],
+      "acronyms": []
+    },
+    "KR": {
+      "name_aliases": ["South Korea"],
+      "related_terms": ["South Korean"],
+      "acronyms": []
+    },
+    "MM": {
+      "name_aliases": ["Myanmar", "Burma"],
+      "related_terms": ["Burmese"],
+      "acronyms": []
+    },
+    "OM": {
+      "name_aliases": ["Oman"],
+      "related_terms": ["Omani"],
+      "acronyms": []
+    },
+    "RO": {
+      "name_aliases": ["Romania"],
+      "related_terms": ["Romanian"],
+      "acronyms": []
+    },
+    "SZ": {
+      "name_aliases": ["Eswatini", "Swaziland"],
+      "related_terms": ["Swazi"],
+      "acronyms": []
+    },
+    "TD": {
+      "name_aliases": [],
+      "related_terms": ["Chadian"],
+      "acronyms": []
+    },
+    "TR": {
+      "name_aliases": ["Türkiye", "Turkiye"],
+      "related_terms": ["Turkish"],
+      "acronyms": []
+    },
+    "US": {
+      "name_aliases": ["United States", "United States of America"],
+      "related_terms": ["American", "Americans"],
+      "acronyms": ["US", "U.S.", "USA", "U.S.A."]
+    }
+  }
+}

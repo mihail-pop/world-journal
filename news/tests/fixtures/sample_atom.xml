@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>Atom fixture</title>
+  <entry>
+    <title>Romania opens research centre</title>
+    <link href="https://example.com/atom-romania"/>
+    <updated>2026-08-30T09:00:00Z</updated>
+    <source><title>Item Publisher</title></source>
+    <summary type="html">A &lt;strong&gt;short&lt;/strong&gt; update.</summary>
+  </entry>
+</feed>

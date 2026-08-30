@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Regional fixture</title>
+    <item>
+      <title>Romania and Germany sign transport agreement</title>
+      <link>https://example.com/romania-germany</link>
+      <pubDate>Sun, 30 Aug 2026 12:00:00 GMT</pubDate>
+      <source>Example Publisher</source>
+    </item>
+    <item>
+      <title>France announces a new energy plan</title>
+      <link>https://example.com/france-energy</link>
+      <pubDate>Sun, 30 Aug 2026 11:00:00 GMT</pubDate>
+    </item>
+    <item>
+      <title>Germany updates rail timetable</title>
+      <link>https://example.com/germany-rail</link>
+      <pubDate>Sun, 30 Aug 2026 10:00:00 GMT</pubDate>
+    </item>
+    <item>
+      <title>Romanian parliament begins debate</title>
+      <link>https://example.com/romania-undated</link>
+    </item>
+    <item>
+      <title>Georgia wins college football opener</title>
+      <link>https://example.com/georgia-sports</link>
+      <pubDate>Sun, 30 Aug 2026 13:00:00 GMT</pubDate>
+    </item>
+  </channel>
+</rss>

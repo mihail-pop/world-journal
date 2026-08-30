@@ -7,7 +7,7 @@ from urllib.parse import urldefrag, urlsplit, urlunsplit
 
 import feedparser
 
-from news.types import NewsItem, NewsSource, NormalizedFeed
+from news.types import NewsFeed, NewsItem, NewsProvider, NewsSource, NormalizedFeed
 
 
 class FeedParseError(ValueError):
@@ -18,9 +18,19 @@ class _PlainTextParser(HTMLParser):
     def __init__(self):
         super().__init__(convert_charrefs=True)
         self.parts: list[str] = []
+        self.ignored_depth = 0
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if tag.casefold() in {"script", "style"}:
+            self.ignored_depth += 1
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag.casefold() in {"script", "style"} and self.ignored_depth:
+            self.ignored_depth -= 1
 
     def handle_data(self, data: str) -> None:
-        self.parts.append(data)
+        if not self.ignored_depth:
+            self.parts.append(data)
 
 
 def _plain_text(value: object) -> str:
@@ -50,7 +60,7 @@ def _published_at(entry: dict) -> datetime | None:
         return None
 
 
-def _publisher(entry: dict, source: NewsSource) -> str:
+def _publisher(entry: dict, source: NewsSource | NewsProvider) -> str:
     item_source = entry.get("source")
     if isinstance(item_source, dict):
         publisher = _plain_text(item_source.get("title"))
@@ -76,7 +86,13 @@ def _deduplicate(items: list[NewsItem]) -> tuple[NewsItem, ...]:
     return tuple(unique_items)
 
 
-def normalize_feed(payload: bytes, source: NewsSource, max_items: int) -> NormalizedFeed:
+def normalize_feed(
+    payload: bytes,
+    source: NewsSource | NewsProvider,
+    max_items: int,
+    *,
+    feed: NewsFeed | None = None,
+) -> NormalizedFeed:
     parsed = feedparser.parse(payload)
     warnings = ()
     if parsed.bozo:
@@ -85,7 +101,7 @@ def normalize_feed(payload: bytes, source: NewsSource, max_items: int) -> Normal
         raise FeedParseError("The feed could not be parsed")
 
     items = []
-    for entry in parsed.entries:
+    for source_order, entry in enumerate(parsed.entries):
         title = _plain_text(entry.get("title"))
         link = _safe_link(entry.get("link"))
         if not title or not link:
@@ -101,6 +117,12 @@ def normalize_feed(payload: bytes, source: NewsSource, max_items: int) -> Normal
                 publisher=publisher,
                 published_at=_published_at(entry),
                 summary=summary,
+                provider_id=source.id,
+                provider_name=source.display_name,
+                feed_id=feed.id if feed else source.id,
+                feed_section=feed.section_label if feed else "",
+                contributing_sections=(feed.section_label,) if feed else (),
+                source_order=source_order,
             )
         )
         if len(items) >= max_items * 2:

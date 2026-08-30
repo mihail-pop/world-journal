@@ -1,31 +1,87 @@
-<div class="country-news-result" data-country-news-result data-news-country="{{ news.country_code }}">
-    <div class="country-news-meta">
-        <a href="{{ news.source.homepage_url }}" target="_blank" rel="noopener noreferrer">{{ news.source.display_name }}</a>
-        <span>English · US edition</span>
-        {% if news.fetched_at %}<span>Updated <time datetime="{{ news.fetched_at|date:'c' }}">{{ news.fetched_at|date:'M j, Y, H:i T' }}</time></span>{% endif %}
+<div class="country-news-result" data-country-news-result data-news-country="{{ news_page.country_code }}">
+    <div class="news-filter" role="group" aria-label="Article source filter">
+        <button type="button" data-news-filter="all" aria-pressed="true">All articles</button>
+        <button type="button" data-news-filter="google" aria-pressed="false">Google News</button>
+        <button type="button" data-news-filter="regional" aria-pressed="false">Regional publishers</button>
     </div>
-    {% if news.warning %}
-        <p class="country-news-message is-warning" role="status">{{ news.warning }}</p>
-    {% endif %}
-    {% if news.error %}
-        <div class="country-news-message is-error" role="alert">
-            <p>{{ news.error }}</p>
-            <button type="button" class="news-retry" data-news-retry>Retry</button>
+
+    <section class="news-provider-section" data-news-section="google" aria-labelledby="google-news-heading">
+        <div class="news-provider-heading">
+            <h4 id="google-news-heading">Google News</h4>
+            <div class="country-news-meta">
+                <a href="{{ news_page.google.source.homepage_url }}" target="_blank" rel="noopener noreferrer">{{ news_page.google.source.display_name }}</a>
+                <span>English · US edition</span>
+                {% if news_page.google.fetched_at %}<span>Updated <time datetime="{{ news_page.google.fetched_at|date:'c' }}">{{ news_page.google.fetched_at|date:'M j, Y, H:i T' }}</time></span>{% endif %}
+            </div>
         </div>
-    {% elif news.items %}
-        <ol class="country-news-list">
-            {% for item in news.items %}
-                <li class="country-news-item">
-                    <a class="country-news-link" href="{{ item.link }}" target="_blank" rel="noopener noreferrer">{{ item.title }}</a>
-                    <p class="country-news-byline">
-                        <span>{{ item.publisher }}</span>
-                        {% if item.published_at %}<time datetime="{{ item.published_at|date:'c' }}">{{ item.published_at|date:'M j, H:i T' }}</time>{% endif %}
-                    </p>
-                    {% if item.summary %}<p class="country-news-summary">{{ item.summary }}</p>{% endif %}
-                </li>
-            {% endfor %}
-        </ol>
-    {% else %}
-        <p class="country-news-message">No current English-language headlines were returned for {{ news.country_name }}.</p>
-    {% endif %}
+        {% if news_page.google.warning %}<p class="country-news-message is-warning" role="status">{{ news_page.google.warning }}</p>{% endif %}
+        {% if news_page.google.error %}
+            <div class="country-news-message is-error" role="alert">
+                <p>{{ news_page.google.error }}</p>
+                <button type="button" class="news-retry" data-news-retry>Retry unavailable feeds</button>
+            </div>
+        {% elif news_page.google.items %}
+            <ol class="country-news-list">
+                {% for item in news_page.google.items %}
+                    <li class="country-news-item" data-news-kind="google">
+                        <span class="news-source-badge">Google News</span>
+                        <a class="country-news-link" href="{{ item.link }}" target="_blank" rel="noopener noreferrer">{{ item.title }}</a>
+                        <p class="country-news-byline">
+                            <span>{{ item.publisher }}</span>
+                            {% if item.published_at %}<time datetime="{{ item.published_at|date:'c' }}">{{ item.published_at|date:'M j, H:i T' }}</time>{% endif %}
+                        </p>
+                        {% if item.summary %}<p class="country-news-summary">{{ item.summary }}</p>{% endif %}
+                    </li>
+                {% endfor %}
+            </ol>
+        {% else %}
+            <p class="country-news-message">No current English-language headlines were returned for {{ news_page.country_name }}.</p>
+        {% endif %}
+    </section>
+
+    <section class="news-provider-section" data-news-section="regional" aria-labelledby="regional-news-heading">
+        <div class="news-provider-heading">
+            <h4 id="regional-news-heading">Regional reporting</h4>
+            <p class="country-news-meta">Country references in current feeds</p>
+        </div>
+        {% if news_page.regional_warning %}
+            <div class="country-news-message is-warning" role="status">
+                <p>{{ news_page.regional_warning }}</p>
+                <ul class="regional-source-status">
+                    {% for result in news_page.regional_sources %}
+                        {% if result.status != "available" %}
+                            <li>
+                                {{ result.provider.display_name }}:
+                                {% if result.status == "partial" %}partial ({{ result.successful_feed_count }} of {{ result.enabled_feed_count }} feeds usable){% else %}unavailable{% endif %}
+                            </li>
+                        {% endif %}
+                    {% endfor %}
+                </ul>
+                <button type="button" class="news-retry" data-news-retry>Retry unavailable feeds</button>
+            </div>
+        {% endif %}
+        {% if news_page.regional_items %}
+            <ol class="country-news-list">
+                {% for item in news_page.regional_items %}
+                    <li class="country-news-item" data-news-kind="regional" data-news-source="{{ item.provider_id }}">
+                        <div class="news-item-attribution">
+                            <span class="news-source-badge">{{ item.provider_name }}{% if item.is_stale %} · cached{% endif %}</span>
+                            {% if item.contributing_sections %}<span class="news-section-label">{{ item.contributing_sections|join:", " }}</span>{% endif %}
+                            {% if item.match_class == "summary_country" %}<span class="news-match-label">Summary match</span>{% endif %}
+                        </div>
+                        <a class="country-news-link" href="{{ item.link }}" target="_blank" rel="noopener noreferrer">{{ item.title }}</a>
+                        <p class="country-news-byline">
+                            {% if item.publisher != item.provider_name %}<span>Publisher: {{ item.publisher }}</span>{% endif %}
+                            {% if item.published_at %}<time datetime="{{ item.published_at|date:'c' }}">{{ item.published_at|date:'M j, H:i T' }}</time>{% else %}<span>Publication time unavailable</span>{% endif %}
+                        </p>
+                        {% if item.match_class == "summary_country" and item.summary %}<p class="country-news-summary">{{ item.summary }}</p>{% endif %}
+                    </li>
+                {% endfor %}
+            </ol>
+        {% elif news_page.regional_warning %}
+            <p class="country-news-message">No matched regional articles are available; some providers could not be checked.</p>
+        {% else %}
+            <p class="country-news-message">No country references were found in the current regional feed snapshot.</p>
+        {% endif %}
+    </section>
 </div>

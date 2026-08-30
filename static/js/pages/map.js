@@ -164,14 +164,29 @@ function showNewsMessage(controller, message, { retry = false } = {}) {
     }
 }
 
-async function loadCountryNews(controller, code, countryName) {
+function applyNewsFilter(controller, filter) {
+    for (const button of controller.newsContent.querySelectorAll("[data-news-filter]")) {
+        button.setAttribute("aria-pressed", String(button.dataset.newsFilter === filter));
+    }
+    for (const section of controller.newsContent.querySelectorAll("[data-news-section]")) {
+        section.hidden = filter !== "all" && section.dataset.newsSection !== filter;
+    }
+}
+
+async function loadCountryNews(controller, code, countryName, { retryFailed = false } = {}) {
     cancelCountryNews(controller);
     const requestId = controller.newsRequestId;
     const abortController = new AbortController();
     controller.newsAbortController = abortController;
     controller.newsContent.setAttribute("aria-busy", "true");
     showNewsMessage(controller, `Loading current English-language headlines for ${countryName}…`);
-    const url = controller.newsUrlTemplate.replace("COUNTRY_CODE", encodeURIComponent(code));
+    const url = new URL(
+        controller.newsUrlTemplate.replace("COUNTRY_CODE", encodeURIComponent(code)),
+        window.location.origin,
+    );
+    if (retryFailed) {
+        url.searchParams.set("refresh", "failed");
+    }
 
     try {
         const response = await fetch(url, {
@@ -191,6 +206,7 @@ async function loadCountryNews(controller, code, countryName) {
         }
         controller.newsContent.innerHTML = markup;
         controller.newsContent.setAttribute("aria-busy", "false");
+        applyNewsFilter(controller, "all");
     } catch (error) {
         if (error.name === "AbortError" || activeController !== controller || controller.newsRequestId !== requestId) {
             return;
@@ -744,7 +760,12 @@ async function initializeMapPage() {
     controller.newsContent.addEventListener("click", (event) => {
         if (event.target.closest("[data-news-retry]") && controller.selectedCode) {
             const country = controller.countriesByCode.get(controller.selectedCode);
-            loadCountryNews(controller, controller.selectedCode, country.name);
+            loadCountryNews(controller, controller.selectedCode, country.name, { retryFailed: true });
+            return;
+        }
+        const filterButton = event.target.closest("[data-news-filter]");
+        if (filterButton) {
+            applyNewsFilter(controller, filterButton.dataset.newsFilter);
         }
     }, { signal: abortController.signal });
     document.addEventListener("keydown", (event) => {

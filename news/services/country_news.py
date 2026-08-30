@@ -1,9 +1,8 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from functools import lru_cache
-from threading import Lock
 
 from django.conf import settings
 from django.core.cache import cache
@@ -12,48 +11,23 @@ from countries.data import ALPHA_2_PATTERN, load_country_data
 from news.adapters.google_news import build_feed_url
 from news.adapters.rss import FeedParseError, normalize_feed
 from news.registry import SourceRegistry, get_source_registry
-from news.types import CountryNewsResult, NewsItem
+from news.types import CountryNewsPage, CountryNewsResult, NewsItem
 
+from .cache import age as _age
+from .cache import cache_lock as _cache_lock
+from .cache import deserialize_items, parse_datetime as _parse_datetime
 from .fetch import FeedFetchError, FeedResponse, fetch_feed
+from .region_routing import eligible_fixed_feeds
+from .regional_news import get_regional_news
 
 
 GOOGLE_SOURCE_ID = "google_news_country"
-_CACHE_LOCKS: dict[str, Lock] = {}
-_CACHE_LOCKS_GUARD = Lock()
-
-
 class CountryNotFoundError(ValueError):
     pass
 
 
-def _cache_lock(key: str) -> Lock:
-    with _CACHE_LOCKS_GUARD:
-        return _CACHE_LOCKS.setdefault(key, Lock())
-
-
-def _parse_datetime(value: object) -> datetime | None:
-    if not isinstance(value, str):
-        return None
-    try:
-        parsed = datetime.fromisoformat(value)
-    except ValueError:
-        return None
-    return parsed if parsed.tzinfo else parsed.replace(tzinfo=UTC)
-
-
 def _items_from_snapshot(snapshot: dict) -> tuple[NewsItem, ...]:
-    items = []
-    for value in snapshot.get("items", []):
-        if not isinstance(value, dict):
-            continue
-        title = value.get("title")
-        link = value.get("link")
-        publisher = value.get("publisher")
-        summary = value.get("summary", "")
-        if not all(isinstance(field, str) for field in (title, link, publisher, summary)):
-            continue
-        items.append(NewsItem(title, link, publisher, _parse_datetime(value.get("published_at")), summary))
-    return tuple(items)
+    return deserialize_items(snapshot) or ()
 
 
 @lru_cache(maxsize=1)
@@ -86,11 +60,6 @@ def _result(country: dict, source, snapshot: dict, *, is_stale: bool = False) ->
     )
 
 
-def _age(now: datetime, value: object) -> timedelta | None:
-    parsed = _parse_datetime(value)
-    return now - parsed if parsed else None
-
-
 def get_country_news(
     iso2: str,
     *,
@@ -98,6 +67,7 @@ def get_country_news(
     registry: SourceRegistry | None = None,
     fetcher: Callable[..., FeedResponse] = fetch_feed,
     now: datetime | None = None,
+    retry_failed: bool = False,
 ) -> CountryNewsResult:
     country = _country_for_code(iso2)
     source = (registry or get_source_registry()).get(GOOGLE_SOURCE_ID)
@@ -115,11 +85,12 @@ def get_country_news(
         snapshot = backend.get(cache_key)
         if not isinstance(snapshot, dict):
             snapshot = {}
+        retrying_failure = retry_failed and bool(snapshot.get("last_error"))
         success_age = _age(current_time, snapshot.get("fetched_at"))
-        if snapshot.get("last_success_at") and success_age is not None and success_age.total_seconds() < settings.NEWS_REFRESH_SECONDS:
+        if not retrying_failure and snapshot.get("last_success_at") and success_age is not None and success_age.total_seconds() < settings.NEWS_REFRESH_SECONDS:
             return _result(country, source, snapshot)
         failure_age = _age(current_time, snapshot.get("last_attempt_at"))
-        if snapshot.get("last_error") and failure_age is not None and failure_age.total_seconds() < settings.NEWS_FAILURE_BACKOFF_SECONDS:
+        if not retrying_failure and snapshot.get("last_error") and failure_age is not None and failure_age.total_seconds() < settings.NEWS_FAILURE_BACKOFF_SECONDS:
             return _result(country, source, snapshot, is_stale=bool(snapshot.get("last_success_at")))
 
         try:
@@ -173,3 +144,42 @@ def get_country_news(
             }
             backend.set(cache_key, empty_snapshot, settings.NEWS_FAILURE_BACKOFF_SECONDS)
             return _result(country, source, empty_snapshot)
+
+
+def get_country_news_page(
+    iso2: str,
+    *,
+    cache_backend=None,
+    registry: SourceRegistry | None = None,
+    fetcher: Callable[..., FeedResponse] = fetch_feed,
+    now: datetime | None = None,
+    retry_failed: bool = False,
+) -> CountryNewsPage:
+    country = _country_for_code(iso2)
+    source_registry = registry or get_source_registry()
+    google = get_country_news(
+        iso2,
+        cache_backend=cache_backend,
+        registry=source_registry,
+        fetcher=fetcher,
+        now=now,
+        retry_failed=retry_failed,
+    )
+    fixed_feeds = eligible_fixed_feeds(country, source_registry)
+    regional_items, regional_sources, regional_warning = get_regional_news(
+        country,
+        tuple(provider for provider in source_registry.providers if provider.enabled_by_default),
+        fixed_feeds,
+        cache_backend=cache_backend,
+        fetcher=fetcher,
+        now=now,
+        retry_failed=retry_failed,
+    )
+    return CountryNewsPage(
+        country_code=country["iso_a2"],
+        country_name=country["name"],
+        google=google,
+        regional_items=regional_items,
+        regional_sources=regional_sources,
+        regional_warning=regional_warning,
+    )

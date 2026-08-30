@@ -46,6 +46,22 @@ class SafeFeedFetcherTests(SimpleTestCase):
                     resolver=PUBLIC_RESOLVER,
                 )
 
+    def test_accepts_explicitly_allowlisted_redirect_host(self):
+        def handler(request):
+            if request.url.host == "feeds.example.com":
+                return httpx.Response(302, headers={"Location": "https://cdn.example.com/feed.xml"})
+            return httpx.Response(200, content=b"<rss />")
+
+        with httpx.Client(transport=httpx.MockTransport(handler)) as client:
+            response = fetch_feed(
+                "https://feeds.example.com/news.xml",
+                allowed_hosts={"feeds.example.com", "cdn.example.com"},
+                client=client,
+                resolver=PUBLIC_RESOLVER,
+            )
+
+        self.assertEqual(response.body, b"<rss />")
+
     def test_rejects_private_resolution(self):
         with self.assertRaisesRegex(FeedFetchError, "non-public address"):
             fetch_feed(
