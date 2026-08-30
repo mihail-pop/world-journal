@@ -52,10 +52,16 @@ class ShellNavigationTests(TestCase):
 
         self.assertContains(response, "/static/vendor/maplibre-gl/maplibre-gl.css")
         self.assertContains(response, "/static/data/countries.geojson")
+        self.assertContains(response, "/static/data/capitals.geojson")
         self.assertContains(response, "/data/countries.json")
         self.assertContains(response, 'data-map-style-url="https://tiles.openfreemap.org/styles/liberty"')
+        self.assertContains(response, 'data-map-glyphs-url="https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf"')
+        self.assertContains(response, 'data-terrain-available="false"')
         self.assertContains(response, 'id="world-map"')
         self.assertContains(response, "data-country-drawer")
+        self.assertContains(response, "data-home-view")
+        self.assertContains(response, "data-map-controls-toggle")
+        self.assertContains(response, 'data-map-preference="simpleMode"')
 
     def test_htmx_map_response_keeps_map_markup_inside_partial_boundary(self):
         response = self.client.get(reverse("core:map"), headers={"HX-Request": "true"})
@@ -65,10 +71,29 @@ class ShellNavigationTests(TestCase):
         self.assertNotContains(response, "/static/vendor/maplibre-gl/maplibre-gl.css")
         self.assertNotContains(response, 'id="app-content"')
 
+    def test_settings_page_renders_home_country_from_canonical_metadata(self):
+        response = self.client.get(reverse("core:settings"))
+
+        self.assertContains(response, 'data-page="settings"')
+        self.assertContains(response, 'data-country-metadata-url="/data/countries.json"')
+        self.assertContains(response, 'data-home-country-select')
+        self.assertContains(response, '<option value="">No home country</option>', html=True)
+
+    def test_htmx_settings_response_preserves_home_country_configuration(self):
+        response = self.client.get(
+            reverse("core:settings"), headers={"HX-Request": "true"}
+        )
+
+        self.assertContains(response, 'data-home-country-select')
+        self.assertNotContains(response, "<!doctype html>", html=False)
+
     def test_all_map_browser_assets_are_local(self):
         assets = (
+            "js/map_preferences.js",
             "js/pages/map.js",
+            "js/pages/settings.js",
             "data/countries.geojson",
+            "data/capitals.geojson",
             "vendor/maplibre-gl/maplibre-gl.mjs",
             "vendor/maplibre-gl/maplibre-gl-shared.mjs",
             "vendor/maplibre-gl/maplibre-gl-worker.mjs",

@@ -8,6 +8,9 @@ from django.conf import settings
 
 
 EXPECTED_COUNTRY_COUNT = 238
+EXPECTED_CAPITAL_COUNT = 198
+EXPECTED_CAPITAL_COUNTRY_COUNT = 194
+EXPECTED_MULTIPLE_CAPITALS = {"BO": 2, "CI": 2, "ZA": 3}
 COUNTRY_FIELDS = {
     "iso_a2",
     "iso_a3",
@@ -21,6 +24,7 @@ COUNTRY_FIELDS = {
 }
 ALPHA_2_PATTERN = re.compile(r"^[A-Z]{2}$")
 ALPHA_3_PATTERN = re.compile(r"^[A-Z]{3}$")
+CAPITAL_ID_PATTERN = re.compile(r"^ne-\d+$")
 
 
 class CountryDataError(ValueError):
@@ -57,6 +61,19 @@ def load_country_data(
     geometry = _read_json(geometry_path)
     validate_country_data(metadata, geometry)
     return metadata, geometry
+
+
+def load_capital_data(
+    country_metadata: dict | None = None, capital_path: Path | None = None
+) -> dict:
+    if country_metadata is None:
+        country_metadata, _geometry = load_country_data()
+    capital_path = capital_path or settings.BASE_DIR / "static" / "data" / "capitals.geojson"
+    capital_data = _read_json(capital_path)
+    validate_capital_data(
+        capital_data, {country["iso_a2"] for country in country_metadata["countries"]}
+    )
+    return capital_data
 
 
 def validate_country_data(metadata: dict, geometry: dict) -> None:
@@ -125,3 +142,58 @@ def validate_country_data(metadata: dict, geometry: dict) -> None:
         raise CountryDataError("Country geometry ISO alpha-2 codes must be unique")
     if set(metadata_codes) != set(geometry_codes):
         raise CountryDataError("Country geometry and metadata ISO alpha-2 codes do not match")
+
+
+def validate_capital_data(capital_data: dict, country_codes: set[str]) -> None:
+    if (
+        set(capital_data) != {"type", "schema_version", "source", "features"}
+        or capital_data.get("type") != "FeatureCollection"
+        or capital_data.get("schema_version") != 1
+        or not isinstance(capital_data.get("source"), dict)
+        or capital_data["source"].get("name") != "ne_10m_populated_places"
+        or capital_data["source"].get("dataset_version") != "5.1.2"
+    ):
+        raise CountryDataError("Capital data has an unsupported or missing schema")
+    features = capital_data.get("features")
+    if not isinstance(features, list) or len(features) != EXPECTED_CAPITAL_COUNT:
+        raise CountryDataError(f"Capital data must contain {EXPECTED_CAPITAL_COUNT} features")
+
+    feature_ids = []
+    capital_counts: dict[str, int] = {}
+    for index, feature in enumerate(features):
+        properties = feature.get("properties") if isinstance(feature, dict) else None
+        geometry = feature.get("geometry") if isinstance(feature, dict) else None
+        feature_id = feature.get("id") if isinstance(feature, dict) else None
+        if (
+            set(feature) != {"type", "id", "properties", "geometry"}
+            or feature.get("type") != "Feature"
+            or not isinstance(feature_id, str)
+            or not CAPITAL_ID_PATTERN.fullmatch(feature_id)
+            or not isinstance(properties, dict)
+            or set(properties) != {"name", "iso_a2"}
+            or not isinstance(geometry, dict)
+            or set(geometry) != {"type", "coordinates"}
+            or geometry.get("type") != "Point"
+            or not _valid_position(geometry.get("coordinates"))
+        ):
+            raise CountryDataError(f"Capital feature {index} is invalid")
+        name = properties["name"]
+        alpha_2 = properties["iso_a2"]
+        if not isinstance(name, str) or not name or "\ufffd" in name:
+            raise CountryDataError(f"Capital feature {feature_id} has an invalid name")
+        if alpha_2 not in country_codes:
+            raise CountryDataError(f"Capital feature {feature_id} has no canonical country join")
+        feature_ids.append(feature_id)
+        capital_counts[alpha_2] = capital_counts.get(alpha_2, 0) + 1
+
+    if len(feature_ids) != len(set(feature_ids)):
+        raise CountryDataError("Capital feature identifiers must be unique")
+    if len(capital_counts) != EXPECTED_CAPITAL_COUNTRY_COUNT:
+        raise CountryDataError(
+            f"Capital data must join {EXPECTED_CAPITAL_COUNTRY_COUNT} countries"
+        )
+    multiple_capitals = {
+        code: count for code, count in capital_counts.items() if count > 1
+    }
+    if multiple_capitals != EXPECTED_MULTIPLE_CAPITALS:
+        raise CountryDataError("Capital data has unexpected multiple-capital records")

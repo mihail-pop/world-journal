@@ -1,12 +1,13 @@
 from django.core import checks
 
-from .data import CountryDataError, load_country_data
+from .data import CountryDataError, load_capital_data, load_country_data
 
 
 @checks.register(checks.Tags.staticfiles)
 def check_country_data(app_configs, **kwargs):
     try:
-        load_country_data()
+        metadata, _geometry = load_country_data()
+        load_capital_data(metadata)
     except CountryDataError as error:
         return [
             checks.Error(

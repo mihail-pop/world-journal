@@ -39,3 +39,22 @@ Natural Earth's Admin 0 countries theme groups some dependencies with administer
 ## Small-country interaction
 
 Records carrying Natural Earth's `TINY` classification are marked `small`. The browser renders their metadata centroids as visible markers and gives all centroids an enlarged transparent pointer hit area. Polygon fills remain the authoritative country shapes.
+
+## National capital data
+
+World Journal also derives a small runtime GeoJSON file from Natural Earth's `ne_10m_populated_places` dataset at the same immutable `nvkelso/natural-earth-vector` v5.1.2 repository tag.
+
+- Dataset: Natural Earth `ne_10m_populated_places`
+- Resolution: 1:10m
+- Dataset version: 5.1.2
+- Source DBF: `https://raw.githubusercontent.com/nvkelso/natural-earth-vector/v5.1.2/10m_cultural/ne_10m_populated_places.dbf`
+- Source version file: `https://raw.githubusercontent.com/nvkelso/natural-earth-vector/v5.1.2/10m_cultural/ne_10m_populated_places.VERSION.txt`
+- DBF SHA-256: `eff834a8727e06f28fc52b04393c462d074aecf9a7acd1b870e766240a995b6c`
+- Version-file SHA-256: `0c9a9d43610d66f4cc3f42da08cae044483de25894a9daf9dc6a76ff75ca9327`
+- License: public domain
+
+The generator selects records only when `ADM0CAP` is `1` and `ISO_A2` exactly joins the canonical country metadata. Runtime properties come from `NE_ID`, `NAME_EN` with `NAMEASCII` as a fallback, and `ISO_A2`; coordinates come from `LONGITUDE` and `LATITUDE`. `CAPIN` is used only by generation validation and reporting to preserve legitimate multiple-capital cases without adding unused runtime data.
+
+Natural Earth marks 200 records as national capitals. The strict ISO join includes 198 records across 194 countries. It preserves all source-designated capitals for Bolivia (La Paz and Sucre), Côte d'Ivoire (Abidjan and Yamoussoukro), and South Africa (Bloemfontein, Cape Town, and Pretoria). Pristina/Kosovo and Hargeisa/Somaliland are excluded because their source records use `ISO_A2=-99`; no code or country assignment is guessed. Countries and territories absent from this Natural Earth national-capital classification are left without a capital marker rather than supplemented from another source.
+
+The generated `static/data/capitals.geojson` is 29,395 bytes. It contains only stable feature IDs, canonical joined ISO alpha-2 codes, display names, and point coordinates needed by the runtime map layers.

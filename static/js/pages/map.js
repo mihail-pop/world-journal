@@ -3,12 +3,19 @@ import {
     Map as MapLibreMap,
     NavigationControl,
 } from "../../vendor/maplibre-gl/maplibre-gl.mjs";
+import {
+    clearSavedMapViewport,
+    MAP_VIEWPORT_STORAGE_KEY,
+    readMapPreferences,
+    writeMapPreferences,
+} from "../map_preferences.js";
 
-const VIEWPORT_STORAGE_KEY = "world-journal:map-viewport";
 const WORLD_CAMERA = { center: [8, 18], zoom: 1.35 };
 const SOURCE_ID = "world-journal-countries";
 const CENTROID_SOURCE_ID = "world-journal-country-centroids";
+const CAPITAL_SOURCE_ID = "world-journal-capitals";
 const LAYERS = {
+    simpleBackground: "world-journal-simple-background",
     fill: "world-journal-country-fill",
     outline: "world-journal-country-outline",
     hoverFill: "world-journal-country-hover-fill",
@@ -17,11 +24,9 @@ const LAYERS = {
     selectedLine: "world-journal-country-selected-line",
     smallMarker: "world-journal-country-small-marker",
     hitTarget: "world-journal-country-hit-target",
-};
-const FALLBACK_STYLE = {
-    version: 8,
-    sources: {},
-    layers: [{ id: "world-journal-background", type: "background", paint: { "background-color": "#0b1622" } }],
+    countryNames: "world-journal-country-names",
+    capitalMarkers: "world-journal-capital-markers",
+    capitalNames: "world-journal-capital-names",
 };
 
 let lifecycleRegistered = false;
@@ -29,7 +34,7 @@ let activeController = null;
 
 function readViewport() {
     try {
-        const value = JSON.parse(localStorage.getItem(VIEWPORT_STORAGE_KEY));
+        const value = JSON.parse(localStorage.getItem(MAP_VIEWPORT_STORAGE_KEY));
         if (
             Array.isArray(value?.center)
             && value.center.length === 2
@@ -47,7 +52,7 @@ function readViewport() {
 function saveViewport(map) {
     const center = map.getCenter();
     try {
-        localStorage.setItem(VIEWPORT_STORAGE_KEY, JSON.stringify({
+        localStorage.setItem(MAP_VIEWPORT_STORAGE_KEY, JSON.stringify({
             center: [center.lng, center.lat],
             zoom: map.getZoom(),
         }));
@@ -70,7 +75,11 @@ function updateLayerTheme(controller) {
     const countryOutline = getThemeColor("--text-primary");
     const hover = getThemeColor("--special-color");
     const selected = getThemeColor("--text-secondary");
+    const simpleBackground = controller.preferences.water
+        ? getThemeColor("--bg-tertiary")
+        : background;
 
+    map.setPaintProperty(LAYERS.simpleBackground, "background-color", simpleBackground);
     map.setPaintProperty(LAYERS.fill, "fill-color", countryFill);
     map.setPaintProperty(LAYERS.outline, "line-color", countryOutline);
     map.setPaintProperty(LAYERS.hoverFill, "fill-color", hover);
@@ -79,7 +88,13 @@ function updateLayerTheme(controller) {
     map.setPaintProperty(LAYERS.selectedLine, "line-color", selected);
     map.setPaintProperty(LAYERS.smallMarker, "circle-color", hover);
     map.setPaintProperty(LAYERS.smallMarker, "circle-stroke-color", selected);
-    if (controller.usingFallbackStyle) {
+    map.setPaintProperty(LAYERS.countryNames, "text-color", selected);
+    map.setPaintProperty(LAYERS.countryNames, "text-halo-color", background);
+    map.setPaintProperty(LAYERS.capitalMarkers, "circle-color", selected);
+    map.setPaintProperty(LAYERS.capitalMarkers, "circle-stroke-color", background);
+    map.setPaintProperty(LAYERS.capitalNames, "text-color", selected);
+    map.setPaintProperty(LAYERS.capitalNames, "text-halo-color", background);
+    if (controller.usingFallbackStyle && map.getLayer("world-journal-background")) {
         map.setPaintProperty("world-journal-background", "background-color", background);
     }
 }
@@ -111,7 +126,7 @@ function updateFilter(map, layerId, code) {
     }
 }
 
-function drawerPadding(country) {
+function drawerPadding() {
     if (window.matchMedia("(max-width: 46rem)").matches) {
         return { top: 56, right: 36, bottom: 260, left: 36 };
     }
@@ -121,7 +136,7 @@ function drawerPadding(country) {
 function focusCountry(controller, country, animate = true) {
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     controller.map.fitBounds(country.bounds, {
-        padding: drawerPadding(country),
+        padding: drawerPadding(),
         maxZoom: country.small ? 7 : 5.5,
         duration: animate && !reducedMotion ? 650 : 0,
     });
@@ -183,39 +198,234 @@ function queryCountryCode(controller, point) {
     return controller.map.queryRenderedFeatures(point, { layers })[0]?.properties?.iso_a2 ?? null;
 }
 
-function installCountryLayers(controller) {
-    const { map } = controller;
-    if (map.getSource(SOURCE_ID)) {
+function isApplicationLayer(layer) {
+    return layer.id.startsWith("world-journal-");
+}
+
+function serializedLayerDefinition(layer) {
+    return `${layer.id} ${layer["source-layer"] ?? ""} ${JSON.stringify(layer.filter ?? [])}`.toLowerCase();
+}
+
+function isBasemapCountryLabel(layer) {
+    const definition = serializedLayerDefinition(layer);
+    return layer.type === "symbol"
+        && (definition.includes("label_country") || (
+            layer["source-layer"] === "place" && definition.includes("country")
+        ));
+}
+
+function isBasemapCapitalLabel(layer) {
+    const definition = serializedLayerDefinition(layer);
+    return layer.type === "symbol"
+        && (definition.includes("capital") || (
+            layer["source-layer"] === "place" && definition.includes("adm0cap")
+        ));
+}
+
+// Keep style-specific detection here so provider changes do not leak through the controller.
+function isBasemapWaterLayer(layer) {
+    const sourceLayer = layer["source-layer"] ?? "";
+    return ["water", "waterway", "water_name"].includes(sourceLayer)
+        || /(^|[_-])(water|waterway|ocean|lake|river)([_-]|$)/i.test(layer.id);
+}
+
+function originalVisibility(controller, layer) {
+    if (!controller.basemapVisibility.has(layer.id)) {
+        controller.basemapVisibility.set(
+            layer.id,
+            controller.map.getLayoutProperty(layer.id, "visibility") ?? "visible",
+        );
+    }
+    return controller.basemapVisibility.get(layer.id);
+}
+
+function applyBasemapPreferences(controller) {
+    for (const layer of controller.map.getStyle().layers ?? []) {
+        if (isApplicationLayer(layer)) {
+            continue;
+        }
+        const visibility = originalVisibility(controller, layer);
+        const hidden = controller.preferences.simpleMode
+            || isBasemapCountryLabel(layer)
+            || isBasemapCapitalLabel(layer)
+            || (!controller.preferences.water && isBasemapWaterLayer(layer));
+        controller.map.setLayoutProperty(
+            layer.id,
+            "visibility",
+            hidden ? "none" : visibility,
+        );
+    }
+}
+
+function setLayerVisibility(map, layerId, visible) {
+    if (map.getLayer(layerId)) {
+        map.setLayoutProperty(layerId, "visibility", visible ? "visible" : "none");
+    }
+}
+
+function updateControls(controller) {
+    for (const input of controller.page.querySelectorAll("[data-map-preference]")) {
+        const key = input.dataset.mapPreference;
+        input.checked = key === "terrain" && controller.preferences.simpleMode
+            ? false
+            : Boolean(controller.preferences[key]);
+    }
+}
+
+function applyPreferences(controller) {
+    updateControls(controller);
+    if (!controller.layersInstalled) {
         return;
     }
-    map.addSource(SOURCE_ID, { type: "geojson", data: controller.geometry, promoteId: "iso_a2" });
-    map.addSource(CENTROID_SOURCE_ID, { type: "geojson", data: controller.centroids });
-    map.addLayer({ id: LAYERS.fill, type: "fill", source: SOURCE_ID, paint: { "fill-color": "#32445b", "fill-opacity": 0.22 } });
-    map.addLayer({ id: LAYERS.outline, type: "line", source: SOURCE_ID, paint: { "line-color": "#8596a5", "line-opacity": 0.62, "line-width": 0.8 } });
-    map.addLayer({ id: LAYERS.hoverFill, type: "fill", source: SOURCE_ID, filter: ["==", ["get", "iso_a2"], ""], paint: { "fill-color": "#00bfff", "fill-opacity": 0.32 } });
-    map.addLayer({ id: LAYERS.hoverLine, type: "line", source: SOURCE_ID, filter: ["==", ["get", "iso_a2"], ""], paint: { "line-color": "#00bfff", "line-width": 2 } });
-    map.addLayer({ id: LAYERS.selectedFill, type: "fill", source: SOURCE_ID, filter: ["==", ["get", "iso_a2"], ""], paint: { "fill-color": "#00bfff", "fill-opacity": 0.26 } });
-    map.addLayer({ id: LAYERS.selectedLine, type: "line", source: SOURCE_ID, filter: ["==", ["get", "iso_a2"], ""], paint: { "line-color": "#a8b5c4", "line-width": 3.5 } });
-    map.addLayer({
+    applyBasemapPreferences(controller);
+    setLayerVisibility(controller.map, LAYERS.simpleBackground, controller.preferences.simpleMode);
+    setLayerVisibility(
+        controller.map,
+        LAYERS.countryNames,
+        controller.preferences.countryNames || controller.preferences.simpleMode,
+    );
+    const showCapitals = controller.preferences.capitalNames && !controller.preferences.simpleMode;
+    setLayerVisibility(controller.map, LAYERS.capitalMarkers, showCapitals);
+    setLayerVisibility(controller.map, LAYERS.capitalNames, showCapitals);
+    controller.map.setPaintProperty(
+        LAYERS.fill,
+        "fill-opacity",
+        controller.preferences.simpleMode ? 0.72 : 0.22,
+    );
+    updateLayerTheme(controller);
+    const styleLayers = controller.map.getStyle().layers ?? [];
+    const isVisible = (layerId) => controller.map.getLayoutProperty(layerId, "visibility") !== "none";
+    const waterLayers = styleLayers.filter((layer) => (
+        !isApplicationLayer(layer) && isBasemapWaterLayer(layer)
+    ));
+    const basemapCountryLabels = styleLayers.filter((layer) => (
+        !isApplicationLayer(layer) && isBasemapCountryLabel(layer)
+    ));
+    const basemapCapitalLabels = styleLayers.filter((layer) => (
+        !isApplicationLayer(layer) && isBasemapCapitalLabel(layer)
+    ));
+    const visibleBasemapLayers = styleLayers.filter((layer) => (
+        !isApplicationLayer(layer) && isVisible(layer.id)
+    ));
+    controller.page.dataset.appliedCountryNames = String(isVisible(LAYERS.countryNames));
+    controller.page.dataset.appliedCapitalNames = String(
+        isVisible(LAYERS.capitalMarkers) && isVisible(LAYERS.capitalNames),
+    );
+    controller.page.dataset.appliedWater = String(
+        controller.preferences.simpleMode
+            ? controller.preferences.water
+            : waterLayers.some((layer) => isVisible(layer.id)),
+    );
+    controller.page.dataset.appliedSimpleMode = String(
+        isVisible(LAYERS.simpleBackground) && visibleBasemapLayers.length === 0,
+    );
+    controller.page.dataset.visibleBasemapLayers = String(visibleBasemapLayers.length);
+    controller.page.dataset.visibleBasemapCountryLabels = String(
+        basemapCountryLabels.filter((layer) => isVisible(layer.id)).length,
+    );
+    controller.page.dataset.visibleBasemapCapitalLabels = String(
+        basemapCapitalLabels.filter((layer) => isVisible(layer.id)).length,
+    );
+    controller.page.dataset.visibleWaterLayers = String(
+        waterLayers.filter((layer) => isVisible(layer.id)).length,
+    );
+    controller.page.dataset.applicationLayerCount = String(
+        styleLayers.filter(isApplicationLayer).length,
+    );
+}
+
+function addLayer(controller, definition, beforeId) {
+    if (!controller.map.getLayer(definition.id)) {
+        controller.map.addLayer(definition, beforeId);
+    }
+}
+
+function installCountryLayers(controller) {
+    const { map } = controller;
+    const firstBasemapLayer = map.getStyle().layers?.find((layer) => !isApplicationLayer(layer))?.id;
+    if (!map.getSource(SOURCE_ID)) {
+        map.addSource(SOURCE_ID, { type: "geojson", data: controller.geometry, promoteId: "iso_a2" });
+    }
+    if (!map.getSource(CENTROID_SOURCE_ID)) {
+        map.addSource(CENTROID_SOURCE_ID, { type: "geojson", data: controller.centroids });
+    }
+    if (!map.getSource(CAPITAL_SOURCE_ID)) {
+        map.addSource(CAPITAL_SOURCE_ID, { type: "geojson", data: controller.capitals });
+    }
+    addLayer(controller, {
+        id: LAYERS.simpleBackground,
+        type: "background",
+        layout: { visibility: "none" },
+        paint: { "background-color": "#151f2e" },
+    }, firstBasemapLayer);
+    addLayer(controller, { id: LAYERS.fill, type: "fill", source: SOURCE_ID, paint: { "fill-color": "#32445b", "fill-opacity": 0.22 } });
+    addLayer(controller, { id: LAYERS.outline, type: "line", source: SOURCE_ID, paint: { "line-color": "#8596a5", "line-opacity": 0.62, "line-width": 0.8 } });
+    addLayer(controller, { id: LAYERS.hoverFill, type: "fill", source: SOURCE_ID, filter: ["==", ["get", "iso_a2"], ""], paint: { "fill-color": "#00bfff", "fill-opacity": 0.32 } });
+    addLayer(controller, { id: LAYERS.hoverLine, type: "line", source: SOURCE_ID, filter: ["==", ["get", "iso_a2"], ""], paint: { "line-color": "#00bfff", "line-width": 2 } });
+    addLayer(controller, { id: LAYERS.selectedFill, type: "fill", source: SOURCE_ID, filter: ["==", ["get", "iso_a2"], ""], paint: { "fill-color": "#00bfff", "fill-opacity": 0.26 } });
+    addLayer(controller, { id: LAYERS.selectedLine, type: "line", source: SOURCE_ID, filter: ["==", ["get", "iso_a2"], ""], paint: { "line-color": "#a8b5c4", "line-width": 3.5 } });
+    addLayer(controller, {
         id: LAYERS.smallMarker,
         type: "circle",
         source: CENTROID_SOURCE_ID,
         filter: ["==", ["get", "small"], true],
         paint: { "circle-color": "#00bfff", "circle-radius": 3.5, "circle-stroke-color": "#a8b5c4", "circle-stroke-width": 1.5 },
     });
-    map.addLayer({
+    addLayer(controller, {
         id: LAYERS.hitTarget,
         type: "circle",
         source: CENTROID_SOURCE_ID,
         paint: { "circle-color": "#00bfff", "circle-radius": 11, "circle-opacity": 0.01 },
     });
+    addLayer(controller, {
+        id: LAYERS.countryNames,
+        type: "symbol",
+        source: CENTROID_SOURCE_ID,
+        minzoom: 1,
+        maxzoom: 8,
+        layout: {
+            "symbol-avoid-edges": true,
+            "text-field": ["get", "name"],
+            "text-font": ["Noto Sans Bold"],
+            "text-size": ["interpolate", ["linear"], ["zoom"], 1, 9, 5, 14],
+            "text-max-width": 7,
+        },
+        paint: { "text-color": "#a8b5c4", "text-halo-color": "#0b1622", "text-halo-width": 1.25 },
+    });
+    addLayer(controller, {
+        id: LAYERS.capitalMarkers,
+        type: "circle",
+        source: CAPITAL_SOURCE_ID,
+        minzoom: 2.5,
+        layout: { visibility: "none" },
+        paint: { "circle-color": "#a8b5c4", "circle-radius": 2.5, "circle-stroke-color": "#0b1622", "circle-stroke-width": 1 },
+    });
+    addLayer(controller, {
+        id: LAYERS.capitalNames,
+        type: "symbol",
+        source: CAPITAL_SOURCE_ID,
+        minzoom: 2.5,
+        layout: {
+            visibility: "none",
+            "symbol-avoid-edges": true,
+            "text-field": ["get", "name"],
+            "text-font": ["Noto Sans Regular"],
+            "text-size": ["interpolate", ["linear"], ["zoom"], 2.5, 9, 7, 12],
+            "text-anchor": "top",
+            "text-offset": [0, 0.55],
+            "text-max-width": 8,
+            "text-optional": true,
+        },
+        paint: { "text-color": "#a8b5c4", "text-halo-color": "#0b1622", "text-halo-width": 1.2 },
+    });
     controller.layersInstalled = true;
-    updateLayerTheme(controller);
+    applyPreferences(controller);
     updateFilter(map, LAYERS.selectedFill, controller.selectedCode);
     updateFilter(map, LAYERS.selectedLine, controller.selectedCode);
     controller.status.hidden = true;
-    if (controller.selectedCode) {
-        focusCountry(controller, controller.countriesByCode.get(controller.selectedCode), false);
+    if (controller.initialFocusCode) {
+        focusCountry(controller, controller.countriesByCode.get(controller.initialFocusCode), false);
+        controller.initialFocusCode = null;
     }
 }
 
@@ -225,17 +435,18 @@ function createCentroids(countries) {
         features: countries.map((country) => ({
             type: "Feature",
             id: country.iso_a2,
-            properties: { iso_a2: country.iso_a2, small: country.small },
+            properties: { iso_a2: country.iso_a2, name: country.name, small: country.small },
             geometry: { type: "Point", coordinates: country.centroid },
         })),
     };
 }
 
-function initialCamera(selectedCountry) {
-    if (selectedCountry) {
-        return { center: selectedCountry.centroid, zoom: selectedCountry.small ? 6 : 3.2 };
+function initialCamera(selectedCountry, homeCountry, savedViewport) {
+    const country = selectedCountry ?? homeCountry;
+    if (country) {
+        return { center: country.centroid, zoom: country.small ? 6 : 3.2 };
     }
-    return readViewport() ?? WORLD_CAMERA;
+    return savedViewport ?? WORLD_CAMERA;
 }
 
 function showNotice(controller, message) {
@@ -248,8 +459,14 @@ function applyProviderFallback(controller) {
         return;
     }
     controller.usingFallbackStyle = true;
+    controller.layersInstalled = false;
     controller.status.textContent = "Map provider unavailable. Showing bundled country boundaries.";
-    controller.map.setStyle(FALLBACK_STYLE);
+    controller.map.setStyle({
+        version: 8,
+        glyphs: controller.glyphsUrl,
+        sources: {},
+        layers: [{ id: "world-journal-background", type: "background", paint: { "background-color": "#0b1622" } }],
+    });
 }
 
 function createMap(controller, styleUrl) {
@@ -258,7 +475,20 @@ function createMap(controller, styleUrl) {
     if (requested.unsupported) {
         showNotice(controller, `Country code ${requested.unsupported} is not available in the bundled dataset.`);
     }
-    const camera = initialCamera(requested.code ? controller.countriesByCode.get(requested.code) : null);
+    const selectedCountry = requested.code ? controller.countriesByCode.get(requested.code) : null;
+    const homeCountry = controller.preferences.homeCountry
+        ? controller.countriesByCode.get(controller.preferences.homeCountry)
+        : null;
+    const savedViewport = readViewport();
+    controller.initialFocusCode = requested.code ?? controller.preferences.homeCountry;
+    controller.page.dataset.initialCameraSource = selectedCountry
+        ? "country-query"
+        : homeCountry
+            ? "home-country"
+            : savedViewport
+                ? "saved-viewport"
+                : "world";
+    const camera = initialCamera(selectedCountry, homeCountry, savedViewport);
     const map = new MapLibreMap({
         container: controller.container,
         style: styleUrl,
@@ -273,13 +503,15 @@ function createMap(controller, styleUrl) {
         compact: true,
         customAttribution: [
             '<a href="https://openfreemap.org/" target="_blank" rel="noopener noreferrer">OpenFreeMap</a>',
-            '<a href="https://www.naturalearthdata.com/" target="_blank" rel="noopener noreferrer">Country boundaries: Natural Earth</a>',
+            '<a href="https://www.naturalearthdata.com/" target="_blank" rel="noopener noreferrer">Country and capital data: Natural Earth</a>',
         ],
     }), "bottom-left");
 
     controller.fallbackTimer = window.setTimeout(() => applyProviderFallback(controller), 8000);
     map.on("style.load", () => {
         window.clearTimeout(controller.fallbackTimer);
+        controller.layersInstalled = false;
+        controller.basemapVisibility.clear();
         installCountryLayers(controller);
     });
     map.on("error", () => {
@@ -317,6 +549,77 @@ function createMap(controller, styleUrl) {
     }
 }
 
+function closeControlsPanel(controller, { restoreFocus = false } = {}) {
+    if (controller.controlsPanel.hidden) {
+        return;
+    }
+    controller.controlsPanel.hidden = true;
+    controller.controlsToggle.setAttribute("aria-expanded", "false");
+    if (restoreFocus) {
+        controller.controlsToggle.focus();
+    }
+}
+
+function initializeControls(controller) {
+    const homeCountry = controller.preferences.homeCountry
+        ? controller.countriesByCode.get(controller.preferences.homeCountry)
+        : null;
+    controller.homeButton.disabled = !homeCountry;
+    controller.homeButton.title = homeCountry
+        ? `View ${homeCountry.name}`
+        : "Choose a home country in Settings";
+    controller.homeSummary.textContent = homeCountry
+        ? `Home country: ${homeCountry.name}`
+        : "Home country is not configured.";
+    controller.terrainInput.disabled = !controller.terrainAvailable;
+    controller.terrainNote.textContent = controller.terrainAvailable
+        ? ""
+        : controller.terrainUnavailableReason;
+    controller.terrainInput.title = controller.terrainAvailable
+        ? ""
+        : controller.terrainUnavailableReason;
+    updateControls(controller);
+
+    controller.controlsToggle.addEventListener("click", () => {
+        const willOpen = controller.controlsPanel.hidden;
+        controller.controlsPanel.hidden = !willOpen;
+        controller.controlsToggle.setAttribute("aria-expanded", String(willOpen));
+        if (willOpen) {
+            controller.controlsPanel.querySelector("input:not(:disabled)")?.focus();
+        }
+    }, { signal: controller.abortController.signal });
+    controller.toolbar.addEventListener("change", (event) => {
+        const input = event.target.closest("[data-map-preference]");
+        if (!input || input.disabled) {
+            return;
+        }
+        const key = input.dataset.mapPreference;
+        controller.preferences = writeMapPreferences(
+            { ...controller.preferences, [key]: input.checked },
+            controller.countryCodes,
+        );
+        applyPreferences(controller);
+    }, { signal: controller.abortController.signal });
+    controller.homeButton.addEventListener("click", () => {
+        if (!homeCountry) {
+            return;
+        }
+        closeCountry(controller, { focusMap: false });
+        focusCountry(controller, homeCountry);
+    }, { signal: controller.abortController.signal });
+    controller.worldButton.addEventListener("click", () => {
+        closeCountry(controller, { focusMap: false });
+        clearSavedMapViewport();
+        const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        controller.map?.easeTo({ ...WORLD_CAMERA, duration: reducedMotion ? 0 : 650 });
+    }, { signal: controller.abortController.signal });
+    document.addEventListener("pointerdown", (event) => {
+        if (!controller.toolbar.contains(event.target)) {
+            closeControlsPanel(controller);
+        }
+    }, { signal: controller.abortController.signal });
+}
+
 async function loadJson(url, signal) {
     const response = await fetch(url, { signal });
     if (!response.ok) {
@@ -340,31 +643,42 @@ async function initializeMapPage() {
         abortController,
         map: null,
         countriesByCode: new Map(),
+        countryCodes: new Set(),
+        preferences: null,
         geometry: null,
         centroids: null,
+        capitals: null,
         selectedCode: null,
         hoveredCode: null,
         layersInstalled: false,
         usingFallbackStyle: false,
+        basemapVisibility: new Map(),
         fallbackTimer: null,
+        initialFocusCode: null,
+        glyphsUrl: page.dataset.mapGlyphsUrl,
+        terrainAvailable: page.dataset.terrainAvailable === "true",
+        terrainUnavailableReason: page.dataset.terrainUnavailableReason,
         status: page.querySelector("[data-map-status]"),
         notice: page.querySelector("[data-map-notice]"),
+        toolbar: page.querySelector(".map-toolbar"),
+        controlsToggle: page.querySelector("[data-map-controls-toggle]"),
+        controlsPanel: page.querySelector("[data-map-controls-panel]"),
+        homeButton: page.querySelector("[data-home-view]"),
+        worldButton: page.querySelector("[data-world-view]"),
+        homeSummary: page.querySelector("[data-home-summary]"),
+        terrainInput: page.querySelector('[data-map-preference="terrain"]'),
+        terrainNote: page.querySelector("[data-terrain-note]"),
     };
     activeController = controller;
 
     page.querySelector("[data-country-close]").addEventListener("click", () => closeCountry(controller), { signal: abortController.signal });
-    page.querySelector("[data-world-view]").addEventListener("click", () => {
-        closeCountry(controller, { focusMap: false });
-        try {
-            localStorage.removeItem(VIEWPORT_STORAGE_KEY);
-        } catch (error) {
-            // Reset still updates the active map when storage is unavailable.
-        }
-        const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-        controller.map?.easeTo({ ...WORLD_CAMERA, duration: reducedMotion ? 0 : 650 });
-    }, { signal: abortController.signal });
     document.addEventListener("keydown", (event) => {
-        if (event.key === "Escape" && controller.selectedCode) {
+        if (event.key !== "Escape") {
+            return;
+        }
+        if (!controller.controlsPanel.hidden) {
+            closeControlsPanel(controller, { restoreFocus: true });
+        } else if (controller.selectedCode) {
             closeCountry(controller);
         }
     }, { signal: abortController.signal });
@@ -379,19 +693,28 @@ async function initializeMapPage() {
     }, { signal: abortController.signal });
 
     try {
-        const [metadata, geometry] = await Promise.all([
+        const [metadata, geometry, capitals] = await Promise.all([
             loadJson(page.dataset.countryMetadataUrl, abortController.signal),
             loadJson(page.dataset.countryGeometryUrl, abortController.signal),
+            loadJson(page.dataset.capitalGeometryUrl, abortController.signal),
         ]);
         if (activeController !== controller) {
             return;
         }
-        if (!Array.isArray(metadata.countries) || geometry.type !== "FeatureCollection") {
-            throw new Error("Bundled country data has an invalid schema");
+        if (
+            !Array.isArray(metadata.countries)
+            || geometry.type !== "FeatureCollection"
+            || capitals.type !== "FeatureCollection"
+        ) {
+            throw new Error("Bundled map data has an invalid schema");
         }
         controller.countriesByCode = new Map(metadata.countries.map((country) => [country.iso_a2, country]));
+        controller.countryCodes = new Set(controller.countriesByCode.keys());
+        controller.preferences = readMapPreferences(controller.countryCodes);
         controller.geometry = geometry;
         controller.centroids = createCentroids(metadata.countries);
+        controller.capitals = capitals;
+        initializeControls(controller);
         controller.status.textContent = "Loading map provider…";
         createMap(controller, page.dataset.mapStyleUrl);
     } catch (error) {

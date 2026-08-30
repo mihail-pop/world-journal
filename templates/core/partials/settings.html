@@ -1,10 +1,27 @@
-<section class="page page-standard" data-page="settings" aria-labelledby="settings-title">
+{% load static %}
+<section
+    class="page page-standard"
+    data-page="settings"
+    data-country-metadata-url="{% url 'countries:metadata' %}"
+    aria-labelledby="settings-title"
+>
     <div class="page-copy">
         <p class="eyebrow">Local preferences</p>
         <h1 id="settings-title">Settings</h1>
         <p>Appearance can be changed from the persistent theme selector in the header.</p>
     </div>
-    <div class="empty-state">
-        <p>Map, source, and data settings will arrive with their corresponding phases.</p>
-    </div>
+    <section class="settings-section" aria-labelledby="map-settings-title">
+        <div>
+            <p class="eyebrow">Map</p>
+            <h2 id="map-settings-title">Opening position</h2>
+        </div>
+        <div class="settings-field">
+            <label for="home-country">Home country</label>
+            <select id="home-country" data-home-country-select disabled>
+                <option value="">No home country</option>
+            </select>
+            <p class="field-note">Used when the map opens without a country link.</p>
+            <p class="settings-status" data-settings-status role="status" aria-live="polite">Loading countries…</p>
+        </div>
+    </section>
 </section>

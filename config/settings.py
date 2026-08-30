@@ -16,6 +16,12 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent.parent
 APP_DISPLAY_NAME = 'World Journal'
 MAP_STYLE_URL = 'https://tiles.openfreemap.org/styles/liberty'
+MAP_GLYPHS_URL = 'https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf'
+MAP_TERRAIN_CONFIG = {
+    'available': False,
+    'reason': 'No documented MapLibre elevation source is configured.',
+    'source': None,
+}
 
 
 # Quick-start development settings - unsuitable for production

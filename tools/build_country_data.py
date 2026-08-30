@@ -25,12 +25,29 @@ EXPECTED_SOURCE_SHA256 = {
 }
 EXPECTED_SOURCE_RECORDS = 258
 EXPECTED_COUNTRIES = 238
+CAPITAL_SOURCE_NAME = "ne_10m_populated_places"
+CAPITAL_SOURCE_BASE_URL = (
+    f"https://raw.githubusercontent.com/nvkelso/natural-earth-vector/"
+    f"{SOURCE_TAG}/10m_cultural/{CAPITAL_SOURCE_NAME}"
+)
+CAPITAL_DATASET_VERSION = "5.1.2"
+CAPITAL_SOURCE_EXTENSIONS = (".dbf", ".VERSION.txt")
+EXPECTED_CAPITAL_SOURCE_SHA256 = {
+    ".dbf": "eff834a8727e06f28fc52b04393c462d074aecf9a7acd1b870e766240a995b6c",
+    ".VERSION.txt": "0c9a9d43610d66f4cc3f42da08cae044483de25894a9daf9dc6a76ff75ca9327",
+}
+EXPECTED_CAPITAL_SOURCE_RECORDS = 7342
+EXPECTED_CAPITALS = 198
+EXPECTED_CAPITAL_COUNTRIES = 194
+EXPECTED_MULTIPLE_CAPITALS = {"BO": 2, "CI": 2, "ZA": 3}
+EXPECTED_CAPITAL_EXCLUSIONS = {"1159149757", "1159151189"}
 SIMPLIFY_TOLERANCE = 0.015
 COORDINATE_PRECISION = 4
 USER_AGENT = "world-journal-country-data-builder/1.0"
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 METADATA_PATH = PROJECT_ROOT / "data" / "countries.json"
 GEOMETRY_PATH = PROJECT_ROOT / "static" / "data" / "countries.geojson"
+CAPITALS_PATH = PROJECT_ROOT / "static" / "data" / "capitals.geojson"
 
 
 def download_source() -> tuple[dict[str, bytes], dict[str, str]]:
@@ -46,6 +63,22 @@ def download_source() -> tuple[dict[str, bytes], dict[str, str]]:
         source_hashes[extension] = hashlib.sha256(content).hexdigest()
         if source_hashes[extension] != EXPECTED_SOURCE_SHA256[extension]:
             raise ValueError(f"Source hash mismatch for {extension}")
+    return source_files, source_hashes
+
+
+def download_capital_source() -> tuple[dict[str, bytes], dict[str, str]]:
+    source_files = {}
+    source_hashes = {}
+    for extension in CAPITAL_SOURCE_EXTENSIONS:
+        request = urllib.request.Request(
+            f"{CAPITAL_SOURCE_BASE_URL}{extension}", headers={"User-Agent": USER_AGENT}
+        )
+        with urllib.request.urlopen(request, timeout=60) as response:
+            content = response.read()
+        source_files[extension] = content
+        source_hashes[extension] = hashlib.sha256(content).hexdigest()
+        if source_hashes[extension] != EXPECTED_CAPITAL_SOURCE_SHA256[extension]:
+            raise ValueError(f"Capital source hash mismatch for {extension}")
     return source_files, source_hashes
 
 
@@ -378,6 +411,88 @@ def validate_outputs(metadata: dict, geometry: dict) -> None:
         raise ValueError("Vatican microstate hit-target metadata is missing")
 
 
+def build_capital_output(
+    records: list[dict[str, str]], country_codes: set[str], source_hashes: dict[str, str]
+) -> tuple[dict, list[dict[str, str]]]:
+    if len(records) != EXPECTED_CAPITAL_SOURCE_RECORDS:
+        raise ValueError(
+            f"Expected {EXPECTED_CAPITAL_SOURCE_RECORDS} populated-place records, got {len(records)}"
+        )
+
+    features = []
+    exclusions = []
+    for record in records:
+        if record["ADM0CAP"] != "1":
+            continue
+        if record["ISO_A2"] not in country_codes:
+            exclusions.append(record)
+            continue
+        name = record["NAME_EN"] or record["NAMEASCII"]
+        feature_id = record["NE_ID"]
+        if not feature_id.isdigit() or not name or "\ufffd" in name:
+            raise ValueError(f"Capital record {feature_id or '<missing>'} has invalid identity")
+        longitude = float(record["LONGITUDE"])
+        latitude = float(record["LATITUDE"])
+        if not -180 <= longitude <= 180 or not -90 <= latitude <= 90:
+            raise ValueError(f"Capital record {feature_id} has invalid coordinates")
+        features.append(
+            {
+                "type": "Feature",
+                "id": f"ne-{feature_id}",
+                "properties": {"name": name, "iso_a2": record["ISO_A2"]},
+                "geometry": {
+                    "type": "Point",
+                    "coordinates": [
+                        round(longitude, COORDINATE_PRECISION),
+                        round(latitude, COORDINATE_PRECISION),
+                    ],
+                },
+            }
+        )
+
+    features.sort(key=lambda feature: (feature["properties"]["iso_a2"], feature["properties"]["name"], feature["id"]))
+    capital_data = {
+        "type": "FeatureCollection",
+        "schema_version": 1,
+        "source": {
+            "name": CAPITAL_SOURCE_NAME,
+            "dataset_version": CAPITAL_DATASET_VERSION,
+            "repository_tag": SOURCE_TAG,
+            "resolution": "1:10m",
+            "license": "Public domain",
+            "inclusion": "ADM0CAP=1 with an exact canonical ISO_A2 join",
+            "sha256": source_hashes,
+        },
+        "features": features,
+    }
+    validate_capital_output(capital_data, exclusions)
+    return capital_data, exclusions
+
+
+def validate_capital_output(capital_data: dict, exclusions: list[dict[str, str]]) -> None:
+    features = capital_data["features"]
+    feature_ids = [feature["id"] for feature in features]
+    country_counts: dict[str, int] = defaultdict(int)
+    for feature in features:
+        country_counts[feature["properties"]["iso_a2"]] += 1
+    multiple_capitals = {
+        code: count for code, count in country_counts.items() if count > 1
+    }
+
+    if len(features) != EXPECTED_CAPITALS:
+        raise ValueError(f"Expected {EXPECTED_CAPITALS} joined capitals, got {len(features)}")
+    if len(country_counts) != EXPECTED_CAPITAL_COUNTRIES:
+        raise ValueError(
+            f"Expected capitals for {EXPECTED_CAPITAL_COUNTRIES} countries, got {len(country_counts)}"
+        )
+    if len(feature_ids) != len(set(feature_ids)):
+        raise ValueError("Capital feature identifiers must be unique")
+    if multiple_capitals != EXPECTED_MULTIPLE_CAPITALS:
+        raise ValueError(f"Unexpected multiple-capital records: {multiple_capitals}")
+    if {record["NE_ID"] for record in exclusions} != EXPECTED_CAPITAL_EXCLUSIONS:
+        raise ValueError("Unexpected national-capital ISO exclusions")
+
+
 def write_json(path: Path, value: dict, *, compact: bool) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8", newline="\n") as output:
@@ -402,14 +517,35 @@ def main() -> None:
     metadata, geometry, exclusions = build_outputs(records, shapes)
     metadata["source"]["sha256"] = source_hashes
     validate_outputs(metadata, geometry)
+    capital_source_files, capital_source_hashes = download_capital_source()
+    capital_version = capital_source_files[".VERSION.txt"].decode("ascii").strip()
+    if capital_version != CAPITAL_DATASET_VERSION:
+        raise ValueError(
+            f"Expected capital dataset version {CAPITAL_DATASET_VERSION}, got {capital_version}"
+        )
+    capital_records = parse_dbf(capital_source_files[".dbf"])
+    capital_data, capital_exclusions = build_capital_output(
+        capital_records,
+        {country["iso_a2"] for country in metadata["countries"]},
+        capital_source_hashes,
+    )
     write_json(METADATA_PATH, metadata, compact=False)
     write_json(GEOMETRY_PATH, geometry, compact=True)
+    write_json(CAPITALS_PATH, capital_data, compact=True)
     print(f"Wrote {len(metadata['countries'])} countries")
     print(f"Metadata: {METADATA_PATH} ({METADATA_PATH.stat().st_size:,} bytes)")
     print(f"Geometry: {GEOMETRY_PATH} ({GEOMETRY_PATH.stat().st_size:,} bytes)")
     print(f"Excluded source records: {len(exclusions)}")
     for exclusion in exclusions:
         print(f"- {exclusion['name']} ({exclusion['adm0_a3']}): {exclusion['reason']}")
+    print(f"Capitals: {CAPITALS_PATH} ({CAPITALS_PATH.stat().st_size:,} bytes)")
+    print(f"National capitals: {len(capital_data['features'])}")
+    print(f"Excluded national-capital records: {len(capital_exclusions)}")
+    for exclusion in capital_exclusions:
+        print(
+            f"- {exclusion['NAME']} ({exclusion['ADM0_A3']}): "
+            "No exact canonical ISO alpha-2 join"
+        )
 
 
 if __name__ == "__main__":

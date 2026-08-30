@@ -3,15 +3,44 @@
     class="page page-map"
     data-page="map"
     data-map-style-url="{{ map_style_url }}"
+    data-map-glyphs-url="{{ map_glyphs_url }}"
     data-country-metadata-url="{% url 'countries:metadata' %}"
     data-country-geometry-url="{% static 'data/countries.geojson' %}"
+    data-capital-geometry-url="{% static 'data/capitals.geojson' %}"
+    data-terrain-available="{{ map_terrain.available|yesno:'true,false' }}"
+    data-terrain-unavailable-reason="{{ map_terrain.reason }}"
     aria-labelledby="map-title"
 >
     <h1 id="map-title" class="visually-hidden">Map</h1>
     <div class="map-workspace">
         <div id="world-map" class="world-map" role="application" aria-label="Interactive world map" tabindex="0"></div>
         <div class="map-toolbar" aria-label="Map controls">
-            <button type="button" class="map-command" data-world-view>World view</button>
+            <div class="map-toolbar-actions">
+                <button type="button" class="map-command" data-home-view disabled>Home</button>
+                <button type="button" class="map-command" data-world-view>World</button>
+                <button
+                    type="button"
+                    class="map-command"
+                    data-map-controls-toggle
+                    aria-expanded="false"
+                    aria-controls="map-display-controls"
+                >Display</button>
+            </div>
+            <div id="map-display-controls" class="map-display-controls" data-map-controls-panel hidden>
+                <fieldset>
+                    <legend>Map display</legend>
+                    <label><input type="checkbox" data-map-preference="countryNames"> Country names</label>
+                    <label><input type="checkbox" data-map-preference="capitalNames"> Capital names</label>
+                    <label><input type="checkbox" data-map-preference="water"> Water</label>
+                    <label>
+                        <input type="checkbox" data-map-preference="terrain">
+                        Terrain
+                        <span class="control-note" data-terrain-note>{{ map_terrain.reason }}</span>
+                    </label>
+                    <label><input type="checkbox" data-map-preference="simpleMode"> Simple mode</label>
+                </fieldset>
+                <p class="map-home-summary" data-home-summary></p>
+            </div>
         </div>
         <div class="map-status" data-map-status role="status" aria-live="polite">
             Loading map and country boundaries…
