@@ -1,5 +1,6 @@
-export const MAP_PREFERENCES_VERSION = 1;
-export const MAP_PREFERENCES_STORAGE_KEY = "world-journal:map-preferences:v1";
+export const MAP_PREFERENCES_VERSION = 2;
+export const MAP_PREFERENCES_STORAGE_KEY = "world-journal:map-preferences:v2";
+const LEGACY_MAP_PREFERENCES_STORAGE_KEY = "world-journal:map-preferences:v1";
 export const MAP_VIEWPORT_STORAGE_KEY = "world-journal:map-viewport";
 
 export const DEFAULT_MAP_PREFERENCES = Object.freeze({
@@ -7,26 +8,29 @@ export const DEFAULT_MAP_PREFERENCES = Object.freeze({
     homeCountry: null,
     countryNames: true,
     capitalNames: false,
-    water: true,
-    terrain: false,
-    simpleMode: false,
+    terrain: true,
+    allOtherText: true,
 });
 
 const BOOLEAN_PREFERENCES = [
     "countryNames",
     "capitalNames",
-    "water",
     "terrain",
-    "simpleMode",
+    "allOtherText",
 ];
 
 function normalizePreferences(value, validCountryCodes) {
     const normalized = { ...DEFAULT_MAP_PREFERENCES };
-    if (!value || typeof value !== "object" || value.version !== MAP_PREFERENCES_VERSION) {
+    if (!value || typeof value !== "object" || ![1, MAP_PREFERENCES_VERSION].includes(value.version)) {
         return normalized;
     }
+    if (value.version === 1) {
+        normalized.terrain = value.simpleMode !== true;
+    }
     for (const key of BOOLEAN_PREFERENCES) {
-        if (typeof value[key] === "boolean") {
+        if (value.version === MAP_PREFERENCES_VERSION && typeof value[key] === "boolean") {
+            normalized[key] = value[key];
+        } else if (["countryNames", "capitalNames"].includes(key) && typeof value[key] === "boolean") {
             normalized[key] = value[key];
         }
     }
@@ -41,8 +45,10 @@ function normalizePreferences(value, validCountryCodes) {
 
 export function readMapPreferences(validCountryCodes) {
     try {
+        const saved = localStorage.getItem(MAP_PREFERENCES_STORAGE_KEY)
+            ?? localStorage.getItem(LEGACY_MAP_PREFERENCES_STORAGE_KEY);
         return normalizePreferences(
-            JSON.parse(localStorage.getItem(MAP_PREFERENCES_STORAGE_KEY)),
+            JSON.parse(saved),
             validCountryCodes,
         );
     } catch (error) {

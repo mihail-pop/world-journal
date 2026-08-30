@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom"
+      xmlns:yt="http://www.youtube.com/xml/schemas/2015"
+      xmlns:media="http://search.yahoo.com/mrss/">
+  <id>yt:channel:1234567890123456789012</id>
+  <yt:channelId>1234567890123456789012</yt:channelId>
+  <title>Example Channel</title>
+  <author>
+    <name>Example Channel</name>
+    <uri>https://www.youtube.com/channel/UC1234567890123456789012</uri>
+  </author>
+  <entry>
+    <id>yt:video:AbCdEfGhI01</id>
+    <yt:videoId>AbCdEfGhI01</yt:videoId>
+    <yt:channelId>1234567890123456789012</yt:channelId>
+    <title>&lt;b&gt;Iran&lt;/b&gt; and Romania hold talks&lt;script&gt;ignored&lt;/script&gt;</title>
+    <link rel="alternate" href="https://example.invalid/untrusted" />
+    <published>2026-08-30T12:00:00+00:00</published>
+    <media:group>
+      <media:description>&lt;iframe src="https://example.invalid"&gt;&lt;/iframe&gt;</media:description>
+      <media:thumbnail url="https://example.invalid/untrusted.jpg" width="480" height="360" />
+    </media:group>
+  </entry>
+  <entry>
+    <id>yt:video:ZxYwVuTsR02</id>
+    <yt:videoId>ZxYwVuTsR02</yt:videoId>
+    <yt:channelId>1234567890123456789012</yt:channelId>
+    <title>France election update</title>
+  </entry>
+  <entry>
+    <id>yt:video:AbCdEfGhI01</id>
+    <yt:videoId>AbCdEfGhI01</yt:videoId>
+    <yt:channelId>1234567890123456789012</yt:channelId>
+    <title>Duplicate video</title>
+    <published>2026-08-30T11:00:00Z</published>
+  </entry>
+</feed>

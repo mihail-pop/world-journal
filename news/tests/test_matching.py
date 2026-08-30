@@ -14,6 +14,7 @@ class RegionRoutingTests(SimpleTestCase):
         self.assert_groups("RU", {"europe", "asia_pacific"})
         self.assert_groups("EG", {"africa", "middle_east"})
         self.assert_groups("CY", {"middle_east", "europe"})
+        self.assert_groups("IR", {"middle_east"})
         self.assert_groups("MX", {"north_america", "latin_america_caribbean"})
 
     def test_central_america_caribbean_and_oceania(self):

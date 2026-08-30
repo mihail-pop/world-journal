@@ -36,9 +36,12 @@ export function initializeTheme() {
     const restoreTheme = () => applyTheme(readSavedTheme() ?? document.documentElement.dataset.theme, false);
 
     restoreTheme();
-    document.querySelector("#theme-selector")?.addEventListener("change", (event) => {
-        applyTheme(event.target.value);
+    document.body.addEventListener("change", (event) => {
+        if (event.target.matches("#theme-selector")) {
+            applyTheme(event.target.value);
+        }
     });
+    document.addEventListener("world-journal:page-ready", restoreTheme);
     document.body.addEventListener("htmx:historyRestore", restoreTheme);
     window.addEventListener("pageshow", restoreTheme);
 }

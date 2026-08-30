@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 from threading import Lock
 
-from news.types import NewsItem
+from news.types import NewsItem, NewsSource, VideoItem
 
 
 _CACHE_LOCKS: dict[str, Lock] = {}
@@ -79,6 +79,53 @@ def deserialize_items(snapshot: dict) -> tuple[NewsItem, ...] | None:
             feed_id=feed_id,
             feed_section=feed_section,
             contributing_sections=tuple(contributing_sections),
+            source_order=source_order,
+        ))
+    return tuple(items)
+
+
+def deserialize_video_items(snapshot: dict, source: NewsSource) -> tuple[VideoItem, ...] | None:
+    from news.adapters.youtube import (
+        build_embed_url,
+        build_thumbnail_url,
+        build_watch_url,
+        is_valid_video_id,
+    )
+
+    values = snapshot.get("items")
+    if not isinstance(values, list):
+        return None
+    items = []
+    seen_ids: set[str] = set()
+    for value in values:
+        if not isinstance(value, dict):
+            return None
+        video_id = value.get("video_id")
+        title = value.get("title")
+        source_order = value.get("source_order", 0)
+        if (
+            not is_valid_video_id(video_id)
+            or not isinstance(title, str)
+            or not title
+            or not isinstance(source_order, int)
+            or isinstance(source_order, bool)
+        ):
+            return None
+        published_at = parse_datetime(value.get("published_at"))
+        if value.get("published_at") is not None and published_at is None:
+            return None
+        if video_id in seen_ids:
+            continue
+        seen_ids.add(video_id)
+        items.append(VideoItem(
+            source_id=source.id,
+            channel_name=source.display_name,
+            video_id=video_id,
+            title=title,
+            published_at=published_at,
+            watch_url=build_watch_url(video_id),
+            embed_url=build_embed_url(video_id),
+            thumbnail_url=build_thumbnail_url(video_id),
             source_order=source_order,
         ))
     return tuple(items)

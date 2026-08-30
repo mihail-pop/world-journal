@@ -8,6 +8,7 @@ from django.test import SimpleTestCase
 from news.adapters.google_news import build_feed_url
 from news.adapters.rss import normalize_feed
 from news.registry import SourceConfigurationError, load_source_registry
+from news.types import SourceKind
 
 
 FIXTURES = Path(__file__).parent / "fixtures"
@@ -46,14 +47,50 @@ class SourceRegistryTests(SimpleTestCase):
         feed.update(overrides)
         return feed
 
+    def youtube_source(self, **overrides):
+        source = {
+            "id": "youtube_example",
+            "kind": "youtube",
+            "display_name": "Example Channel",
+            "homepage_url": "https://www.youtube.com/channel/UC1234567890123456789012",
+            "language": "en",
+            "enabled_by_default": True,
+            "youtube_channel_id": "UC1234567890123456789012",
+            "editorial_region": "north_america",
+            "coverage_regions": ["north_america"],
+            "allowed_hosts": ["www.youtube.com"],
+            "verification_date": "2026-08-30",
+            "disabled_reason": "",
+            "operational_notes": "Verified fixture channel.",
+            "display_priority": 10,
+        }
+        source.update(overrides)
+        return source
+
     def write_provider_registry(self, directory, *, providers=None, feeds=None):
         path = Path(directory) / "sources.json"
         path.write_text(json.dumps({
-            "schema_version": 3,
-            "sources": [],
+            "schema_version": 4,
+            "sources": [{
+                "id": "google_news_country",
+                "kind": "dynamic_country_rss",
+                "display_name": "Google News",
+                "homepage_url": "https://news.google.com/",
+                "language": "en",
+                "enabled_by_default": True,
+                "feed_host": "news.google.com",
+                "edition": {"hl": "en-US", "gl": "US", "ceid": "US:en"},
+            }],
             "providers": providers if providers is not None else [self.provider()],
             "feeds": feeds if feeds is not None else [self.feed()],
         }), encoding="utf-8")
+        return path
+
+    def write_youtube_registry(self, directory, sources):
+        path = self.write_provider_registry(directory, providers=[], feeds=[])
+        value = json.loads(path.read_text(encoding="utf-8"))
+        value["sources"].extend(sources)
+        path.write_text(json.dumps(value), encoding="utf-8")
         return path
 
     def test_schema_three_supports_one_provider_with_multiple_feeds(self):
@@ -105,9 +142,13 @@ class SourceRegistryTests(SimpleTestCase):
     def test_registry_contains_google_and_all_audited_fixed_sources(self):
         registry = load_source_registry()
 
-        self.assertEqual(len(registry.sources), 1)
+        self.assertEqual(len(registry.sources), 10)
         self.assertTrue(registry.sources[0].enabled_by_default)
         self.assertEqual(registry.sources[0].feed_host, "news.google.com")
+        youtube_sources = tuple(source for source in registry.sources if source.kind is SourceKind.YOUTUBE)
+        self.assertEqual(len(youtube_sources), 9)
+        self.assertEqual(sum(source.enabled_by_default for source in youtube_sources), 5)
+        self.assertTrue(all(source.youtube_feed_url for source in youtube_sources))
         self.assertEqual(len(registry.providers), 12)
         self.assertEqual(len(registry.feeds), 18)
         self.assertEqual(sum(provider.enabled_by_default for provider in registry.providers), 11)
@@ -177,6 +218,29 @@ class SourceRegistryTests(SimpleTestCase):
             path = self.write_provider_registry(directory, feeds=[self.feed(), self.feed()])
 
             with self.assertRaisesRegex(SourceConfigurationError, "ids must be globally unique"):
+                load_source_registry(path)
+
+    def test_youtube_sources_require_unique_channels_and_verified_configuration(self):
+        cases = (
+            ([self.youtube_source(), self.youtube_source(id="youtube_other")], "channel ids must be unique"),
+            ([self.youtube_source(youtube_channel_id="invalid")], "invalid youtube_channel_id"),
+            ([self.youtube_source(allowed_hosts=["youtube.com"])], "must include its feed host"),
+            ([self.youtube_source(homepage_url="https://www.youtube.com/watch?v=123")], "invalid YouTube homepage_url"),
+            ([self.youtube_source(verification_date="invalid")], "invalid verification_date"),
+            ([self.youtube_source(operational_notes="")], "invalid operational_notes"),
+        )
+        for sources, message in cases:
+            with self.subTest(message=message), tempfile.TemporaryDirectory() as directory:
+                path = self.write_youtube_registry(directory, sources)
+                with self.assertRaisesRegex(SourceConfigurationError, message):
+                    load_source_registry(path)
+
+    def test_disabled_youtube_source_requires_reason(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = self.write_youtube_registry(directory, [
+                self.youtube_source(enabled_by_default=False, disabled_reason=""),
+            ])
+            with self.assertRaisesRegex(SourceConfigurationError, "requires a disabled_reason"):
                 load_source_registry(path)
 
     def test_schema_two_is_rejected(self):

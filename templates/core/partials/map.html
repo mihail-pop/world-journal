@@ -6,10 +6,9 @@
     data-map-glyphs-url="{{ map_glyphs_url }}"
     data-country-metadata-url="{% url 'countries:metadata' %}"
     data-country-news-url-template="{% url 'news:country_news' iso2='COUNTRY_CODE' %}"
+    data-country-videos-url-template="{% url 'news:country_videos' iso2='COUNTRY_CODE' %}"
     data-country-geometry-url="{% static 'data/countries.geojson' %}"
     data-capital-geometry-url="{% static 'data/capitals.geojson' %}"
-    data-terrain-available="{{ map_terrain.available|yesno:'true,false' }}"
-    data-terrain-unavailable-reason="{{ map_terrain.reason }}"
     aria-labelledby="map-title"
 >
     <h1 id="map-title" class="visually-hidden">Map</h1>
@@ -30,15 +29,10 @@
             <div id="map-display-controls" class="map-display-controls" data-map-controls-panel hidden>
                 <fieldset>
                     <legend>Map display</legend>
+                    <label><input type="checkbox" data-map-preference="terrain"> Terrain</label>
                     <label><input type="checkbox" data-map-preference="countryNames"> Country names</label>
                     <label><input type="checkbox" data-map-preference="capitalNames"> Capital names</label>
-                    <label><input type="checkbox" data-map-preference="water"> Water</label>
-                    <label>
-                        <input type="checkbox" data-map-preference="terrain">
-                        Terrain
-                        <span class="control-note" data-terrain-note>{{ map_terrain.reason }}</span>
-                    </label>
-                    <label><input type="checkbox" data-map-preference="simpleMode"> Simple mode</label>
+                    <label><input type="checkbox" data-map-preference="allOtherText"> All other text</label>
                 </fieldset>
                 <p class="map-home-summary" data-home-summary></p>
             </div>
@@ -50,13 +44,12 @@
 
         <aside class="country-drawer" data-country-drawer aria-labelledby="country-name" tabindex="-1" hidden>
             <button class="country-drawer-close" type="button" data-country-close aria-label="Close country details" title="Close country details">×</button>
-            <p class="eyebrow">Country identity</p>
             <div class="country-heading">
-                <span class="country-flag" data-country-flag aria-hidden="true"></span>
-                <div>
-                    <h2 id="country-name" data-country-name></h2>
-                    <p class="country-code" data-country-code></p>
-                </div>
+                <span class="country-flag" aria-hidden="true">
+                    <img data-country-flag alt="" referrerpolicy="no-referrer" hidden>
+                    <span data-country-flag-fallback></span>
+                </span>
+                <h2 id="country-name" data-country-name></h2>
             </div>
             <dl class="country-identity">
                 <div>
@@ -73,8 +66,17 @@
                     <p class="eyebrow">Current coverage</p>
                     <h3 id="country-news-title">Latest news</h3>
                 </div>
-                <div data-country-news-content aria-live="polite" aria-busy="true">
-                    <p class="country-news-message">Loading current English-language headlines…</p>
+                <div class="country-content-tabs" role="tablist" aria-label="Country coverage">
+                    <button type="button" role="tab" id="country-articles-tab" aria-controls="country-articles-panel" aria-selected="true" tabindex="0" data-country-section="articles">Articles</button>
+                    <button type="button" role="tab" id="country-videos-tab" aria-controls="country-videos-panel" aria-selected="false" tabindex="-1" data-country-section="videos">Videos</button>
+                </div>
+                <div id="country-articles-panel" role="tabpanel" aria-labelledby="country-articles-tab" data-country-section-panel="articles">
+                    <div data-country-news-content aria-live="polite" aria-busy="true">
+                        <p class="country-news-message">Loading current English-language headlines…</p>
+                    </div>
+                </div>
+                <div id="country-videos-panel" role="tabpanel" aria-labelledby="country-videos-tab" data-country-section-panel="videos" hidden>
+                    <div data-country-videos-content aria-live="polite" aria-busy="false"></div>
                 </div>
             </section>
         </aside>

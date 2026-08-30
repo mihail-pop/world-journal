@@ -55,16 +55,37 @@ class ShellNavigationTests(TestCase):
         self.assertContains(response, "/static/data/capitals.geojson")
         self.assertContains(response, "/data/countries.json")
         self.assertContains(response, 'data-country-news-url-template="/news/countries/COUNTRY_CODE/"')
+        self.assertContains(response, 'data-country-videos-url-template="/news/countries/COUNTRY_CODE/videos/"')
         self.assertContains(response, 'data-map-style-url="https://tiles.openfreemap.org/styles/liberty"')
         self.assertContains(response, 'data-map-glyphs-url="https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf"')
-        self.assertContains(response, 'data-terrain-available="false"')
         self.assertContains(response, 'id="world-map"')
         self.assertContains(response, "data-country-drawer")
+        self.assertContains(response, "data-country-flag")
+        self.assertNotContains(response, "data-country-code")
+        self.assertNotContains(response, "Country identity")
         self.assertContains(response, "data-country-news-content")
+        self.assertContains(response, "data-country-videos-content")
+        self.assertContains(response, 'data-country-section="articles">Articles</button>')
+        self.assertContains(response, 'data-country-section="videos">Videos</button>')
+        self.assertContains(response, 'aria-selected="true" tabindex="0" data-country-section="articles"')
         self.assertContains(response, "Loading current English-language headlines")
         self.assertContains(response, "data-home-view")
         self.assertContains(response, "data-map-controls-toggle")
-        self.assertContains(response, 'data-map-preference="simpleMode"')
+        self.assertContains(response, 'data-map-preference="terrain"')
+        self.assertContains(response, 'data-map-preference="allOtherText"')
+
+    def test_persistent_player_shell_owns_video_iframe_target(self):
+        response = self.client.get(reverse("core:map"))
+
+        self.assertContains(response, 'id="persistent-player"')
+        self.assertContains(response, "data-player-stage")
+        self.assertContains(response, "data-player-minimize")
+        self.assertContains(response, "data-player-close")
+        self.assertNotContains(response, "data-player-watch")
+        self.assertNotContains(response, "youtube-nocookie.com", html=False)
+
+        partial = self.client.get(reverse("core:map"), headers={"HX-Request": "true"})
+        self.assertNotContains(partial, 'id="persistent-player"')
 
     def test_htmx_map_response_keeps_map_markup_inside_partial_boundary(self):
         response = self.client.get(reverse("core:map"), headers={"HX-Request": "true"})
@@ -79,6 +100,7 @@ class ShellNavigationTests(TestCase):
 
         self.assertContains(response, 'data-page="settings"')
         self.assertContains(response, 'data-country-metadata-url="/data/countries.json"')
+        self.assertContains(response, 'id="theme-selector"')
         self.assertContains(response, 'data-home-country-select')
         self.assertContains(response, '<option value="">No home country</option>', html=True)
 
@@ -88,6 +110,7 @@ class ShellNavigationTests(TestCase):
         )
 
         self.assertContains(response, 'data-home-country-select')
+        self.assertContains(response, 'id="theme-selector"')
         self.assertNotContains(response, "<!doctype html>", html=False)
 
     def test_all_map_browser_assets_are_local(self):

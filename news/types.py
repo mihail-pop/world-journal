@@ -40,6 +40,12 @@ class NewsSource:
     def edition_parameters(self) -> dict[str, str]:
         return dict(self.edition)
 
+    @property
+    def youtube_feed_url(self) -> str | None:
+        if self.kind is not SourceKind.YOUTUBE or not self.youtube_channel_id:
+            return None
+        return f"https://www.youtube.com/feeds/videos.xml?channel_id={self.youtube_channel_id}"
+
 
 @dataclass(frozen=True, slots=True)
 class NewsProvider:
@@ -110,9 +116,43 @@ class NewsItem:
 
 
 @dataclass(frozen=True, slots=True)
+class VideoItem:
+    source_id: str
+    channel_name: str
+    video_id: str
+    title: str
+    published_at: datetime | None
+    watch_url: str
+    embed_url: str
+    thumbnail_url: str
+    source_order: int = 0
+    matched_country_codes: tuple[str, ...] = ()
+    match_evidence: tuple[str, ...] = ()
+    is_stale: bool = False
+
+    def as_cache_value(self) -> dict[str, str | int | None]:
+        return {
+            "source_id": self.source_id,
+            "channel_name": self.channel_name,
+            "video_id": self.video_id,
+            "title": self.title,
+            "published_at": self.published_at.isoformat() if self.published_at else None,
+            "watch_url": self.watch_url,
+            "embed_url": self.embed_url,
+            "thumbnail_url": self.thumbnail_url,
+            "source_order": self.source_order,
+        }
+
+
+@dataclass(frozen=True, slots=True)
 class NormalizedFeed:
     items: tuple[NewsItem, ...]
     parser_warnings: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True, slots=True)
+class NormalizedVideoFeed:
+    items: tuple[VideoItem, ...]
 
 
 @dataclass(frozen=True, slots=True)
@@ -147,6 +187,27 @@ class RegionalProviderResult:
     failed_feed_count: int
     is_stale: bool = False
     status: str = "available"
+
+
+@dataclass(frozen=True, slots=True)
+class VideoSourceResult:
+    source: NewsSource
+    items: tuple[VideoItem, ...]
+    fetched_at: datetime | None
+    is_stale: bool = False
+    refresh_failed: bool = False
+    error: str = ""
+    status: str = "available"
+
+
+@dataclass(frozen=True, slots=True)
+class CountryVideosPage:
+    country_code: str
+    country_name: str
+    items: tuple[VideoItem, ...]
+    sources: tuple[VideoSourceResult, ...]
+    status: str
+    warning: str = ""
 
 
 @dataclass(frozen=True, slots=True)

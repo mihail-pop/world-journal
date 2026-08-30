@@ -1,0 +1,69 @@
+<div
+    class="country-videos-result"
+    data-country-videos-result
+    data-video-country="{{ video_page.country_code }}"
+    data-video-status="{{ video_page.status }}"
+>
+    {% if video_page.warning %}
+        <div class="country-news-message {% if video_page.status == 'unavailable' %}is-error{% else %}is-warning{% endif %}" {% if video_page.status == 'unavailable' %}role="alert"{% else %}role="status"{% endif %}>
+            <p>{{ video_page.warning }}</p>
+            {% if video_page.sources %}
+                <ul class="regional-source-status">
+                    {% for result in video_page.sources %}
+                        {% if result.status != "available" %}
+                            <li>{{ result.source.display_name }}: {% if result.status == "stale" %}cached{% else %}unavailable{% endif %}</li>
+                        {% endif %}
+                    {% endfor %}
+                </ul>
+            {% endif %}
+            <button type="button" class="news-retry" data-video-retry>Retry unavailable channels</button>
+        </div>
+    {% endif %}
+
+    {% if video_page.items %}
+        <ol class="country-video-list">
+            {% for item in video_page.items %}
+                <li class="country-video-item" data-video-source="{{ item.source_id }}">
+                    <div class="video-thumbnail-frame">
+                        <img
+                            src="{{ item.thumbnail_url }}"
+                            alt=""
+                            width="480"
+                            height="360"
+                            loading="lazy"
+                            decoding="async"
+                            referrerpolicy="no-referrer"
+                            data-video-thumbnail
+                        >
+                        <span class="video-thumbnail-fallback" aria-hidden="true">Video</span>
+                    </div>
+                    <div class="video-card-copy">
+                        <h4>{{ item.title }}</h4>
+                        <p class="country-news-byline">
+                            <span>{{ item.channel_name }}{% if item.is_stale %} · cached{% endif %}</span>
+                            {% if item.published_at %}<time datetime="{{ item.published_at|date:'c' }}">{{ item.published_at|date:'M j, H:i T' }}</time>{% else %}<span>Publication time unavailable</span>{% endif %}
+                        </p>
+                        <div class="video-card-actions">
+                            <button
+                                type="button"
+                                class="video-play-button"
+                                data-video-play
+                                data-video-id="{{ item.video_id }}"
+                                data-video-title="{{ item.title }}"
+                                data-video-channel="{{ item.channel_name }}"
+                            >Play</button>
+                            <a href="{{ item.watch_url }}" target="_blank" rel="noopener noreferrer">Watch on YouTube</a>
+                        </div>
+                    </div>
+                </li>
+            {% endfor %}
+        </ol>
+    {% elif video_page.status == "unavailable" %}
+        <p class="country-news-message">No cached videos are available for this country.</p>
+    {% elif not video_page.sources %}
+        <p class="country-news-message">No enabled video channels cover this region.</p>
+    {% else %}
+        <p class="country-news-message">No country references were found in the channels' recent uploads.</p>
+    {% endif %}
+    <p class="video-feed-note">Channel feeds contain only a limited set of recent uploads. Playing a video connects your browser to YouTube.</p>
+</div>

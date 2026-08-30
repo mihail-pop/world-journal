@@ -75,11 +75,7 @@ function updateLayerTheme(controller) {
     const countryOutline = getThemeColor("--text-primary");
     const hover = getThemeColor("--special-color");
     const selected = getThemeColor("--text-secondary");
-    const simpleBackground = controller.preferences.water
-        ? getThemeColor("--bg-tertiary")
-        : background;
-
-    map.setPaintProperty(LAYERS.simpleBackground, "background-color", simpleBackground);
+    map.setPaintProperty(LAYERS.simpleBackground, "background-color", getThemeColor("--bg-tertiary"));
     map.setPaintProperty(LAYERS.fill, "fill-color", countryFill);
     map.setPaintProperty(LAYERS.outline, "line-color", countryOutline);
     map.setPaintProperty(LAYERS.hoverFill, "fill-color", hover);
@@ -146,6 +142,12 @@ function cancelCountryNews(controller) {
     controller.newsRequestId += 1;
     controller.newsAbortController?.abort();
     controller.newsAbortController = null;
+}
+
+function cancelCountryVideos(controller) {
+    controller.videoRequestId += 1;
+    controller.videoAbortController?.abort();
+    controller.videoAbortController = null;
 }
 
 function showNewsMessage(controller, message, { retry = false } = {}) {
@@ -221,6 +223,93 @@ async function loadCountryNews(controller, code, countryName, { retryFailed = fa
     }
 }
 
+function showVideoMessage(controller, message, { retry = false } = {}) {
+    controller.videoContent.replaceChildren();
+    const messageElement = document.createElement("p");
+    messageElement.className = "country-news-message";
+    messageElement.textContent = message;
+    controller.videoContent.append(messageElement);
+    if (retry) {
+        const retryButton = document.createElement("button");
+        retryButton.type = "button";
+        retryButton.className = "news-retry";
+        retryButton.dataset.videoRetry = "";
+        retryButton.textContent = "Retry";
+        controller.videoContent.append(retryButton);
+    }
+}
+
+async function loadCountryVideos(controller, code, countryName, { retryFailed = false } = {}) {
+    cancelCountryVideos(controller);
+    const requestId = controller.videoRequestId;
+    const abortController = new AbortController();
+    controller.videoAbortController = abortController;
+    controller.videoContent.setAttribute("aria-busy", "true");
+    showVideoMessage(controller, `Loading recent videos for ${countryName}…`);
+    const url = new URL(
+        controller.videoUrlTemplate.replace("COUNTRY_CODE", encodeURIComponent(code)),
+        window.location.origin,
+    );
+    if (retryFailed) {
+        url.searchParams.set("refresh", "failed");
+    }
+
+    try {
+        const response = await fetch(url, {
+            headers: { "X-Requested-With": "XMLHttpRequest" },
+            signal: abortController.signal,
+        });
+        if (!response.ok) {
+            throw new Error(`${url} returned HTTP ${response.status}`);
+        }
+        const markup = await response.text();
+        if (
+            activeController !== controller
+            || controller.selectedCode !== code
+            || controller.videoRequestId !== requestId
+        ) {
+            return;
+        }
+        controller.videoContent.innerHTML = markup;
+        controller.videoContent.dataset.loadedCountry = code;
+        controller.videoContent.setAttribute("aria-busy", "false");
+    } catch (error) {
+        if (error.name === "AbortError" || activeController !== controller || controller.videoRequestId !== requestId) {
+            return;
+        }
+        controller.videoContent.setAttribute("aria-busy", "false");
+        showVideoMessage(controller, "Current videos could not be loaded.", { retry: true });
+        console.error("World Journal country videos request failed", error);
+    } finally {
+        if (controller.videoRequestId === requestId) {
+            controller.videoAbortController = null;
+        }
+    }
+}
+
+function selectCountrySection(controller, section, { focus = false } = {}) {
+    for (const button of controller.page.querySelectorAll("[data-country-section]")) {
+        const selected = button.dataset.countrySection === section;
+        button.setAttribute("aria-selected", String(selected));
+        button.tabIndex = selected ? 0 : -1;
+        if (selected && focus) {
+            button.focus();
+        }
+    }
+    for (const panel of controller.page.querySelectorAll("[data-country-section-panel]")) {
+        panel.hidden = panel.dataset.countrySectionPanel !== section;
+    }
+    if (
+        section === "videos"
+        && controller.selectedCode
+        && controller.videoContent.dataset.loadedCountry !== controller.selectedCode
+        && !controller.videoAbortController
+    ) {
+        const country = controller.countriesByCode.get(controller.selectedCode);
+        loadCountryVideos(controller, controller.selectedCode, country.name);
+    }
+}
+
 function renderSelection(controller, code, { fit = true, focusDrawer = false } = {}) {
     controller.selectedCode = code;
     updateFilter(controller.map, LAYERS.selectedFill, code);
@@ -229,15 +318,33 @@ function renderSelection(controller, code, { fit = true, focusDrawer = false } =
 
     if (!code) {
         cancelCountryNews(controller);
+        cancelCountryVideos(controller);
         drawer.hidden = true;
         controller.page.classList.remove("has-country-drawer");
         return;
     }
 
     const country = controller.countriesByCode.get(code);
-    controller.page.querySelector("[data-country-flag]").textContent = country.flag;
+    cancelCountryVideos(controller);
+    controller.videoContent.replaceChildren();
+    delete controller.videoContent.dataset.loadedCountry;
+    controller.videoContent.setAttribute("aria-busy", "false");
+    selectCountrySection(controller, "articles");
+    const flagImage = controller.page.querySelector("[data-country-flag]");
+    const flagFallback = controller.page.querySelector("[data-country-flag-fallback]");
+    flagFallback.textContent = country.flag;
+    flagFallback.hidden = false;
+    flagImage.hidden = true;
+    flagImage.onload = () => {
+        flagImage.hidden = false;
+        flagFallback.hidden = true;
+    };
+    flagImage.onerror = () => {
+        flagImage.hidden = true;
+        flagFallback.hidden = false;
+    };
+    flagImage.src = `https://flagcdn.com/${country.iso_a2.toLowerCase()}.svg`;
     controller.page.querySelector("[data-country-name]").textContent = country.name;
-    controller.page.querySelector("[data-country-code]").textContent = `${country.iso_a2} · ${country.iso_a3}`;
     controller.page.querySelector("[data-country-region]").textContent = country.region;
     controller.page.querySelector("[data-country-subregion]").textContent = country.subregion;
     drawer.hidden = false;
@@ -303,13 +410,6 @@ function isBasemapCapitalLabel(layer) {
         ));
 }
 
-// Keep style-specific detection here so provider changes do not leak through the controller.
-function isBasemapWaterLayer(layer) {
-    const sourceLayer = layer["source-layer"] ?? "";
-    return ["water", "waterway", "water_name"].includes(sourceLayer)
-        || /(^|[_-])(water|waterway|ocean|lake|river)([_-]|$)/i.test(layer.id);
-}
-
 function originalVisibility(controller, layer) {
     if (!controller.basemapVisibility.has(layer.id)) {
         controller.basemapVisibility.set(
@@ -326,10 +426,10 @@ function applyBasemapPreferences(controller) {
             continue;
         }
         const visibility = originalVisibility(controller, layer);
-        const hidden = controller.preferences.simpleMode
+        const hidden = !controller.preferences.terrain
             || isBasemapCountryLabel(layer)
             || isBasemapCapitalLabel(layer)
-            || (!controller.preferences.water && isBasemapWaterLayer(layer));
+            || (!controller.preferences.allOtherText && layer.type === "symbol");
         controller.map.setLayoutProperty(
             layer.id,
             "visibility",
@@ -347,9 +447,7 @@ function setLayerVisibility(map, layerId, visible) {
 function updateControls(controller) {
     for (const input of controller.page.querySelectorAll("[data-map-preference]")) {
         const key = input.dataset.mapPreference;
-        input.checked = key === "terrain" && controller.preferences.simpleMode
-            ? false
-            : Boolean(controller.preferences[key]);
+        input.checked = Boolean(controller.preferences[key]);
     }
 }
 
@@ -359,26 +457,23 @@ function applyPreferences(controller) {
         return;
     }
     applyBasemapPreferences(controller);
-    setLayerVisibility(controller.map, LAYERS.simpleBackground, controller.preferences.simpleMode);
+    setLayerVisibility(controller.map, LAYERS.simpleBackground, !controller.preferences.terrain);
     setLayerVisibility(
         controller.map,
         LAYERS.countryNames,
-        controller.preferences.countryNames || controller.preferences.simpleMode,
+        controller.preferences.countryNames,
     );
-    const showCapitals = controller.preferences.capitalNames && !controller.preferences.simpleMode;
+    const showCapitals = controller.preferences.capitalNames;
     setLayerVisibility(controller.map, LAYERS.capitalMarkers, showCapitals);
     setLayerVisibility(controller.map, LAYERS.capitalNames, showCapitals);
     controller.map.setPaintProperty(
         LAYERS.fill,
         "fill-opacity",
-        controller.preferences.simpleMode ? 0.72 : 0.22,
+        controller.preferences.terrain ? 0.22 : 0.72,
     );
     updateLayerTheme(controller);
     const styleLayers = controller.map.getStyle().layers ?? [];
     const isVisible = (layerId) => controller.map.getLayoutProperty(layerId, "visibility") !== "none";
-    const waterLayers = styleLayers.filter((layer) => (
-        !isApplicationLayer(layer) && isBasemapWaterLayer(layer)
-    ));
     const basemapCountryLabels = styleLayers.filter((layer) => (
         !isApplicationLayer(layer) && isBasemapCountryLabel(layer)
     ));
@@ -392,13 +487,10 @@ function applyPreferences(controller) {
     controller.page.dataset.appliedCapitalNames = String(
         isVisible(LAYERS.capitalMarkers) && isVisible(LAYERS.capitalNames),
     );
-    controller.page.dataset.appliedWater = String(
-        controller.preferences.simpleMode
-            ? controller.preferences.water
-            : waterLayers.some((layer) => isVisible(layer.id)),
-    );
     controller.page.dataset.appliedSimpleMode = String(
-        isVisible(LAYERS.simpleBackground) && visibleBasemapLayers.length === 0,
+        !controller.preferences.terrain
+            && isVisible(LAYERS.simpleBackground)
+            && visibleBasemapLayers.length === 0,
     );
     controller.page.dataset.visibleBasemapLayers = String(visibleBasemapLayers.length);
     controller.page.dataset.visibleBasemapCountryLabels = String(
@@ -406,9 +498,6 @@ function applyPreferences(controller) {
     );
     controller.page.dataset.visibleBasemapCapitalLabels = String(
         basemapCapitalLabels.filter((layer) => isVisible(layer.id)).length,
-    );
-    controller.page.dataset.visibleWaterLayers = String(
-        waterLayers.filter((layer) => isVisible(layer.id)).length,
     );
     controller.page.dataset.applicationLayerCount = String(
         styleLayers.filter(isApplicationLayer).length,
@@ -582,11 +671,15 @@ function createMap(controller, styleUrl) {
     map.addControl(new NavigationControl({ showCompass: false }), "top-right");
     map.addControl(new AttributionControl({
         compact: true,
-        customAttribution: [
-            '<a href="https://openfreemap.org/" target="_blank" rel="noopener noreferrer">OpenFreeMap</a>',
-            '<a href="https://www.naturalearthdata.com/" target="_blank" rel="noopener noreferrer">Country and capital data: Natural Earth</a>',
-        ],
     }), "bottom-left");
+    const collapseAttribution = () => {
+        const attribution = controller.container.querySelector(".maplibregl-ctrl-attrib");
+        attribution?.removeAttribute("open");
+        attribution?.classList.remove("maplibregl-compact-show");
+    };
+    collapseAttribution();
+    map.on("resize", collapseAttribution);
+    map.on("idle", collapseAttribution);
 
     controller.fallbackTimer = window.setTimeout(() => applyProviderFallback(controller), 8000);
     map.on("style.load", () => {
@@ -594,6 +687,7 @@ function createMap(controller, styleUrl) {
         controller.layersInstalled = false;
         controller.basemapVisibility.clear();
         installCountryLayers(controller);
+        requestAnimationFrame(collapseAttribution);
     });
     map.on("error", () => {
         if (!controller.layersInstalled) {
@@ -652,13 +746,6 @@ function initializeControls(controller) {
     controller.homeSummary.textContent = homeCountry
         ? `Home country: ${homeCountry.name}`
         : "Home country is not configured.";
-    controller.terrainInput.disabled = !controller.terrainAvailable;
-    controller.terrainNote.textContent = controller.terrainAvailable
-        ? ""
-        : controller.terrainUnavailableReason;
-    controller.terrainInput.title = controller.terrainAvailable
-        ? ""
-        : controller.terrainUnavailableReason;
     updateControls(controller);
 
     controller.controlsToggle.addEventListener("click", () => {
@@ -737,8 +824,6 @@ async function initializeMapPage() {
         fallbackTimer: null,
         initialFocusCode: null,
         glyphsUrl: page.dataset.mapGlyphsUrl,
-        terrainAvailable: page.dataset.terrainAvailable === "true",
-        terrainUnavailableReason: page.dataset.terrainUnavailableReason,
         status: page.querySelector("[data-map-status]"),
         notice: page.querySelector("[data-map-notice]"),
         toolbar: page.querySelector(".map-toolbar"),
@@ -747,12 +832,14 @@ async function initializeMapPage() {
         homeButton: page.querySelector("[data-home-view]"),
         worldButton: page.querySelector("[data-world-view]"),
         homeSummary: page.querySelector("[data-home-summary]"),
-        terrainInput: page.querySelector('[data-map-preference="terrain"]'),
-        terrainNote: page.querySelector("[data-terrain-note]"),
         newsContent: page.querySelector("[data-country-news-content]"),
         newsUrlTemplate: page.dataset.countryNewsUrlTemplate,
         newsAbortController: null,
         newsRequestId: 0,
+        videoContent: page.querySelector("[data-country-videos-content]"),
+        videoUrlTemplate: page.dataset.countryVideosUrlTemplate,
+        videoAbortController: null,
+        videoRequestId: 0,
     };
     activeController = controller;
 
@@ -768,6 +855,48 @@ async function initializeMapPage() {
             applyNewsFilter(controller, filterButton.dataset.newsFilter);
         }
     }, { signal: abortController.signal });
+    page.querySelector("[role='tablist']").addEventListener("click", (event) => {
+        const tab = event.target.closest("[data-country-section]");
+        if (tab) {
+            selectCountrySection(controller, tab.dataset.countrySection);
+        }
+    }, { signal: abortController.signal });
+    page.querySelector("[role='tablist']").addEventListener("keydown", (event) => {
+        if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) {
+            return;
+        }
+        event.preventDefault();
+        const tabs = [...page.querySelectorAll("[data-country-section]")];
+        const currentIndex = tabs.indexOf(event.target.closest("[data-country-section]"));
+        const nextIndex = event.key === "Home"
+            ? 0
+            : event.key === "End"
+                ? tabs.length - 1
+                : (currentIndex + (event.key === "ArrowRight" ? 1 : -1) + tabs.length) % tabs.length;
+        selectCountrySection(controller, tabs[nextIndex].dataset.countrySection, { focus: true });
+    }, { signal: abortController.signal });
+    controller.videoContent.addEventListener("click", (event) => {
+        if (event.target.closest("[data-video-retry]") && controller.selectedCode) {
+            const country = controller.countriesByCode.get(controller.selectedCode);
+            loadCountryVideos(controller, controller.selectedCode, country.name, { retryFailed: true });
+            return;
+        }
+        const playButton = event.target.closest("[data-video-play]");
+        if (playButton) {
+            document.dispatchEvent(new CustomEvent("world-journal:play-video", {
+                detail: {
+                    videoId: playButton.dataset.videoId,
+                    title: playButton.dataset.videoTitle,
+                    channel: playButton.dataset.videoChannel,
+                },
+            }));
+        }
+    }, { signal: abortController.signal });
+    controller.videoContent.addEventListener("error", (event) => {
+        if (event.target.matches("[data-video-thumbnail]")) {
+            event.target.hidden = true;
+        }
+    }, { capture: true, signal: abortController.signal });
     document.addEventListener("keydown", (event) => {
         if (event.key !== "Escape") {
             return;
@@ -831,6 +960,7 @@ export function cleanupMapPage() {
     activeController = null;
     window.clearTimeout(controller.fallbackTimer);
     cancelCountryNews(controller);
+    cancelCountryVideos(controller);
     controller.abortController.abort();
     if (controller.map) {
         saveViewport(controller.map);

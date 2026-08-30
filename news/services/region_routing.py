@@ -2,12 +2,13 @@ from __future__ import annotations
 
 from news.registry import SourceRegistry
 from news.registry import ROUTING_REGIONS
-from news.types import NewsFeed, NewsProvider
+from news.types import NewsFeed, NewsProvider, NewsSource, SourceKind
 
 
 ROUTING_EXCEPTIONS = {
     "CY": frozenset({"europe", "middle_east"}),
     "EG": frozenset({"africa", "middle_east"}),
+    "IR": frozenset({"middle_east"}),
     "MX": frozenset({"north_america", "latin_america_caribbean"}),
     "RU": frozenset({"europe", "asia_pacific"}),
     "TR": frozenset({"europe", "middle_east"}),
@@ -61,3 +62,17 @@ def eligible_fixed_feeds(country: dict, registry: SourceRegistry) -> tuple[NewsF
 
 def has_regional_affinity(country: dict, provider: NewsProvider) -> bool:
     return bool(routing_groups_for_country(country).intersection(provider.coverage_regions))
+
+
+def eligible_youtube_sources(country: dict, registry: SourceRegistry) -> tuple[NewsSource, ...]:
+    routing_groups = routing_groups_for_country(country)
+    return tuple(sorted(
+        (
+            source
+            for source in registry.sources
+            if source.kind is SourceKind.YOUTUBE
+            and source.enabled_by_default
+            and routing_groups.intersection(source.coverage_regions)
+        ),
+        key=lambda source: (source.display_priority, source.id),
+    ))

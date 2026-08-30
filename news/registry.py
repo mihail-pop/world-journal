@@ -46,7 +46,16 @@ KIND_FIELDS = {
         "operational_notes",
         "display_priority",
     },
-    SourceKind.YOUTUBE: {"youtube_channel_id", "coverage_regions"},
+    SourceKind.YOUTUBE: {
+        "youtube_channel_id",
+        "editorial_region",
+        "coverage_regions",
+        "allowed_hosts",
+        "verification_date",
+        "disabled_reason",
+        "operational_notes",
+        "display_priority",
+    },
 }
 PROVIDER_FIELDS = {
     "id",
@@ -250,6 +259,7 @@ def _parse_source(value: object, index: int) -> NewsSource:
     enabled = value["enabled_by_default"]
     if not isinstance(enabled, bool):
         raise SourceConfigurationError(f"Source {source_id} has invalid enabled_by_default")
+    homepage_url = _https_url(value["homepage_url"], "homepage_url", source_id)
 
     options: dict[str, object] = {}
     if kind is SourceKind.DYNAMIC_COUNTRY_RSS:
@@ -304,14 +314,34 @@ def _parse_source(value: object, index: int) -> NewsSource:
         channel_id = _text(value["youtube_channel_id"], "youtube_channel_id", source_id)
         if not YOUTUBE_CHANNEL_PATTERN.fullmatch(channel_id):
             raise SourceConfigurationError(f"Source {source_id} has invalid youtube_channel_id")
+        homepage = urlsplit(homepage_url)
+        if homepage.hostname != "www.youtube.com" or homepage.path.rstrip("/") != f"/channel/{channel_id}":
+            raise SourceConfigurationError(f"Source {source_id} has invalid YouTube homepage_url")
+        allowed_hosts = _allowed_hosts(value["allowed_hosts"], "www.youtube.com", source_id)
+        if set(allowed_hosts) != {"www.youtube.com"}:
+            raise SourceConfigurationError(f"Source {source_id} has unsupported YouTube allowed_hosts")
+        disabled_reason = value["disabled_reason"]
+        if not isinstance(disabled_reason, str):
+            raise SourceConfigurationError(f"Source {source_id} has invalid disabled_reason")
+        if enabled and disabled_reason:
+            raise SourceConfigurationError(f"Enabled source {source_id} cannot have a disabled_reason")
+        if not enabled and not disabled_reason.strip():
+            raise SourceConfigurationError(f"Disabled source {source_id} requires a disabled_reason")
         options["youtube_channel_id"] = channel_id
+        options["feed_host"] = "www.youtube.com"
         options["coverage_regions"] = _regions(value["coverage_regions"], source_id)
+        options["editorial_region"] = _editorial_region(value["editorial_region"], source_id)
+        options["allowed_hosts"] = allowed_hosts
+        options["verification_date"] = _verification_date(value["verification_date"], source_id)
+        options["disabled_reason"] = disabled_reason.strip()
+        options["operational_notes"] = _text(value["operational_notes"], "operational_notes", source_id)
+        options["display_priority"] = _priority(value["display_priority"], source_id)
 
     return NewsSource(
         id=source_id,
         kind=kind,
         display_name=_text(value["display_name"], "display_name", source_id),
-        homepage_url=_https_url(value["homepage_url"], "homepage_url", source_id),
+        homepage_url=homepage_url,
         language=_text(value["language"], "language", source_id),
         enabled_by_default=enabled,
         **options,
@@ -325,20 +355,27 @@ def load_source_registry(path: Path | None = None) -> SourceRegistry:
             value = json.load(source_file)
     except (OSError, json.JSONDecodeError) as error:
         raise SourceConfigurationError(f"Could not read valid news sources from {path}: {error}") from error
-    if not isinstance(value, dict) or value.get("schema_version") != 3:
+    if not isinstance(value, dict) or value.get("schema_version") != 4:
         raise SourceConfigurationError("News sources have an unsupported or missing schema")
     if set(value) != {"schema_version", "sources", "providers", "feeds"}:
         raise SourceConfigurationError("News sources have invalid top-level fields")
     if not all(isinstance(value[field], list) for field in ("sources", "providers", "feeds")):
         raise SourceConfigurationError("News sources, providers, and feeds must be lists")
     sources = tuple(_parse_source(source, index) for index, source in enumerate(value["sources"]))
-    if any(source.kind is not SourceKind.DYNAMIC_COUNTRY_RSS for source in sources):
-        raise SourceConfigurationError("Schema 3 sources must contain only dynamic providers")
+    if sum(source.kind is SourceKind.DYNAMIC_COUNTRY_RSS for source in sources) != 1:
+        raise SourceConfigurationError("News sources must contain exactly one dynamic country provider")
     providers = tuple(_parse_provider(provider, index) for index, provider in enumerate(value["providers"]))
     feeds = tuple(_parse_feed(feed, index) for index, feed in enumerate(value["feeds"]))
     all_ids = [source.id for source in sources] + [provider.id for provider in providers] + [feed.id for feed in feeds]
     if len(all_ids) != len(set(all_ids)):
         raise SourceConfigurationError("News source, provider, and feed ids must be globally unique")
+    channel_ids = [
+        source.youtube_channel_id
+        for source in sources
+        if source.kind is SourceKind.YOUTUBE
+    ]
+    if len(channel_ids) != len(set(channel_ids)):
+        raise SourceConfigurationError("YouTube channel ids must be unique")
     provider_ids = {provider.id for provider in providers}
     orphan_ids = sorted({feed.provider_id for feed in feeds} - provider_ids)
     if orphan_ids:

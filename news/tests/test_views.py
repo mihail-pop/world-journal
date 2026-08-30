@@ -5,7 +5,16 @@ from django.test import TestCase
 from django.urls import reverse
 
 from news.registry import load_source_registry
-from news.types import CountryNewsPage, CountryNewsResult, NewsItem, RegionalProviderResult
+from news.services.country_news import CountryNotFoundError
+from news.types import (
+    CountryNewsPage,
+    CountryNewsResult,
+    CountryVideosPage,
+    NewsItem,
+    RegionalProviderResult,
+    VideoItem,
+    VideoSourceResult,
+)
 
 
 class CountryNewsViewTests(TestCase):
@@ -87,3 +96,50 @@ class CountryNewsViewTests(TestCase):
         response = self.client.get(reverse("news:country_news", args=["ZZ"]))
 
         self.assertEqual(response.status_code, 404)
+
+
+class CountryVideosViewTests(TestCase):
+    def setUp(self):
+        self.source = load_source_registry().get("youtube_dw_news")
+        self.item = VideoItem(
+            source_id=self.source.id,
+            channel_name='DW News <script>alert("channel")</script>',
+            video_id="AbCdEfGhI01",
+            title='<script>alert("title")</script> Germany update',
+            published_at=datetime(2026, 8, 30, 9, 29, tzinfo=UTC),
+            watch_url="https://www.youtube.com/watch?v=AbCdEfGhI01",
+            embed_url="https://www.youtube-nocookie.com/embed/AbCdEfGhI01",
+            thumbnail_url="https://i.ytimg.com/vi/AbCdEfGhI01/hqdefault.jpg",
+        )
+
+    def test_country_videos_renders_escaped_validated_playback_data(self):
+        result = CountryVideosPage(
+            "DE",
+            "Germany",
+            (self.item,),
+            (VideoSourceResult(self.source, (self.item,), self.item.published_at),),
+            "success",
+        )
+
+        with patch("news.views.get_country_videos", return_value=result):
+            response = self.client.get(reverse("news:country_videos", args=["de"]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'data-video-id="AbCdEfGhI01"')
+        self.assertContains(response, "&lt;script&gt;", html=False)
+        self.assertNotContains(response, "<script>", html=False)
+        self.assertNotContains(response, "youtube-nocookie.com", html=False)
+        self.assertContains(response, 'target="_blank" rel="noopener noreferrer"')
+        self.assertContains(response, 'referrerpolicy="no-referrer"')
+        self.assertEqual(response.headers["Cache-Control"], "private, no-store")
+
+    def test_invalid_country_returns_404(self):
+        with patch("news.views.get_country_videos", side_effect=CountryNotFoundError("unknown")):
+            response = self.client.get(reverse("news:country_videos", args=["ZZ"]))
+
+        self.assertEqual(response.status_code, 404)
+
+    def test_country_videos_is_get_only(self):
+        response = self.client.post(reverse("news:country_videos", args=["DE"]))
+
+        self.assertEqual(response.status_code, 405)
