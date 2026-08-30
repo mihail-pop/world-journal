@@ -1,4 +1,6 @@
 ﻿asgiref==3.12.1
 Django==5.2.17
+feedparser==6.0.12
+httpx==0.28.1
 sqlparse==0.6.0
 tzdata==2026.3

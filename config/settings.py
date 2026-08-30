@@ -22,6 +22,18 @@ MAP_TERRAIN_CONFIG = {
     'reason': 'No documented MapLibre elevation source is configured.',
     'source': None,
 }
+NEWS_SOURCE_CONFIG_PATH = BASE_DIR / 'data' / 'news_sources.json'
+NEWS_CACHE_SCHEMA_VERSION = 1
+NEWS_REFRESH_SECONDS = 15 * 60
+NEWS_STALE_SECONDS = 3 * 24 * 60 * 60
+NEWS_FAILURE_BACKOFF_SECONDS = 60
+NEWS_MAX_ITEMS = 20
+NEWS_HTTP_CONNECT_TIMEOUT_SECONDS = 4
+NEWS_HTTP_READ_TIMEOUT_SECONDS = 8
+NEWS_HTTP_TOTAL_TIMEOUT_SECONDS = 12
+NEWS_HTTP_MAX_REDIRECTS = 3
+NEWS_HTTP_MAX_BYTES = 512 * 1024
+NEWS_USER_AGENT = 'WorldJournal/0.1 (+local self-hosted RSS reader)'
 
 
 # Quick-start development settings - unsuitable for production
@@ -88,6 +100,16 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': BASE_DIR / 'db.sqlite3',
+    }
+}
+
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.db.DatabaseCache',
+        'LOCATION': 'world_journal_cache',
+        'OPTIONS': {
+            'MAX_ENTRIES': 1000,
+        },
     }
 }
 

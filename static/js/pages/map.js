@@ -142,6 +142,69 @@ function focusCountry(controller, country, animate = true) {
     });
 }
 
+function cancelCountryNews(controller) {
+    controller.newsRequestId += 1;
+    controller.newsAbortController?.abort();
+    controller.newsAbortController = null;
+}
+
+function showNewsMessage(controller, message, { retry = false } = {}) {
+    controller.newsContent.replaceChildren();
+    const messageElement = document.createElement("p");
+    messageElement.className = "country-news-message";
+    messageElement.textContent = message;
+    controller.newsContent.append(messageElement);
+    if (retry) {
+        const retryButton = document.createElement("button");
+        retryButton.type = "button";
+        retryButton.className = "news-retry";
+        retryButton.dataset.newsRetry = "";
+        retryButton.textContent = "Retry";
+        controller.newsContent.append(retryButton);
+    }
+}
+
+async function loadCountryNews(controller, code, countryName) {
+    cancelCountryNews(controller);
+    const requestId = controller.newsRequestId;
+    const abortController = new AbortController();
+    controller.newsAbortController = abortController;
+    controller.newsContent.setAttribute("aria-busy", "true");
+    showNewsMessage(controller, `Loading current English-language headlines for ${countryName}…`);
+    const url = controller.newsUrlTemplate.replace("COUNTRY_CODE", encodeURIComponent(code));
+
+    try {
+        const response = await fetch(url, {
+            headers: { "X-Requested-With": "XMLHttpRequest" },
+            signal: abortController.signal,
+        });
+        if (!response.ok) {
+            throw new Error(`${url} returned HTTP ${response.status}`);
+        }
+        const markup = await response.text();
+        if (
+            activeController !== controller
+            || controller.selectedCode !== code
+            || controller.newsRequestId !== requestId
+        ) {
+            return;
+        }
+        controller.newsContent.innerHTML = markup;
+        controller.newsContent.setAttribute("aria-busy", "false");
+    } catch (error) {
+        if (error.name === "AbortError" || activeController !== controller || controller.newsRequestId !== requestId) {
+            return;
+        }
+        controller.newsContent.setAttribute("aria-busy", "false");
+        showNewsMessage(controller, "Current news could not be loaded.", { retry: true });
+        console.error("World Journal country news request failed", error);
+    } finally {
+        if (controller.newsRequestId === requestId) {
+            controller.newsAbortController = null;
+        }
+    }
+}
+
 function renderSelection(controller, code, { fit = true, focusDrawer = false } = {}) {
     controller.selectedCode = code;
     updateFilter(controller.map, LAYERS.selectedFill, code);
@@ -149,6 +212,7 @@ function renderSelection(controller, code, { fit = true, focusDrawer = false } =
     const drawer = controller.page.querySelector("[data-country-drawer]");
 
     if (!code) {
+        cancelCountryNews(controller);
         drawer.hidden = true;
         controller.page.classList.remove("has-country-drawer");
         return;
@@ -162,6 +226,7 @@ function renderSelection(controller, code, { fit = true, focusDrawer = false } =
     controller.page.querySelector("[data-country-subregion]").textContent = country.subregion;
     drawer.hidden = false;
     controller.page.classList.add("has-country-drawer");
+    loadCountryNews(controller, code, country.name);
     if (fit) {
         focusCountry(controller, country);
     }
@@ -668,10 +733,20 @@ async function initializeMapPage() {
         homeSummary: page.querySelector("[data-home-summary]"),
         terrainInput: page.querySelector('[data-map-preference="terrain"]'),
         terrainNote: page.querySelector("[data-terrain-note]"),
+        newsContent: page.querySelector("[data-country-news-content]"),
+        newsUrlTemplate: page.dataset.countryNewsUrlTemplate,
+        newsAbortController: null,
+        newsRequestId: 0,
     };
     activeController = controller;
 
     page.querySelector("[data-country-close]").addEventListener("click", () => closeCountry(controller), { signal: abortController.signal });
+    controller.newsContent.addEventListener("click", (event) => {
+        if (event.target.closest("[data-news-retry]") && controller.selectedCode) {
+            const country = controller.countriesByCode.get(controller.selectedCode);
+            loadCountryNews(controller, controller.selectedCode, country.name);
+        }
+    }, { signal: abortController.signal });
     document.addEventListener("keydown", (event) => {
         if (event.key !== "Escape") {
             return;
@@ -734,6 +809,7 @@ export function cleanupMapPage() {
     const controller = activeController;
     activeController = null;
     window.clearTimeout(controller.fallbackTimer);
+    cancelCountryNews(controller);
     controller.abortController.abort();
     if (controller.map) {
         saveViewport(controller.map);

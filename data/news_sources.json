@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "sources": [
+    {
+      "id": "google_news_country",
+      "kind": "dynamic_country_rss",
+      "display_name": "Google News",
+      "homepage_url": "https://news.google.com/",
+      "feed_host": "news.google.com",
+      "language": "en",
+      "enabled_by_default": true,
+      "edition": {
+        "hl": "en-US",
+        "gl": "US",
+        "ceid": "US:en"
+      }
+    }
+  ]
+}

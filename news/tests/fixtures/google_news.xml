@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Romania - Google News</title>
+    <item>
+      <title>Romania opens a new rail connection - Example Wire</title>
+      <link>https://news.google.com/rss/articles/first#fragment</link>
+      <guid>first</guid>
+      <pubDate>Sun, 30 Aug 2026 09:29:15 GMT</pubDate>
+      <description><![CDATA[<a href="https://news.google.com/rss/articles/first">Romania opens a new rail connection</a>]]></description>
+      <source url="https://example.com/">Example Wire</source>
+    </item>
+    <item>
+      <title>Romania opens a new rail connection - Example Wire</title>
+      <link>https://news.google.com/rss/articles/duplicate-title</link>
+      <pubDate>Sun, 30 Aug 2026 09:28:15 GMT</pubDate>
+      <source url="https://example.com/">Example Wire</source>
+    </item>
+    <item>
+      <title>Romanian researchers publish climate findings - Other News</title>
+      <link>https://news.google.com/rss/articles/second</link>
+      <pubDate>Sat, 29 Aug 2026 15:00:00 GMT</pubDate>
+      <description><![CDATA[<p>A short <strong>feed-provided</strong> summary.</p>]]></description>
+      <source url="https://other.example/">Other News</source>
+    </item>
+    <item>
+      <title>Unsafe link is discarded</title>
+      <link>javascript:alert(1)</link>
+    </item>
+  </channel>
+</rss>

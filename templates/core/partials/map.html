@@ -5,6 +5,7 @@
     data-map-style-url="{{ map_style_url }}"
     data-map-glyphs-url="{{ map_glyphs_url }}"
     data-country-metadata-url="{% url 'countries:metadata' %}"
+    data-country-news-url-template="{% url 'news:country_news' iso2='COUNTRY_CODE' %}"
     data-country-geometry-url="{% static 'data/countries.geojson' %}"
     data-capital-geometry-url="{% static 'data/capitals.geojson' %}"
     data-terrain-available="{{ map_terrain.available|yesno:'true,false' }}"
@@ -67,6 +68,15 @@
                     <dd data-country-subregion></dd>
                 </div>
             </dl>
+            <section class="country-news" aria-labelledby="country-news-title">
+                <div class="country-news-heading">
+                    <p class="eyebrow">Current coverage</p>
+                    <h3 id="country-news-title">Latest news</h3>
+                </div>
+                <div data-country-news-content aria-live="polite" aria-busy="true">
+                    <p class="country-news-message">Loading current English-language headlines…</p>
+                </div>
+            </section>
         </aside>
 
         <noscript>
