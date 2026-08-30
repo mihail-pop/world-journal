@@ -1,0 +1,61 @@
+{% load static %}
+<!doctype html>
+<html lang="en" data-theme="dark" data-app-name="{{ app_display_name }}">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ active_page|title }} | {{ app_display_name }}</title>
+    <script>
+        try {
+            const savedTheme = localStorage.getItem("world-journal:theme");
+            if (["dark", "light", "brown"].includes(savedTheme)) {
+                document.documentElement.dataset.theme = savedTheme;
+            }
+        } catch (error) {
+            // The dark root palette remains the fallback when storage is unavailable.
+        }
+    </script>
+    <link rel="stylesheet" href="{% static 'css/app.css' %}">
+    <script src="{% static 'vendor/htmx/htmx-2.0.8.min.js' %}" defer></script>
+    <script type="module" src="{% static 'js/app.js' %}"></script>
+</head>
+<body>
+    <header class="app-header">
+        <a class="app-name" href="{% url 'core:map' %}" aria-label="{{ app_display_name }} map">{{ app_display_name }}</a>
+        <nav class="primary-nav" aria-label="Primary" hx-boost="true" hx-target="#app-content" hx-push-url="true" hx-swap="innerHTML show:top">
+            <a href="{% url 'core:map' %}"{% if active_page == 'map' %} aria-current="page"{% endif %}>Map</a>
+            <a href="{% url 'core:journal' %}"{% if active_page == 'journal' %} aria-current="page"{% endif %}>Journal</a>
+            <a href="{% url 'core:settings' %}"{% if active_page == 'settings' %} aria-current="page"{% endif %}>Settings</a>
+        </nav>
+        <label class="theme-control">
+            <span>Theme</span>
+            <select id="theme-selector" name="theme">
+                <option value="dark">Dark</option>
+                <option value="light">Light</option>
+                <option value="brown">Brown</option>
+            </select>
+        </label>
+        <button class="player-toggle" type="button" data-player-toggle aria-controls="persistent-player" aria-expanded="false" hidden>Player</button>
+    </header>
+
+    <main id="app-content" tabindex="-1" hx-history-elt>
+        {% include page_template %}
+    </main>
+
+    <aside id="persistent-player" class="persistent-player" aria-label="Video player" data-player-state="empty">
+        <div class="player-heading">
+            <div>
+                <p class="eyebrow">Now playing</p>
+                <p class="player-title" data-player-title>No video selected</p>
+            </div>
+            <div class="player-actions" data-player-actions hidden>
+                <button type="button" data-player-minimize aria-label="Minimize video player">Minimize</button>
+                <button type="button" data-player-close aria-label="Close video player">Close</button>
+            </div>
+        </div>
+        <div class="player-stage" data-player-stage>
+            <p>Video player ready</p>
+        </div>
+    </aside>
+</body>
+</html>
