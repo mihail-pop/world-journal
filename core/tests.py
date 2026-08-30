@@ -1,3 +1,4 @@
+from django.contrib.staticfiles import finders
 from django.test import TestCase
 from django.urls import reverse
 
@@ -45,3 +46,37 @@ class ShellNavigationTests(TestCase):
         self.assertContains(response, "hx-history-elt")
         for route_name, _page in self.routes:
             self.assertContains(response, f'href="{reverse(route_name)}"')
+
+    def test_map_page_references_local_map_assets_and_configured_provider(self):
+        response = self.client.get(reverse("core:map") + "?country=RO")
+
+        self.assertContains(response, "/static/vendor/maplibre-gl/maplibre-gl.css")
+        self.assertContains(response, "/static/data/countries.geojson")
+        self.assertContains(response, "/data/countries.json")
+        self.assertContains(response, 'data-map-style-url="https://tiles.openfreemap.org/styles/liberty"')
+        self.assertContains(response, 'id="world-map"')
+        self.assertContains(response, "data-country-drawer")
+
+    def test_htmx_map_response_keeps_map_markup_inside_partial_boundary(self):
+        response = self.client.get(reverse("core:map"), headers={"HX-Request": "true"})
+
+        self.assertContains(response, 'id="world-map"')
+        self.assertContains(response, "/static/data/countries.geojson")
+        self.assertNotContains(response, "/static/vendor/maplibre-gl/maplibre-gl.css")
+        self.assertNotContains(response, 'id="app-content"')
+
+    def test_all_map_browser_assets_are_local(self):
+        assets = (
+            "js/pages/map.js",
+            "data/countries.geojson",
+            "vendor/maplibre-gl/maplibre-gl.mjs",
+            "vendor/maplibre-gl/maplibre-gl-shared.mjs",
+            "vendor/maplibre-gl/maplibre-gl-worker.mjs",
+            "vendor/maplibre-gl/maplibre-gl.css",
+            "vendor/maplibre-gl/LICENSE.txt",
+            "vendor/maplibre-gl/VERSION.txt",
+        )
+
+        for asset in assets:
+            with self.subTest(asset=asset):
+                self.assertIsNotNone(finders.find(asset))

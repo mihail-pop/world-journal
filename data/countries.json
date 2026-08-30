@@ -1,0 +1,5492 @@
+{
+  "schema_version": 1,
+  "source": {
+    "name": "ne_10m_admin_0_countries",
+    "dataset_version": "5.1.1",
+    "repository_tag": "v5.1.2",
+    "resolution": "1:10m",
+    "license": "Public domain",
+    "boundary_policy": "Natural Earth de facto boundaries",
+    "sha256": {
+      ".dbf": "c5dbd3dd5fd7e2ef49051fc88562c03819e8ea63a382642df6eadd1243bf4b49",
+      ".shp": "7ce119ef6342e43cff7c0c3004e0911ab7ec1988a14734372031d2012180e7bc",
+      ".VERSION.txt": "f9893302cd3158f3b5aea394dcd2a91574869e9e6ff69e9235b10a3bf8c983fb"
+    }
+  },
+  "countries": [
+    {
+      "iso_a2": "AD",
+      "iso_a3": "AND",
+      "name": "Andorra",
+      "region": "Europe",
+      "subregion": "Southern Europe",
+      "centroid": [
+        1.539409,
+        42.547643
+      ],
+      "bounds": [
+        [
+          1.4065,
+          42.4287
+        ],
+        [
+          1.7651,
+          42.6494
+        ]
+      ],
+      "flag": "🇦🇩",
+      "small": true
+    },
+    {
+      "iso_a2": "AE",
+      "iso_a3": "ARE",
+      "name": "United Arab Emirates",
+      "region": "Asia",
+      "subregion": "Western Asia",
+      "centroid": [
+        54.547256,
+        23.466285
+      ],
+      "bounds": [
+        [
+          51.5693,
+          22.6209
+        ],
+        [
+          56.3836,
+          26.0748
+        ]
+      ],
+      "flag": "🇦🇪",
+      "small": false
+    },
+    {
+      "iso_a2": "AF",
+      "iso_a3": "AFG",
+      "name": "Afghanistan",
+      "region": "Asia",
+      "subregion": "Southern Asia",
+      "centroid": [
+        66.496586,
+        34.164262
+      ],
+      "bounds": [
+        [
+          60.4868,
+          29.3866
+        ],
+        [
+          74.8923,
+          38.4737
+        ]
+      ],
+      "flag": "🇦🇫",
+      "small": false
+    },
+    {
+      "iso_a2": "AG",
+      "iso_a3": "ATG",
+      "name": "Antigua and Barbuda",
+      "region": "Americas",
+      "subregion": "Caribbean",
+      "centroid": [
+        -61.790612,
+        17.352249
+      ],
+      "bounds": [
+        [
+          -62.3483,
+          16.932
+        ],
+        [
+          -61.6676,
+          17.7277
+        ]
+      ],
+      "flag": "🇦🇬",
+      "small": true
+    },
+    {
+      "iso_a2": "AI",
+      "iso_a3": "AIA",
+      "name": "Anguilla",
+      "region": "Americas",
+      "subregion": "Caribbean",
+      "centroid": [
+        -63.026361,
+        18.242979
+      ],
+      "bounds": [
+        [
+          -63.4288,
+          18.1691
+        ],
+        [
+          -62.9257,
+          18.6013
+        ]
+      ],
+      "flag": "🇦🇮",
+      "small": false
+    },
+    {
+      "iso_a2": "AL",
+      "iso_a3": "ALB",
+      "name": "Albania",
+      "region": "Europe",
+      "subregion": "Southern Europe",
+      "centroid": [
+        20.11384,
+        40.654855
+      ],
+      "bounds": [
+        [
+          19.272,
+          39.637
+        ],
+        [
+          21.0367,
+          42.6548
+        ]
+      ],
+      "flag": "🇦🇱",
+      "small": false
+    },
+    {
+      "iso_a2": "AM",
+      "iso_a3": "ARM",
+      "name": "Armenia",
+      "region": "Asia",
+      "subregion": "Western Asia",
+      "centroid": [
+        44.800564,
+        40.459077
+      ],
+      "bounds": [
+        [
+          43.4363,
+          38.8637
+        ],
+        [
+          46.6026,
+          41.2905
+        ]
+      ],
+      "flag": "🇦🇲",
+      "small": false
+    },
+    {
+      "iso_a2": "AO",
+      "iso_a3": "AGO",
+      "name": "Angola",
+      "region": "Africa",
+      "subregion": "Middle Africa",
+      "centroid": [
+        17.984249,
+        -12.182762
+      ],
+      "bounds": [
+        [
+          11.6694,
+          -18.0314
+        ],
+        [
+          24.0617,
+          -4.3912
+        ]
+      ],
+      "flag": "🇦🇴",
+      "small": false
+    },
+    {
+      "iso_a2": "AQ",
+      "iso_a3": "ATA",
+      "name": "Antarctica",
+      "region": "Antarctica",
+      "subregion": "Antarctica",
+      "centroid": [
+        35.885455,
+        -79.843222
+      ],
+      "bounds": [
+        [
+          55.1734,
+          -90.0
+        ],
+        [
+          414.7123,
+          -60.5162
+        ]
+      ],
+      "flag": "🇦🇶",
+      "small": false
+    },
+    {
+      "iso_a2": "AR",
+      "iso_a3": "ARG",
+      "name": "Argentina",
+      "region": "Americas",
+      "subregion": "South America",
+      "centroid": [
+        -64.173331,
+        -33.501159
+      ],
+      "bounds": [
+        [
+          -73.5727,
+          -55.052
+        ],
+        [
+          -53.6616,
+          -21.7869
+        ]
+      ],
+      "flag": "🇦🇷",
+      "small": false
+    },
+    {
+      "iso_a2": "AS",
+      "iso_a3": "ASM",
+      "name": "American Samoa",
+      "region": "Oceania",
+      "subregion": "Polynesia",
+      "centroid": [
+        -170.747153,
+        -14.32671
+      ],
+      "bounds": [
+        [
+          -171.0865,
+          -14.5329
+        ],
+        [
+          -168.1605,
+          -11.0514
+        ]
+      ],
+      "flag": "🇦🇸",
+      "small": true
+    },
+    {
+      "iso_a2": "AT",
+      "iso_a3": "AUT",
+      "name": "Austria",
+      "region": "Europe",
+      "subregion": "Western Europe",
+      "centroid": [
+        14.130515,
+        47.518859
+      ],
+      "bounds": [
+        [
+          9.5212,
+          46.3786
+        ],
+        [
+          17.1483,
+          49.0098
+        ]
+      ],
+      "flag": "🇦🇹",
+      "small": false
+    },
+    {
+      "iso_a2": "AU",
+      "iso_a3": "AUS",
+      "name": "Australia",
+      "region": "Oceania",
+      "subregion": "Australia and New Zealand",
+      "centroid": [
+        134.04972,
+        -24.129522
+      ],
+      "bounds": [
+        [
+          96.8215,
+          -54.7504
+        ],
+        [
+          159.1065,
+          -9.2402
+        ]
+      ],
+      "flag": "🇦🇺",
+      "small": false
+    },
+    {
+      "iso_a2": "AW",
+      "iso_a3": "ABW",
+      "name": "Aruba",
+      "region": "Americas",
+      "subregion": "Caribbean",
+      "centroid": [
+        -69.972795,
+        12.5174
+      ],
+      "bounds": [
+        [
+          -70.0624,
+          12.4177
+        ],
+        [
+          -69.8768,
+          12.6321
+        ]
+      ],
+      "flag": "🇦🇼",
+      "small": true
+    },
+    {
+      "iso_a2": "AX",
+      "iso_a3": "ALA",
+      "name": "Åland",
+      "region": "Europe",
+      "subregion": "Northern Europe",
+      "centroid": [
+        19.869671,
+        60.156467
+      ],
+      "bounds": [
+        [
+          19.5132,
+          59.9045
+        ],
+        [
+          21.0967,
+          60.4808
+        ]
+      ],
+      "flag": "🇦🇽",
+      "small": true
+    },
+    {
+      "iso_a2": "AZ",
+      "iso_a3": "AZE",
+      "name": "Azerbaijan",
+      "region": "Asia",
+      "subregion": "Western Asia",
+      "centroid": [
+        47.210994,
+        40.402387
+      ],
+      "bounds": [
+        [
+          44.7746,
+          38.3926
+        ],
+        [
+          50.6257,
+          41.8904
+        ]
+      ],
+      "flag": "🇦🇿",
+      "small": false
+    },
+    {
+      "iso_a2": "BA",
+      "iso_a3": "BIH",
+      "name": "Bosnia and Herzegovina",
+      "region": "Europe",
+      "subregion": "Southern Europe",
+      "centroid": [
+        18.06841,
+        44.091051
+      ],
+      "bounds": [
+        [
+          15.7161,
+          42.5592
+        ],
+        [
+          19.6189,
+          45.2845
+        ]
+      ],
+      "flag": "🇧🇦",
+      "small": false
+    },
+    {
+      "iso_a2": "BB",
+      "iso_a3": "BRB",
+      "name": "Barbados",
+      "region": "Americas",
+      "subregion": "Caribbean",
+      "centroid": [
+        -59.568966,
+        13.163709
+      ],
+      "bounds": [
+        [
+          -59.6542,
+          13.0512
+        ],
+        [
+          -59.4269,
+          13.3445
+        ]
+      ],
+      "flag": "🇧🇧",
+      "small": true
+    },
+    {
+      "iso_a2": "BD",
+      "iso_a3": "BGD",
+      "name": "Bangladesh",
+      "region": "Asia",
+      "subregion": "Southern Asia",
+      "centroid": [
+        89.684963,
+        24.214956
+      ],
+      "bounds": [
+        [
+          88.0218,
+          20.7387
+        ],
+        [
+          92.6429,
+          26.6235
+        ]
+      ],
+      "flag": "🇧🇩",
+      "small": false
+    },
+    {
+      "iso_a2": "BE",
+      "iso_a3": "BEL",
+      "name": "Belgium",
+      "region": "Europe",
+      "subregion": "Western Europe",
+      "centroid": [
+        4.800448,
+        50.785392
+      ],
+      "bounds": [
+        [
+          2.5218,
+          49.4952
+        ],
+        [
+          6.3745,
+          51.4962
+        ]
+      ],
+      "flag": "🇧🇪",
+      "small": false
+    },
+    {
+      "iso_a2": "BF",
+      "iso_a3": "BFA",
+      "name": "Burkina Faso",
+      "region": "Africa",
+      "subregion": "Western Africa",
+      "centroid": [
+        -1.36388,
+        12.673048
+      ],
+      "bounds": [
+        [
+          -5.5226,
+          9.3919
+        ],
+        [
+          2.3902,
+          15.0799
+        ]
+      ],
+      "flag": "🇧🇫",
+      "small": false
+    },
+    {
+      "iso_a2": "BG",
+      "iso_a3": "BGR",
+      "name": "Bulgaria",
+      "region": "Europe",
+      "subregion": "Eastern Europe",
+      "centroid": [
+        25.15709,
+        42.508785
+      ],
+      "bounds": [
+        [
+          22.345,
+          41.2381
+        ],
+        [
+          28.6035,
+          44.2284
+        ]
+      ],
+      "flag": "🇧🇬",
+      "small": false
+    },
+    {
+      "iso_a2": "BH",
+      "iso_a3": "BHR",
+      "name": "Bahrain",
+      "region": "Asia",
+      "subregion": "Western Asia",
+      "centroid": [
+        50.554816,
+        26.055972
+      ],
+      "bounds": [
+        [
+          50.3805,
+          25.5799
+        ],
+        [
+          50.8199,
+          26.2874
+        ]
+      ],
+      "flag": "🇧🇭",
+      "small": true
+    },
+    {
+      "iso_a2": "BI",
+      "iso_a3": "BDI",
+      "name": "Burundi",
+      "region": "Africa",
+      "subregion": "Eastern Africa",
+      "centroid": [
+        29.917086,
+        -3.332836
+      ],
+      "bounds": [
+        [
+          28.9869,
+          -4.4633
+        ],
+        [
+          30.834,
+          -2.3031
+        ]
+      ],
+      "flag": "🇧🇮",
+      "small": false
+    },
+    {
+      "iso_a2": "BJ",
+      "iso_a3": "BEN",
+      "name": "Benin",
+      "region": "Africa",
+      "subregion": "Western Africa",
+      "centroid": [
+        2.352018,
+        10.324775
+      ],
+      "bounds": [
+        [
+          0.7599,
+          6.2139
+        ],
+        [
+          3.8374,
+          12.3992
+        ]
+      ],
+      "flag": "🇧🇯",
+      "small": false
+    },
+    {
+      "iso_a2": "BL",
+      "iso_a3": "BLM",
+      "name": "Saint Barthélemy",
+      "region": "Americas",
+      "subregion": "Caribbean",
+      "centroid": [
+        -62.833193,
+        17.901987
+      ],
+      "bounds": [
+        [
+          -62.8673,
+          17.882
+        ],
+        [
+          -62.7917,
+          17.9291
+        ]
+      ],
+      "flag": "🇧🇱",
+      "small": true
+    },
+    {
+      "iso_a2": "BM",
+      "iso_a3": "BMU",
+      "name": "Bermuda",
+      "region": "Americas",
+      "subregion": "Northern America",
+      "centroid": [
+        -64.763573,
+        32.296592
+      ],
+      "bounds": [
+        [
+          -64.886,
+          32.2481
+        ],
+        [
+          -64.6476,
+          32.3887
+        ]
+      ],
+      "flag": "🇧🇲",
+      "small": true
+    },
+    {
+      "iso_a2": "BN",
+      "iso_a3": "BRN",
+      "name": "Brunei",
+      "region": "Asia",
+      "subregion": "South-Eastern Asia",
+      "centroid": [
+        114.551943,
+        4.448298
+      ],
+      "bounds": [
+        [
+          113.9988,
+          4.0167
+        ],
+        [
+          115.3607,
+          5.0572
+        ]
+      ],
+      "flag": "🇧🇳",
+      "small": true
+    },
+    {
+      "iso_a2": "BO",
+      "iso_a3": "BOL",
+      "name": "Bolivia",
+      "region": "Americas",
+      "subregion": "South America",
+      "centroid": [
+        -64.593433,
+        -16.666015
+      ],
+      "bounds": [
+        [
+          -69.6665,
+          -22.8973
+        ],
+        [
+          -57.4657,
+          -9.6798
+        ]
+      ],
+      "flag": "🇧🇴",
+      "small": false
+    },
+    {
+      "iso_a2": "BR",
+      "iso_a3": "BRA",
+      "name": "Brazil",
+      "region": "Americas",
+      "subregion": "South America",
+      "centroid": [
+        -49.55945,
+        -12.098687
+      ],
+      "bounds": [
+        [
+          -74.0185,
+          -33.7423
+        ],
+        [
+          -28.8771,
+          5.2672
+        ]
+      ],
+      "flag": "🇧🇷",
+      "small": false
+    },
+    {
+      "iso_a2": "BS",
+      "iso_a3": "BHS",
+      "name": "The Bahamas",
+      "region": "Americas",
+      "subregion": "Caribbean",
+      "centroid": [
+        -77.146688,
+        26.401789
+      ],
+      "bounds": [
+        [
+          -79.5943,
+          20.9124
+        ],
+        [
+          -72.7462,
+          26.9284
+        ]
+      ],
+      "flag": "🇧🇸",
+      "small": false
+    },
+    {
+      "iso_a2": "BT",
+      "iso_a3": "BTN",
+      "name": "Bhutan",
+      "region": "Asia",
+      "subregion": "Southern Asia",
+      "centroid": [
+        90.040294,
+        27.536685
+      ],
+      "bounds": [
+        [
+          88.7301,
+          26.6961
+        ],
+        [
+          92.0888,
+          28.3584
+        ]
+      ],
+      "flag": "🇧🇹",
+      "small": false
+    },
+    {
+      "iso_a2": "BW",
+      "iso_a3": "BWA",
+      "name": "Botswana",
+      "region": "Africa",
+      "subregion": "Southern Africa",
+      "centroid": [
+        24.179216,
+        -22.102634
+      ],
+      "bounds": [
+        [
+          19.9783,
+          -26.8918
+        ],
+        [
+          29.3501,
+          -17.7818
+        ]
+      ],
+      "flag": "🇧🇼",
+      "small": false
+    },
+    {
+      "iso_a2": "BY",
+      "iso_a3": "BLR",
+      "name": "Belarus",
+      "region": "Europe",
+      "subregion": "Eastern Europe",
+      "centroid": [
+        28.417701,
+        53.821888
+      ],
+      "bounds": [
+        [
+          23.1656,
+          51.2352
+        ],
+        [
+          32.7195,
+          56.1568
+        ]
+      ],
+      "flag": "🇧🇾",
+      "small": false
+    },
+    {
+      "iso_a2": "BZ",
+      "iso_a3": "BLZ",
+      "name": "Belize",
+      "region": "Americas",
+      "subregion": "Central America",
+      "centroid": [
+        -88.712962,
+        17.202068
+      ],
+      "bounds": [
+        [
+          -89.2365,
+          15.8797
+        ],
+        [
+          -87.7831,
+          18.4908
+        ]
+      ],
+      "flag": "🇧🇿",
+      "small": false
+    },
+    {
+      "iso_a2": "CA",
+      "iso_a3": "CAN",
+      "name": "Canada",
+      "region": "Americas",
+      "subregion": "Northern America",
+      "centroid": [
+        -101.9107,
+        60.324287
+      ],
+      "bounds": [
+        [
+          -141.0056,
+          41.6691
+        ],
+        [
+          -52.6166,
+          83.1165
+        ]
+      ],
+      "flag": "🇨🇦",
+      "small": false
+    },
+    {
+      "iso_a2": "CD",
+      "iso_a3": "COD",
+      "name": "Democratic Republic of the Congo",
+      "region": "Africa",
+      "subregion": "Middle Africa",
+      "centroid": [
+        23.458829,
+        -1.858167
+      ],
+      "bounds": [
+        [
+          12.2105,
+          -13.4584
+        ],
+        [
+          31.2804,
+          5.3753
+        ]
+      ],
+      "flag": "🇨🇩",
+      "small": false
+    },
+    {
+      "iso_a2": "CF",
+      "iso_a3": "CAF",
+      "name": "Central African Republic",
+      "region": "Africa",
+      "subregion": "Middle Africa",
+      "centroid": [
+        20.906897,
+        6.989681
+      ],
+      "bounds": [
+        [
+          14.3873,
+          2.2365
+        ],
+        [
+          27.4413,
+          11.0008
+        ]
+      ],
+      "flag": "🇨🇫",
+      "small": false
+    },
+    {
+      "iso_a2": "CG",
+      "iso_a3": "COG",
+      "name": "Republic of the Congo",
+      "region": "Africa",
+      "subregion": "Middle Africa",
+      "centroid": [
+        15.9005,
+        0.142331
+      ],
+      "bounds": [
+        [
+          11.114,
+          -5.0196
+        ],
+        [
+          18.6424,
+          3.7083
+        ]
+      ],
+      "flag": "🇨🇬",
+      "small": false
+    },
+    {
+      "iso_a2": "CH",
+      "iso_a3": "CHE",
+      "name": "Switzerland",
+      "region": "Europe",
+      "subregion": "Western Europe",
+      "centroid": [
+        7.463965,
+        46.719114
+      ],
+      "bounds": [
+        [
+          5.9548,
+          45.8207
+        ],
+        [
+          10.4666,
+          47.8012
+        ]
+      ],
+      "flag": "🇨🇭",
+      "small": false
+    },
+    {
+      "iso_a2": "CI",
+      "iso_a3": "CIV",
+      "name": "Ivory Coast",
+      "region": "Africa",
+      "subregion": "Western Africa",
+      "centroid": [
+        -5.568618,
+        7.49139
+      ],
+      "bounds": [
+        [
+          -8.6187,
+          4.3441
+        ],
+        [
+          -2.5063,
+          10.7265
+        ]
+      ],
+      "flag": "🇨🇮",
+      "small": false
+    },
+    {
+      "iso_a2": "CK",
+      "iso_a3": "COK",
+      "name": "Cook Islands",
+      "region": "Oceania",
+      "subregion": "Polynesia",
+      "centroid": [
+        -159.785675,
+        -21.215993
+      ],
+      "bounds": [
+        [
+          -165.8245,
+          -21.9389
+        ],
+        [
+          -157.3128,
+          -8.9467
+        ]
+      ],
+      "flag": "🇨🇰",
+      "small": true
+    },
+    {
+      "iso_a2": "CL",
+      "iso_a3": "CHL",
+      "name": "Chile",
+      "region": "Americas",
+      "subregion": "South America",
+      "centroid": [
+        -72.318871,
+        -38.151771
+      ],
+      "bounds": [
+        [
+          -109.4537,
+          -55.9185
+        ],
+        [
+          -66.4208,
+          -17.5066
+        ]
+      ],
+      "flag": "🇨🇱",
+      "small": false
+    },
+    {
+      "iso_a2": "CM",
+      "iso_a3": "CMR",
+      "name": "Cameroon",
+      "region": "Africa",
+      "subregion": "Middle Africa",
+      "centroid": [
+        12.473488,
+        4.585041
+      ],
+      "bounds": [
+        [
+          8.5051,
+          1.6546
+        ],
+        [
+          16.2077,
+          13.0811
+        ]
+      ],
+      "flag": "🇨🇲",
+      "small": false
+    },
+    {
+      "iso_a2": "CN",
+      "iso_a3": "CHN",
+      "name": "People's Republic of China",
+      "region": "Asia",
+      "subregion": "Eastern Asia",
+      "centroid": [
+        106.337289,
+        32.498178
+      ],
+      "bounds": [
+        [
+          73.6023,
+          15.7754
+        ],
+        [
+          134.7726,
+          53.5694
+        ]
+      ],
+      "flag": "🇨🇳",
+      "small": false
+    },
+    {
+      "iso_a2": "CO",
+      "iso_a3": "COL",
+      "name": "Colombia",
+      "region": "Americas",
+      "subregion": "South America",
+      "centroid": [
+        -73.174347,
+        3.373111
+      ],
+      "bounds": [
+        [
+          -81.7237,
+          -4.2365
+        ],
+        [
+          -66.8751,
+          13.5784
+        ]
+      ],
+      "flag": "🇨🇴",
+      "small": false
+    },
+    {
+      "iso_a2": "CR",
+      "iso_a3": "CRI",
+      "name": "Costa Rica",
+      "region": "Americas",
+      "subregion": "Central America",
+      "centroid": [
+        -84.077922,
+        10.0651
+      ],
+      "bounds": [
+        [
+          -87.1177,
+          5.5151
+        ],
+        [
+          -82.5628,
+          11.2099
+        ]
+      ],
+      "flag": "🇨🇷",
+      "small": false
+    },
+    {
+      "iso_a2": "CU",
+      "iso_a3": "CUB",
+      "name": "Cuba",
+      "region": "Americas",
+      "subregion": "Caribbean",
+      "centroid": [
+        -77.975855,
+        21.334024
+      ],
+      "bounds": [
+        [
+          -84.9496,
+          19.8278
+        ],
+        [
+          -74.1329,
+          23.2656
+        ]
+      ],
+      "flag": "🇨🇺",
+      "small": false
+    },
+    {
+      "iso_a2": "CV",
+      "iso_a3": "CPV",
+      "name": "Cape Verde",
+      "region": "Africa",
+      "subregion": "Western Africa",
+      "centroid": [
+        -23.639434,
+        15.074761
+      ],
+      "bounds": [
+        [
+          -25.3604,
+          14.8039
+        ],
+        [
+          -22.6666,
+          17.1966
+        ]
+      ],
+      "flag": "🇨🇻",
+      "small": false
+    },
+    {
+      "iso_a2": "CW",
+      "iso_a3": "CUW",
+      "name": "Curaçao",
+      "region": "Americas",
+      "subregion": "Caribbean",
+      "centroid": [
+        -68.920578,
+        12.145039
+      ],
+      "bounds": [
+        [
+          -69.1717,
+          12.0413
+        ],
+        [
+          -68.7397,
+          12.3915
+        ]
+      ],
+      "flag": "🇨🇼",
+      "small": true
+    },
+    {
+      "iso_a2": "CY",
+      "iso_a3": "CYP",
+      "name": "Cyprus",
+      "region": "Asia",
+      "subregion": "Western Asia",
+      "centroid": [
+        33.084182,
+        34.913329
+      ],
+      "bounds": [
+        [
+          32.2717,
+          34.625
+        ],
+        [
+          34.0991,
+          35.1871
+        ]
+      ],
+      "flag": "🇨🇾",
+      "small": false
+    },
+    {
+      "iso_a2": "CZ",
+      "iso_a3": "CZE",
+      "name": "Czech Republic",
+      "region": "Europe",
+      "subregion": "Eastern Europe",
+      "centroid": [
+        15.377555,
+        49.882364
+      ],
+      "bounds": [
+        [
+          12.0761,
+          48.5579
+        ],
+        [
+          18.8374,
+          51.04
+        ]
+      ],
+      "flag": "🇨🇿",
+      "small": false
+    },
+    {
+      "iso_a2": "DE",
+      "iso_a3": "DEU",
+      "name": "Germany",
+      "region": "Europe",
+      "subregion": "Western Europe",
+      "centroid": [
+        9.678348,
+        50.961733
+      ],
+      "bounds": [
+        [
+          5.8525,
+          47.2711
+        ],
+        [
+          15.0221,
+          55.0653
+        ]
+      ],
+      "flag": "🇩🇪",
+      "small": false
+    },
+    {
+      "iso_a2": "DJ",
+      "iso_a3": "DJI",
+      "name": "Djibouti",
+      "region": "Africa",
+      "subregion": "Eastern Africa",
+      "centroid": [
+        42.498825,
+        11.976343
+      ],
+      "bounds": [
+        [
+          41.7491,
+          10.9298
+        ],
+        [
+          43.4187,
+          12.7079
+        ]
+      ],
+      "flag": "🇩🇯",
+      "small": false
+    },
+    {
+      "iso_a2": "DK",
+      "iso_a3": "DNK",
+      "name": "Denmark",
+      "region": "Europe",
+      "subregion": "Northern Europe",
+      "centroid": [
+        9.018163,
+        55.966965
+      ],
+      "bounds": [
+        [
+          8.094,
+          54.5686
+        ],
+        [
+          15.1514,
+          57.7512
+        ]
+      ],
+      "flag": "🇩🇰",
+      "small": false
+    },
+    {
+      "iso_a2": "DM",
+      "iso_a3": "DMA",
+      "name": "Dominica",
+      "region": "Americas",
+      "subregion": "Caribbean",
+      "centroid": [
+        -61.344958,
+        15.458829
+      ],
+      "bounds": [
+        [
+          -61.4889,
+          15.2018
+        ],
+        [
+          -61.2493,
+          15.6339
+        ]
+      ],
+      "flag": "🇩🇲",
+      "small": true
+    },
+    {
+      "iso_a2": "DO",
+      "iso_a3": "DOM",
+      "name": "Dominican Republic",
+      "region": "Americas",
+      "subregion": "Caribbean",
+      "centroid": [
+        -70.653998,
+        19.104137
+      ],
+      "bounds": [
+        [
+          -72.0098,
+          17.5456
+        ],
+        [
+          -68.3286,
+          19.9377
+        ]
+      ],
+      "flag": "🇩🇴",
+      "small": false
+    },
+    {
+      "iso_a2": "DZ",
+      "iso_a3": "DZA",
+      "name": "Algeria",
+      "region": "Africa",
+      "subregion": "Northern Africa",
+      "centroid": [
+        2.808241,
+        27.397406
+      ],
+      "bounds": [
+        [
+          -8.6824,
+          18.9756
+        ],
+        [
+          11.9689,
+          37.0939
+        ]
+      ],
+      "flag": "🇩🇿",
+      "small": false
+    },
+    {
+      "iso_a2": "EC",
+      "iso_a3": "ECU",
+      "name": "Ecuador",
+      "region": "Americas",
+      "subregion": "South America",
+      "centroid": [
+        -78.188375,
+        -1.259076
+      ],
+      "bounds": [
+        [
+          -92.0116,
+          -5.0114
+        ],
+        [
+          -75.2273,
+          1.6644
+        ]
+      ],
+      "flag": "🇪🇨",
+      "small": false
+    },
+    {
+      "iso_a2": "EE",
+      "iso_a3": "EST",
+      "name": "Estonia",
+      "region": "Europe",
+      "subregion": "Northern Europe",
+      "centroid": [
+        25.867126,
+        58.724865
+      ],
+      "bounds": [
+        [
+          21.8324,
+          57.5158
+        ],
+        [
+          28.1865,
+          59.6709
+        ]
+      ],
+      "flag": "🇪🇪",
+      "small": false
+    },
+    {
+      "iso_a2": "EG",
+      "iso_a3": "EGY",
+      "name": "Egypt",
+      "region": "Africa",
+      "subregion": "Northern Africa",
+      "centroid": [
+        29.445837,
+        26.186173
+      ],
+      "bounds": [
+        [
+          24.6883,
+          21.9944
+        ],
+        [
+          36.8992,
+          31.6565
+        ]
+      ],
+      "flag": "🇪🇬",
+      "small": false
+    },
+    {
+      "iso_a2": "EH",
+      "iso_a3": "ESH",
+      "name": "Western Sahara",
+      "region": "Africa",
+      "subregion": "Northern Africa",
+      "centroid": [
+        -12.630304,
+        23.967592
+      ],
+      "bounds": [
+        [
+          -17.1046,
+          20.7669
+        ],
+        [
+          -8.6808,
+          27.6615
+        ]
+      ],
+      "flag": "🇪🇭",
+      "small": false
+    },
+    {
+      "iso_a2": "ER",
+      "iso_a3": "ERI",
+      "name": "Eritrea",
+      "region": "Africa",
+      "subregion": "Eastern Africa",
+      "centroid": [
+        38.285566,
+        15.787401
+      ],
+      "bounds": [
+        [
+          36.4236,
+          12.36
+        ],
+        [
+          43.1239,
+          18.0048
+        ]
+      ],
+      "flag": "🇪🇷",
+      "small": false
+    },
+    {
+      "iso_a2": "ES",
+      "iso_a3": "ESP",
+      "name": "Spain",
+      "region": "Europe",
+      "subregion": "Southern Europe",
+      "centroid": [
+        -3.464718,
+        40.090953
+      ],
+      "bounds": [
+        [
+          -18.1672,
+          27.6422
+        ],
+        [
+          4.3371,
+          43.7934
+        ]
+      ],
+      "flag": "🇪🇸",
+      "small": false
+    },
+    {
+      "iso_a2": "ET",
+      "iso_a3": "ETH",
+      "name": "Ethiopia",
+      "region": "Africa",
+      "subregion": "Eastern Africa",
+      "centroid": [
+        39.0886,
+        8.032795
+      ],
+      "bounds": [
+        [
+          32.9898,
+          3.4033
+        ],
+        [
+          47.9792,
+          14.8795
+        ]
+      ],
+      "flag": "🇪🇹",
+      "small": false
+    },
+    {
+      "iso_a2": "FI",
+      "iso_a3": "FIN",
+      "name": "Finland",
+      "region": "Europe",
+      "subregion": "Northern Europe",
+      "centroid": [
+        27.276449,
+        63.252361
+      ],
+      "bounds": [
+        [
+          20.6232,
+          59.8112
+        ],
+        [
+          31.5695,
+          70.0753
+        ]
+      ],
+      "flag": "🇫🇮",
+      "small": false
+    },
+    {
+      "iso_a2": "FJ",
+      "iso_a3": "FJI",
+      "name": "Fiji",
+      "region": "Oceania",
+      "subregion": "Melanesia",
+      "centroid": [
+        177.975427,
+        -17.826099
+      ],
+      "bounds": [
+        [
+          174.5889,
+          -21.7111
+        ],
+        [
+          181.7839,
+          -12.4753
+        ]
+      ],
+      "flag": "🇫🇯",
+      "small": false
+    },
+    {
+      "iso_a2": "FK",
+      "iso_a3": "FLK",
+      "name": "Falkland Islands",
+      "region": "Americas",
+      "subregion": "South America",
+      "centroid": [
+        -58.738602,
+        -51.608913
+      ],
+      "bounds": [
+        [
+          -61.3182,
+          -52.4065
+        ],
+        [
+          -57.7343,
+          -51.0278
+        ]
+      ],
+      "flag": "🇫🇰",
+      "small": false
+    },
+    {
+      "iso_a2": "FM",
+      "iso_a3": "FSM",
+      "name": "Federated States of Micronesia",
+      "region": "Oceania",
+      "subregion": "Micronesia",
+      "centroid": [
+        158.234019,
+        6.887553
+      ],
+      "bounds": [
+        [
+          138.0638,
+          0.9182
+        ],
+        [
+          163.0466,
+          9.7756
+        ]
+      ],
+      "flag": "🇫🇲",
+      "small": false
+    },
+    {
+      "iso_a2": "FO",
+      "iso_a3": "FRO",
+      "name": "Faroe Islands",
+      "region": "Europe",
+      "subregion": "Northern Europe",
+      "centroid": [
+        -7.058429,
+        62.185604
+      ],
+      "bounds": [
+        [
+          -7.6442,
+          61.3941
+        ],
+        [
+          -6.2758,
+          62.3989
+        ]
+      ],
+      "flag": "🇫🇴",
+      "small": true
+    },
+    {
+      "iso_a2": "FR",
+      "iso_a3": "FRA",
+      "name": "France",
+      "region": "Europe",
+      "subregion": "Western Europe",
+      "centroid": [
+        2.552275,
+        46.696113
+      ],
+      "bounds": [
+        [
+          -109.2342,
+          -21.3708
+        ],
+        [
+          55.8545,
+          51.0875
+        ]
+      ],
+      "flag": "🇫🇷",
+      "small": false
+    },
+    {
+      "iso_a2": "GA",
+      "iso_a3": "GAB",
+      "name": "Gabon",
+      "region": "Africa",
+      "subregion": "Middle Africa",
+      "centroid": [
+        11.835939,
+        -0.437739
+      ],
+      "bounds": [
+        [
+          8.6956,
+          -3.9369
+        ],
+        [
+          14.499,
+          2.3225
+        ]
+      ],
+      "flag": "🇬🇦",
+      "small": true
+    },
+    {
+      "iso_a2": "GB",
+      "iso_a3": "GBR",
+      "name": "United Kingdom",
+      "region": "Europe",
+      "subregion": "Northern Europe",
+      "centroid": [
+        -2.116346,
+        54.402739
+      ],
+      "bounds": [
+        [
+          -13.6913,
+          49.9096
+        ],
+        [
+          1.7712,
+          60.8479
+        ]
+      ],
+      "flag": "🇬🇧",
+      "small": false
+    },
+    {
+      "iso_a2": "GD",
+      "iso_a3": "GRD",
+      "name": "Grenada",
+      "region": "Americas",
+      "subregion": "Caribbean",
+      "centroid": [
+        -61.680461,
+        12.113156
+      ],
+      "bounds": [
+        [
+          -61.7905,
+          12.0028
+        ],
+        [
+          -61.4216,
+          12.5297
+        ]
+      ],
+      "flag": "🇬🇩",
+      "small": false
+    },
+    {
+      "iso_a2": "GE",
+      "iso_a3": "GEO",
+      "name": "Georgia",
+      "region": "Asia",
+      "subregion": "Western Asia",
+      "centroid": [
+        43.735724,
+        41.870087
+      ],
+      "bounds": [
+        [
+          39.986,
+          41.0441
+        ],
+        [
+          46.6948,
+          43.5758
+        ]
+      ],
+      "flag": "🇬🇪",
+      "small": false
+    },
+    {
+      "iso_a2": "GG",
+      "iso_a3": "GGY",
+      "name": "Guernsey",
+      "region": "Europe",
+      "subregion": "Northern Europe",
+      "centroid": [
+        -2.561736,
+        49.463533
+      ],
+      "bounds": [
+        [
+          -2.6735,
+          49.4116
+        ],
+        [
+          -2.1703,
+          49.7314
+        ]
+      ],
+      "flag": "🇬🇬",
+      "small": false
+    },
+    {
+      "iso_a2": "GH",
+      "iso_a3": "GHA",
+      "name": "Ghana",
+      "region": "Africa",
+      "subregion": "Western Africa",
+      "centroid": [
+        -1.036941,
+        7.717639
+      ],
+      "bounds": [
+        [
+          -3.2625,
+          4.7371
+        ],
+        [
+          1.188,
+          11.1629
+        ]
+      ],
+      "flag": "🇬🇭",
+      "small": false
+    },
+    {
+      "iso_a2": "GI",
+      "iso_a3": "GIB",
+      "name": "Gibraltar",
+      "region": "Europe",
+      "subregion": "Southern Europe",
+      "centroid": [
+        -5.3467,
+        36.129426
+      ],
+      "bounds": [
+        [
+          -5.3584,
+          36.1105
+        ],
+        [
+          -5.3388,
+          36.1411
+        ]
+      ],
+      "flag": "🇬🇮",
+      "small": true
+    },
+    {
+      "iso_a2": "GL",
+      "iso_a3": "GRL",
+      "name": "Greenland",
+      "region": "Americas",
+      "subregion": "Northern America",
+      "centroid": [
+        -39.335251,
+        74.319387
+      ],
+      "bounds": [
+        [
+          -73.0572,
+          59.7926
+        ],
+        [
+          -11.3768,
+          83.6341
+        ]
+      ],
+      "flag": "🇬🇱",
+      "small": false
+    },
+    {
+      "iso_a2": "GM",
+      "iso_a3": "GMB",
+      "name": "The Gambia",
+      "region": "Africa",
+      "subregion": "Western Africa",
+      "centroid": [
+        -14.998318,
+        13.641721
+      ],
+      "bounds": [
+        [
+          -16.8297,
+          13.065
+        ],
+        [
+          -13.8187,
+          13.82
+        ]
+      ],
+      "flag": "🇬🇲",
+      "small": false
+    },
+    {
+      "iso_a2": "GN",
+      "iso_a3": "GIN",
+      "name": "Guinea",
+      "region": "Africa",
+      "subregion": "Western Africa",
+      "centroid": [
+        -10.016402,
+        10.618516
+      ],
+      "bounds": [
+        [
+          -15.0811,
+          7.1902
+        ],
+        [
+          -7.6624,
+          12.6734
+        ]
+      ],
+      "flag": "🇬🇳",
+      "small": false
+    },
+    {
+      "iso_a2": "GQ",
+      "iso_a3": "GNQ",
+      "name": "Equatorial Guinea",
+      "region": "Africa",
+      "subregion": "Middle Africa",
+      "centroid": [
+        8.9902,
+        2.333
+      ],
+      "bounds": [
+        [
+          5.612,
+          -1.4757
+        ],
+        [
+          11.3363,
+          3.7724
+        ]
+      ],
+      "flag": "🇬🇶",
+      "small": false
+    },
+    {
+      "iso_a2": "GR",
+      "iso_a3": "GRC",
+      "name": "Greece",
+      "region": "Europe",
+      "subregion": "Southern Europe",
+      "centroid": [
+        21.72568,
+        39.492763
+      ],
+      "bounds": [
+        [
+          19.6265,
+          34.815
+        ],
+        [
+          28.2398,
+          41.7505
+        ]
+      ],
+      "flag": "🇬🇷",
+      "small": false
+    },
+    {
+      "iso_a2": "GS",
+      "iso_a3": "SGS",
+      "name": "South Georgia and the South Sandwich Islands",
+      "region": "Americas",
+      "subregion": "Seven seas (open ocean)",
+      "centroid": [
+        -31.063179,
+        -55.683402
+      ],
+      "bounds": [
+        [
+          -38.087,
+          -59.4728
+        ],
+        [
+          -26.2393,
+          -53.9724
+        ]
+      ],
+      "flag": "🇬🇸",
+      "small": true
+    },
+    {
+      "iso_a2": "GT",
+      "iso_a3": "GTM",
+      "name": "Guatemala",
+      "region": "Americas",
+      "subregion": "Central America",
+      "centroid": [
+        -90.497134,
+        14.982133
+      ],
+      "bounds": [
+        [
+          -92.2463,
+          13.7314
+        ],
+        [
+          -88.2209,
+          17.816
+        ]
+      ],
+      "flag": "🇬🇹",
+      "small": true
+    },
+    {
+      "iso_a2": "GU",
+      "iso_a3": "GUM",
+      "name": "Guam",
+      "region": "Oceania",
+      "subregion": "Micronesia",
+      "centroid": [
+        144.703614,
+        13.354173
+      ],
+      "bounds": [
+        [
+          144.6242,
+          13.241
+        ],
+        [
+          144.9522,
+          13.6541
+        ]
+      ],
+      "flag": "🇬🇺",
+      "small": true
+    },
+    {
+      "iso_a2": "GW",
+      "iso_a3": "GNB",
+      "name": "Guinea-Bissau",
+      "region": "Africa",
+      "subregion": "Western Africa",
+      "centroid": [
+        -14.52413,
+        12.163712
+      ],
+      "bounds": [
+        [
+          -16.7284,
+          10.9276
+        ],
+        [
+          -13.6607,
+          12.6794
+        ]
+      ],
+      "flag": "🇬🇼",
+      "small": false
+    },
+    {
+      "iso_a2": "GY",
+      "iso_a3": "GUY",
+      "name": "Guyana",
+      "region": "Americas",
+      "subregion": "South America",
+      "centroid": [
+        -58.942643,
+        5.124317
+      ],
+      "bounds": [
+        [
+          -61.3967,
+          1.1858
+        ],
+        [
+          -56.4818,
+          8.558
+        ]
+      ],
+      "flag": "🇬🇾",
+      "small": false
+    },
+    {
+      "iso_a2": "HK",
+      "iso_a3": "HKG",
+      "name": "Hong Kong",
+      "region": "Asia",
+      "subregion": "Eastern Asia",
+      "centroid": [
+        114.097769,
+        22.448829
+      ],
+      "bounds": [
+        [
+          113.8373,
+          22.1771
+        ],
+        [
+          114.4013,
+          22.5639
+        ]
+      ],
+      "flag": "🇭🇰",
+      "small": false
+    },
+    {
+      "iso_a2": "HM",
+      "iso_a3": "HMD",
+      "name": "Heard Island and McDonald Islands",
+      "region": "Africa",
+      "subregion": "Seven seas (open ocean)",
+      "centroid": [
+        73.50521,
+        -53.103462
+      ],
+      "bounds": [
+        [
+          73.236,
+          -53.1926
+        ],
+        [
+          73.8122,
+          -52.9616
+        ]
+      ],
+      "flag": "🇭🇲",
+      "small": false
+    },
+    {
+      "iso_a2": "HN",
+      "iso_a3": "HND",
+      "name": "Honduras",
+      "region": "Americas",
+      "subregion": "Central America",
+      "centroid": [
+        -86.887604,
+        14.794801
+      ],
+      "bounds": [
+        [
+          -89.3638,
+          12.9798
+        ],
+        [
+          -83.1304,
+          17.4186
+        ]
+      ],
+      "flag": "🇭🇳",
+      "small": false
+    },
+    {
+      "iso_a2": "HR",
+      "iso_a3": "HRV",
+      "name": "Croatia",
+      "region": "Europe",
+      "subregion": "Southern Europe",
+      "centroid": [
+        16.37241,
+        45.805799
+      ],
+      "bounds": [
+        [
+          13.5015,
+          42.4163
+        ],
+        [
+          19.4078,
+          46.547
+        ]
+      ],
+      "flag": "🇭🇷",
+      "small": false
+    },
+    {
+      "iso_a2": "HT",
+      "iso_a3": "HTI",
+      "name": "Haiti",
+      "region": "Americas",
+      "subregion": "Caribbean",
+      "centroid": [
+        -72.224051,
+        19.263784
+      ],
+      "bounds": [
+        [
+          -74.4892,
+          18.0259
+        ],
+        [
+          -71.6391,
+          20.0898
+        ]
+      ],
+      "flag": "🇭🇹",
+      "small": false
+    },
+    {
+      "iso_a2": "HU",
+      "iso_a3": "HUN",
+      "name": "Hungary",
+      "region": "Europe",
+      "subregion": "Eastern Europe",
+      "centroid": [
+        19.447867,
+        47.086841
+      ],
+      "bounds": [
+        [
+          16.094,
+          45.7413
+        ],
+        [
+          22.8776,
+          48.5692
+        ]
+      ],
+      "flag": "🇭🇺",
+      "small": false
+    },
+    {
+      "iso_a2": "ID",
+      "iso_a3": "IDN",
+      "name": "Indonesia",
+      "region": "Asia",
+      "subregion": "South-Eastern Asia",
+      "centroid": [
+        101.892949,
+        -0.954404
+      ],
+      "bounds": [
+        [
+          95.0127,
+          -10.9226
+        ],
+        [
+          140.9776,
+          5.9101
+        ]
+      ],
+      "flag": "🇮🇩",
+      "small": false
+    },
+    {
+      "iso_a2": "IE",
+      "iso_a3": "IRL",
+      "name": "Ireland",
+      "region": "Europe",
+      "subregion": "Northern Europe",
+      "centroid": [
+        -7.798588,
+        53.078726
+      ],
+      "bounds": [
+        [
+          -10.4782,
+          51.4457
+        ],
+        [
+          -5.9935,
+          55.3864
+        ]
+      ],
+      "flag": "🇮🇪",
+      "small": false
+    },
+    {
+      "iso_a2": "IL",
+      "iso_a3": "ISR",
+      "name": "Israel",
+      "region": "Asia",
+      "subregion": "Western Asia",
+      "centroid": [
+        34.847915,
+        30.911148
+      ],
+      "bounds": [
+        [
+          34.2484,
+          29.4897
+        ],
+        [
+          35.8881,
+          33.4067
+        ]
+      ],
+      "flag": "🇮🇱",
+      "small": false
+    },
+    {
+      "iso_a2": "IM",
+      "iso_a3": "IMN",
+      "name": "Isle of Man",
+      "region": "Europe",
+      "subregion": "Northern Europe",
+      "centroid": [
+        -4.530069,
+        54.220833
+      ],
+      "bounds": [
+        [
+          -4.7902,
+          54.057
+        ],
+        [
+          -4.3119,
+          54.419
+        ]
+      ],
+      "flag": "🇮🇲",
+      "small": false
+    },
+    {
+      "iso_a2": "IN",
+      "iso_a3": "IND",
+      "name": "India",
+      "region": "Asia",
+      "subregion": "Southern Asia",
+      "centroid": [
+        79.358105,
+        22.686852
+      ],
+      "bounds": [
+        [
+          68.1434,
+          6.7456
+        ],
+        [
+          97.3623,
+          35.4954
+        ]
+      ],
+      "flag": "🇮🇳",
+      "small": false
+    },
+    {
+      "iso_a2": "IO",
+      "iso_a3": "IOT",
+      "name": "British Indian Ocean Territory",
+      "region": "Africa",
+      "subregion": "Seven seas (open ocean)",
+      "centroid": [
+        71.348349,
+        -6.190826
+      ],
+      "bounds": [
+        [
+          71.261,
+          -7.4322
+        ],
+        [
+          72.4946,
+          -5.227
+        ]
+      ],
+      "flag": "🇮🇴",
+      "small": true
+    },
+    {
+      "iso_a2": "IQ",
+      "iso_a3": "IRQ",
+      "name": "Iraq",
+      "region": "Asia",
+      "subregion": "Western Asia",
+      "centroid": [
+        43.26181,
+        33.09403
+      ],
+      "bounds": [
+        [
+          38.7745,
+          29.0631
+        ],
+        [
+          48.5593,
+          37.3755
+        ]
+      ],
+      "flag": "🇮🇶",
+      "small": false
+    },
+    {
+      "iso_a2": "IR",
+      "iso_a3": "IRN",
+      "name": "Iran",
+      "region": "Asia",
+      "subregion": "Southern Asia",
+      "centroid": [
+        54.931495,
+        32.166225
+      ],
+      "bounds": [
+        [
+          44.0149,
+          25.0594
+        ],
+        [
+          63.3196,
+          39.7715
+        ]
+      ],
+      "flag": "🇮🇷",
+      "small": false
+    },
+    {
+      "iso_a2": "IS",
+      "iso_a3": "ISL",
+      "name": "Iceland",
+      "region": "Europe",
+      "subregion": "Northern Europe",
+      "centroid": [
+        -18.673711,
+        64.779286
+      ],
+      "bounds": [
+        [
+          -24.5399,
+          63.3967
+        ],
+        [
+          -13.5029,
+          66.5642
+        ]
+      ],
+      "flag": "🇮🇸",
+      "small": false
+    },
+    {
+      "iso_a2": "IT",
+      "iso_a3": "ITA",
+      "name": "Italy",
+      "region": "Europe",
+      "subregion": "Southern Europe",
+      "centroid": [
+        11.076907,
+        44.732482
+      ],
+      "bounds": [
+        [
+          6.6027,
+          35.4892
+        ],
+        [
+          18.5174,
+          47.0852
+        ]
+      ],
+      "flag": "🇮🇹",
+      "small": false
+    },
+    {
+      "iso_a2": "JE",
+      "iso_a3": "JEY",
+      "name": "Jersey",
+      "region": "Europe",
+      "subregion": "Northern Europe",
+      "centroid": [
+        -2.090146,
+        49.220808
+      ],
+      "bounds": [
+        [
+          -2.242,
+          49.1713
+        ],
+        [
+          -2.0083,
+          49.267
+        ]
+      ],
+      "flag": "🇯🇪",
+      "small": false
+    },
+    {
+      "iso_a2": "JM",
+      "iso_a3": "JAM",
+      "name": "Jamaica",
+      "region": "Americas",
+      "subregion": "Caribbean",
+      "centroid": [
+        -77.318767,
+        18.137124
+      ],
+      "bounds": [
+        [
+          -78.3747,
+          17.7032
+        ],
+        [
+          -76.188,
+          18.5251
+        ]
+      ],
+      "flag": "🇯🇲",
+      "small": false
+    },
+    {
+      "iso_a2": "JO",
+      "iso_a3": "JOR",
+      "name": "Jordan",
+      "region": "Asia",
+      "subregion": "Western Asia",
+      "centroid": [
+        36.375991,
+        30.805025
+      ],
+      "bounds": [
+        [
+          34.9494,
+          29.19
+        ],
+        [
+          39.292,
+          33.3717
+        ]
+      ],
+      "flag": "🇯🇴",
+      "small": false
+    },
+    {
+      "iso_a2": "JP",
+      "iso_a3": "JPN",
+      "name": "Japan",
+      "region": "Asia",
+      "subregion": "Eastern Asia",
+      "centroid": [
+        138.44217,
+        36.142538
+      ],
+      "bounds": [
+        [
+          122.9382,
+          24.2121
+        ],
+        [
+          153.9856,
+          45.5204
+        ]
+      ],
+      "flag": "🇯🇵",
+      "small": false
+    },
+    {
+      "iso_a2": "KE",
+      "iso_a3": "KEN",
+      "name": "Kenya",
+      "region": "Africa",
+      "subregion": "Eastern Africa",
+      "centroid": [
+        37.907632,
+        0.549043
+      ],
+      "bounds": [
+        [
+          33.8905,
+          -4.6775
+        ],
+        [
+          41.885,
+          5.0304
+        ]
+      ],
+      "flag": "🇰🇪",
+      "small": false
+    },
+    {
+      "iso_a2": "KG",
+      "iso_a3": "KGZ",
+      "name": "Kyrgyzstan",
+      "region": "Asia",
+      "subregion": "Central Asia",
+      "centroid": [
+        74.532637,
+        41.66854
+      ],
+      "bounds": [
+        [
+          69.2263,
+          39.1892
+        ],
+        [
+          80.2576,
+          43.2617
+        ]
+      ],
+      "flag": "🇰🇬",
+      "small": false
+    },
+    {
+      "iso_a2": "KH",
+      "iso_a3": "KHM",
+      "name": "Cambodia",
+      "region": "Asia",
+      "subregion": "South-Eastern Asia",
+      "centroid": [
+        104.50487,
+        12.647584
+      ],
+      "bounds": [
+        [
+          102.3134,
+          10.4158
+        ],
+        [
+          107.6105,
+          14.7046
+        ]
+      ],
+      "flag": "🇰🇭",
+      "small": false
+    },
+    {
+      "iso_a2": "KI",
+      "iso_a3": "KIR",
+      "name": "Kiribati",
+      "region": "Oceania",
+      "subregion": "Micronesia",
+      "centroid": [
+        -157.384577,
+        1.820437
+      ],
+      "bounds": [
+        [
+          169.5221,
+          -11.4611
+        ],
+        [
+          208.219,
+          4.7231
+        ]
+      ],
+      "flag": "🇰🇮",
+      "small": true
+    },
+    {
+      "iso_a2": "KM",
+      "iso_a3": "COM",
+      "name": "Comoros",
+      "region": "Africa",
+      "subregion": "Eastern Africa",
+      "centroid": [
+        43.318094,
+        -11.727683
+      ],
+      "bounds": [
+        [
+          43.2132,
+          -12.3803
+        ],
+        [
+          44.5291,
+          -11.3613
+        ]
+      ],
+      "flag": "🇰🇲",
+      "small": true
+    },
+    {
+      "iso_a2": "KN",
+      "iso_a3": "KNA",
+      "name": "Saint Kitts and Nevis",
+      "region": "Americas",
+      "subregion": "Caribbean",
+      "centroid": [
+        -62.757975,
+        17.336558
+      ],
+      "bounds": [
+        [
+          -62.8611,
+          17.1005
+        ],
+        [
+          -62.5368,
+          17.4158
+        ]
+      ],
+      "flag": "🇰🇳",
+      "small": true
+    },
+    {
+      "iso_a2": "KP",
+      "iso_a3": "PRK",
+      "name": "North Korea",
+      "region": "Asia",
+      "subregion": "Eastern Asia",
+      "centroid": [
+        126.444516,
+        39.885252
+      ],
+      "bounds": [
+        [
+          124.2113,
+          37.6756
+        ],
+        [
+          130.7,
+          43.0103
+        ]
+      ],
+      "flag": "🇰🇵",
+      "small": false
+    },
+    {
+      "iso_a2": "KR",
+      "iso_a3": "KOR",
+      "name": "South Korea",
+      "region": "Asia",
+      "subregion": "Eastern Asia",
+      "centroid": [
+        128.129504,
+        36.384924
+      ],
+      "bounds": [
+        [
+          124.6136,
+          33.1976
+        ],
+        [
+          131.8625,
+          38.6243
+        ]
+      ],
+      "flag": "🇰🇷",
+      "small": false
+    },
+    {
+      "iso_a2": "KW",
+      "iso_a3": "KWT",
+      "name": "Kuwait",
+      "region": "Asia",
+      "subregion": "Western Asia",
+      "centroid": [
+        47.313999,
+        29.413628
+      ],
+      "bounds": [
+        [
+          46.5324,
+          28.5335
+        ],
+        [
+          48.4328,
+          30.0982
+        ]
+      ],
+      "flag": "🇰🇼",
+      "small": false
+    },
+    {
+      "iso_a2": "KY",
+      "iso_a3": "CYM",
+      "name": "Cayman Islands",
+      "region": "Americas",
+      "subregion": "Caribbean",
+      "centroid": [
+        -81.24055,
+        19.319862
+      ],
+      "bounds": [
+        [
+          -81.4165,
+          19.2639
+        ],
+        [
+          -79.7266,
+          19.7576
+        ]
+      ],
+      "flag": "🇰🇾",
+      "small": true
+    },
+    {
+      "iso_a2": "KZ",
+      "iso_a3": "KAZ",
+      "name": "Kazakhstan",
+      "region": "Asia",
+      "subregion": "Central Asia",
+      "centroid": [
+        68.685548,
+        49.054149
+      ],
+      "bounds": [
+        [
+          46.4783,
+          40.5847
+        ],
+        [
+          87.3238,
+          55.4346
+        ]
+      ],
+      "flag": "🇰🇿",
+      "small": false
+    },
+    {
+      "iso_a2": "LA",
+      "iso_a3": "LAO",
+      "name": "Laos",
+      "region": "Asia",
+      "subregion": "South-Eastern Asia",
+      "centroid": [
+        102.533912,
+        19.431821
+      ],
+      "bounds": [
+        [
+          100.0971,
+          13.9155
+        ],
+        [
+          107.6644,
+          22.496
+        ]
+      ],
+      "flag": "🇱🇦",
+      "small": false
+    },
+    {
+      "iso_a2": "LB",
+      "iso_a3": "LBN",
+      "name": "Lebanon",
+      "region": "Asia",
+      "subregion": "Western Asia",
+      "centroid": [
+        35.992892,
+        34.133368
+      ],
+      "bounds": [
+        [
+          35.0996,
+          33.0556
+        ],
+        [
+          36.6041,
+          34.6875
+        ]
+      ],
+      "flag": "🇱🇧",
+      "small": true
+    },
+    {
+      "iso_a2": "LC",
+      "iso_a3": "LCA",
+      "name": "Saint Lucia",
+      "region": "Americas",
+      "subregion": "Caribbean",
+      "centroid": [
+        -60.980094,
+        13.892371
+      ],
+      "bounds": [
+        [
+          -61.0785,
+          13.7147
+        ],
+        [
+          -60.883,
+          14.1119
+        ]
+      ],
+      "flag": "🇱🇨",
+      "small": true
+    },
+    {
+      "iso_a2": "LI",
+      "iso_a3": "LIE",
+      "name": "Liechtenstein",
+      "region": "Europe",
+      "subregion": "Western Europe",
+      "centroid": [
+        9.559439,
+        47.111405
+      ],
+      "bounds": [
+        [
+          9.4759,
+          47.0524
+        ],
+        [
+          9.6157,
+          47.2628
+        ]
+      ],
+      "flag": "🇱🇮",
+      "small": true
+    },
+    {
+      "iso_a2": "LK",
+      "iso_a3": "LKA",
+      "name": "Sri Lanka",
+      "region": "Asia",
+      "subregion": "Southern Asia",
+      "centroid": [
+        80.704823,
+        7.581097
+      ],
+      "bounds": [
+        [
+          79.6558,
+          5.9237
+        ],
+        [
+          81.8903,
+          9.8296
+        ]
+      ],
+      "flag": "🇱🇰",
+      "small": false
+    },
+    {
+      "iso_a2": "LR",
+      "iso_a3": "LBR",
+      "name": "Liberia",
+      "region": "Africa",
+      "subregion": "Western Africa",
+      "centroid": [
+        -9.460379,
+        6.447177
+      ],
+      "bounds": [
+        [
+          -11.4762,
+          4.3472
+        ],
+        [
+          -7.3841,
+          8.5654
+        ]
+      ],
+      "flag": "🇱🇷",
+      "small": false
+    },
+    {
+      "iso_a2": "LS",
+      "iso_a3": "LSO",
+      "name": "Lesotho",
+      "region": "Africa",
+      "subregion": "Southern Africa",
+      "centroid": [
+        28.246639,
+        -29.480158
+      ],
+      "bounds": [
+        [
+          27.0022,
+          -30.6588
+        ],
+        [
+          29.4359,
+          -28.5708
+        ]
+      ],
+      "flag": "🇱🇸",
+      "small": false
+    },
+    {
+      "iso_a2": "LT",
+      "iso_a3": "LTU",
+      "name": "Lithuania",
+      "region": "Europe",
+      "subregion": "Northern Europe",
+      "centroid": [
+        24.089932,
+        55.103703
+      ],
+      "bounds": [
+        [
+          20.9246,
+          53.8868
+        ],
+        [
+          26.8007,
+          56.4426
+        ]
+      ],
+      "flag": "🇱🇹",
+      "small": false
+    },
+    {
+      "iso_a2": "LU",
+      "iso_a3": "LUX",
+      "name": "Luxembourg",
+      "region": "Europe",
+      "subregion": "Western Europe",
+      "centroid": [
+        6.07762,
+        49.733732
+      ],
+      "bounds": [
+        [
+          5.7149,
+          49.4413
+        ],
+        [
+          6.5026,
+          50.175
+        ]
+      ],
+      "flag": "🇱🇺",
+      "small": true
+    },
+    {
+      "iso_a2": "LV",
+      "iso_a3": "LVA",
+      "name": "Latvia",
+      "region": "Europe",
+      "subregion": "Northern Europe",
+      "centroid": [
+        25.458723,
+        57.066872
+      ],
+      "bounds": [
+        [
+          20.9686,
+          55.667
+        ],
+        [
+          28.2173,
+          58.0751
+        ]
+      ],
+      "flag": "🇱🇻",
+      "small": false
+    },
+    {
+      "iso_a2": "LY",
+      "iso_a3": "LBY",
+      "name": "Libya",
+      "region": "Africa",
+      "subregion": "Northern Africa",
+      "centroid": [
+        18.011015,
+        26.638944
+      ],
+      "bounds": [
+        [
+          9.2865,
+          19.4961
+        ],
+        [
+          25.1563,
+          33.1812
+        ]
+      ],
+      "flag": "🇱🇾",
+      "small": false
+    },
+    {
+      "iso_a2": "MA",
+      "iso_a3": "MAR",
+      "name": "Morocco",
+      "region": "Africa",
+      "subregion": "Northern Africa",
+      "centroid": [
+        -7.187296,
+        31.650723
+      ],
+      "bounds": [
+        [
+          -17.0137,
+          21.42
+        ],
+        [
+          -1.032,
+          35.9265
+        ]
+      ],
+      "flag": "🇲🇦",
+      "small": false
+    },
+    {
+      "iso_a2": "MC",
+      "iso_a3": "MCO",
+      "name": "Monaco",
+      "region": "Europe",
+      "subregion": "Western Europe",
+      "centroid": [
+        7.398291,
+        43.739652
+      ],
+      "bounds": [
+        [
+          7.3658,
+          43.718
+        ],
+        [
+          7.4375,
+          43.7635
+        ]
+      ],
+      "flag": "🇲🇨",
+      "small": true
+    },
+    {
+      "iso_a2": "MD",
+      "iso_a3": "MDA",
+      "name": "Moldova",
+      "region": "Europe",
+      "subregion": "Eastern Europe",
+      "centroid": [
+        28.487904,
+        47.434999
+      ],
+      "bounds": [
+        [
+          26.6179,
+          45.4618
+        ],
+        [
+          30.1316,
+          48.486
+        ]
+      ],
+      "flag": "🇲🇩",
+      "small": false
+    },
+    {
+      "iso_a2": "ME",
+      "iso_a3": "MNE",
+      "name": "Montenegro",
+      "region": "Europe",
+      "subregion": "Southern Europe",
+      "centroid": [
+        19.143727,
+        42.803101
+      ],
+      "bounds": [
+        [
+          18.4335,
+          41.8524
+        ],
+        [
+          20.3552,
+          43.5479
+        ]
+      ],
+      "flag": "🇲🇪",
+      "small": false
+    },
+    {
+      "iso_a2": "MF",
+      "iso_a3": "MAF",
+      "name": "Saint Martin",
+      "region": "Americas",
+      "subregion": "Caribbean",
+      "centroid": [
+        -63.049399,
+        18.081302
+      ],
+      "bounds": [
+        [
+          -63.1468,
+          18.0334
+        ],
+        [
+          -63.0107,
+          18.1221
+        ]
+      ],
+      "flag": "🇲🇫",
+      "small": true
+    },
+    {
+      "iso_a2": "MG",
+      "iso_a3": "MDG",
+      "name": "Madagascar",
+      "region": "Africa",
+      "subregion": "Eastern Africa",
+      "centroid": [
+        46.704241,
+        -18.628288
+      ],
+      "bounds": [
+        [
+          43.2229,
+          -25.5986
+        ],
+        [
+          50.5039,
+          -11.9436
+        ]
+      ],
+      "flag": "🇲🇬",
+      "small": false
+    },
+    {
+      "iso_a2": "MH",
+      "iso_a3": "MHL",
+      "name": "Marshall Islands",
+      "region": "Oceania",
+      "subregion": "Micronesia",
+      "centroid": [
+        171.193609,
+        7.082568
+      ],
+      "bounds": [
+        [
+          165.2822,
+          4.5738
+        ],
+        [
+          172.0298,
+          14.6105
+        ]
+      ],
+      "flag": "🇲🇭",
+      "small": true
+    },
+    {
+      "iso_a2": "MK",
+      "iso_a3": "MKD",
+      "name": "North Macedonia",
+      "region": "Europe",
+      "subregion": "Southern Europe",
+      "centroid": [
+        21.555839,
+        41.558223
+      ],
+      "bounds": [
+        [
+          20.4442,
+          40.8494
+        ],
+        [
+          23.0096,
+          42.3703
+        ]
+      ],
+      "flag": "🇲🇰",
+      "small": false
+    },
+    {
+      "iso_a2": "ML",
+      "iso_a3": "MLI",
+      "name": "Mali",
+      "region": "Africa",
+      "subregion": "Western Africa",
+      "centroid": [
+        -2.038455,
+        18.692713
+      ],
+      "bounds": [
+        [
+          -12.2641,
+          10.1401
+        ],
+        [
+          4.2356,
+          24.9951
+        ]
+      ],
+      "flag": "🇲🇱",
+      "small": false
+    },
+    {
+      "iso_a2": "MM",
+      "iso_a3": "MMR",
+      "name": "Myanmar",
+      "region": "Asia",
+      "subregion": "South-Eastern Asia",
+      "centroid": [
+        95.804497,
+        21.573855
+      ],
+      "bounds": [
+        [
+          92.175,
+          9.7907
+        ],
+        [
+          101.1739,
+          28.5385
+        ]
+      ],
+      "flag": "🇲🇲",
+      "small": false
+    },
+    {
+      "iso_a2": "MN",
+      "iso_a3": "MNG",
+      "name": "Mongolia",
+      "region": "Asia",
+      "subregion": "Eastern Asia",
+      "centroid": [
+        104.150405,
+        45.997488
+      ],
+      "bounds": [
+        [
+          87.7357,
+          41.5861
+        ],
+        [
+          119.907,
+          52.1296
+        ]
+      ],
+      "flag": "🇲🇳",
+      "small": false
+    },
+    {
+      "iso_a2": "MO",
+      "iso_a3": "MAC",
+      "name": "Macau",
+      "region": "Asia",
+      "subregion": "Eastern Asia",
+      "centroid": [
+        113.556038,
+        22.129735
+      ],
+      "bounds": [
+        [
+          113.5199,
+          22.1054
+        ],
+        [
+          113.5875,
+          22.2208
+        ]
+      ],
+      "flag": "🇲🇴",
+      "small": false
+    },
+    {
+      "iso_a2": "MP",
+      "iso_a3": "MNP",
+      "name": "Northern Mariana Islands",
+      "region": "Oceania",
+      "subregion": "Micronesia",
+      "centroid": [
+        145.734397,
+        15.188188
+      ],
+      "bounds": [
+        [
+          144.9021,
+          14.1107
+        ],
+        [
+          145.8689,
+          20.5554
+        ]
+      ],
+      "flag": "🇲🇵",
+      "small": true
+    },
+    {
+      "iso_a2": "MR",
+      "iso_a3": "MRT",
+      "name": "Mauritania",
+      "region": "Africa",
+      "subregion": "Western Africa",
+      "centroid": [
+        -9.740299,
+        19.587062
+      ],
+      "bounds": [
+        [
+          -17.0812,
+          14.7344
+        ],
+        [
+          -4.8216,
+          27.2854
+        ]
+      ],
+      "flag": "🇲🇷",
+      "small": false
+    },
+    {
+      "iso_a2": "MS",
+      "iso_a3": "MSR",
+      "name": "Montserrat",
+      "region": "Americas",
+      "subregion": "Caribbean",
+      "centroid": [
+        -62.188252,
+        16.73717
+      ],
+      "bounds": [
+        [
+          -62.2301,
+          16.6754
+        ],
+        [
+          -62.1405,
+          16.8193
+        ]
+      ],
+      "flag": "🇲🇸",
+      "small": true
+    },
+    {
+      "iso_a2": "MT",
+      "iso_a3": "MLT",
+      "name": "Malta",
+      "region": "Europe",
+      "subregion": "Southern Europe",
+      "centroid": [
+        14.433005,
+        35.892886
+      ],
+      "bounds": [
+        [
+          14.1836,
+          35.8012
+        ],
+        [
+          14.5671,
+          36.0756
+        ]
+      ],
+      "flag": "🇲🇹",
+      "small": true
+    },
+    {
+      "iso_a2": "MU",
+      "iso_a3": "MUS",
+      "name": "Mauritius",
+      "region": "Africa",
+      "subregion": "Eastern Africa",
+      "centroid": [
+        57.565848,
+        -20.299506
+      ],
+      "bounds": [
+        [
+          56.5242,
+          -20.5173
+        ],
+        [
+          63.4939,
+          -10.3239
+        ]
+      ],
+      "flag": "🇲🇺",
+      "small": true
+    },
+    {
+      "iso_a2": "MV",
+      "iso_a3": "MDV",
+      "name": "Maldives",
+      "region": "Asia",
+      "subregion": "Southern Asia",
+      "centroid": [
+        73.507554,
+        4.174441
+      ],
+      "bounds": [
+        [
+          72.6848,
+          -0.6886
+        ],
+        [
+          73.7532,
+          7.1072
+        ]
+      ],
+      "flag": "🇲🇻",
+      "small": true
+    },
+    {
+      "iso_a2": "MW",
+      "iso_a3": "MWI",
+      "name": "Malawi",
+      "region": "Africa",
+      "subregion": "Eastern Africa",
+      "centroid": [
+        33.608082,
+        -13.386737
+      ],
+      "bounds": [
+        [
+          32.6633,
+          -17.1353
+        ],
+        [
+          35.9043,
+          -9.3812
+        ]
+      ],
+      "flag": "🇲🇼",
+      "small": false
+    },
+    {
+      "iso_a2": "MX",
+      "iso_a3": "MEX",
+      "name": "Mexico",
+      "region": "Americas",
+      "subregion": "Central America",
+      "centroid": [
+        -102.289448,
+        23.919988
+      ],
+      "bounds": [
+        [
+          -118.3688,
+          14.5463
+        ],
+        [
+          -86.7006,
+          32.7128
+        ]
+      ],
+      "flag": "🇲🇽",
+      "small": false
+    },
+    {
+      "iso_a2": "MY",
+      "iso_a3": "MYS",
+      "name": "Malaysia",
+      "region": "Asia",
+      "subregion": "South-Eastern Asia",
+      "centroid": [
+        113.83708,
+        2.528667
+      ],
+      "bounds": [
+        [
+          99.6452,
+          0.8514
+        ],
+        [
+          119.2781,
+          7.3558
+        ]
+      ],
+      "flag": "🇲🇾",
+      "small": false
+    },
+    {
+      "iso_a2": "MZ",
+      "iso_a3": "MOZ",
+      "name": "Mozambique",
+      "region": "Africa",
+      "subregion": "Eastern Africa",
+      "centroid": [
+        37.83789,
+        -13.94323
+      ],
+      "bounds": [
+        [
+          30.2138,
+          -26.8603
+        ],
+        [
+          40.848,
+          -10.469
+        ]
+      ],
+      "flag": "🇲🇿",
+      "small": false
+    },
+    {
+      "iso_a2": "NA",
+      "iso_a3": "NAM",
+      "name": "Namibia",
+      "region": "Africa",
+      "subregion": "Southern Africa",
+      "centroid": [
+        17.108166,
+        -20.575298
+      ],
+      "bounds": [
+        [
+          11.7176,
+          -28.9594
+        ],
+        [
+          25.2598,
+          -16.9511
+        ]
+      ],
+      "flag": "🇳🇦",
+      "small": false
+    },
+    {
+      "iso_a2": "NC",
+      "iso_a3": "NCL",
+      "name": "New Caledonia",
+      "region": "Oceania",
+      "subregion": "Melanesia",
+      "centroid": [
+        165.084004,
+        -21.064697
+      ],
+      "bounds": [
+        [
+          163.6157,
+          -22.6707
+        ],
+        [
+          171.3438,
+          -19.6237
+        ]
+      ],
+      "flag": "🇳🇨",
+      "small": false
+    },
+    {
+      "iso_a2": "NE",
+      "iso_a3": "NER",
+      "name": "Niger",
+      "region": "Africa",
+      "subregion": "Western Africa",
+      "centroid": [
+        9.504356,
+        17.446195
+      ],
+      "bounds": [
+        [
+          0.1529,
+          11.6958
+        ],
+        [
+          15.9703,
+          23.5174
+        ]
+      ],
+      "flag": "🇳🇪",
+      "small": false
+    },
+    {
+      "iso_a2": "NF",
+      "iso_a3": "NFK",
+      "name": "Norfolk Island",
+      "region": "Oceania",
+      "subregion": "Australia and New Zealand",
+      "centroid": [
+        167.954531,
+        -29.033042
+      ],
+      "bounds": [
+        [
+          167.9121,
+          -29.08
+        ],
+        [
+          167.9963,
+          -28.9975
+        ]
+      ],
+      "flag": "🇳🇫",
+      "small": false
+    },
+    {
+      "iso_a2": "NG",
+      "iso_a3": "NGA",
+      "name": "Nigeria",
+      "region": "Africa",
+      "subregion": "Western Africa",
+      "centroid": [
+        7.50322,
+        9.439799
+      ],
+      "bounds": [
+        [
+          2.6711,
+          4.2722
+        ],
+        [
+          14.6699,
+          13.8803
+        ]
+      ],
+      "flag": "🇳🇬",
+      "small": false
+    },
+    {
+      "iso_a2": "NI",
+      "iso_a3": "NIC",
+      "name": "Nicaragua",
+      "region": "Americas",
+      "subregion": "Central America",
+      "centroid": [
+        -85.069347,
+        12.670697
+      ],
+      "bounds": [
+        [
+          -87.6858,
+          10.7135
+        ],
+        [
+          -82.7257,
+          15.031
+        ]
+      ],
+      "flag": "🇳🇮",
+      "small": false
+    },
+    {
+      "iso_a2": "NL",
+      "iso_a3": "NLD",
+      "name": "Netherlands",
+      "region": "Europe",
+      "subregion": "Western Europe",
+      "centroid": [
+        5.61144,
+        52.422211
+      ],
+      "bounds": [
+        [
+          -68.4174,
+          12.022
+        ],
+        [
+          7.1985,
+          53.5581
+        ]
+      ],
+      "flag": "🇳🇱",
+      "small": false
+    },
+    {
+      "iso_a2": "NO",
+      "iso_a3": "NOR",
+      "name": "Norway",
+      "region": "Europe",
+      "subregion": "Northern Europe",
+      "centroid": [
+        9.679975,
+        61.357092
+      ],
+      "bounds": [
+        [
+          -9.1174,
+          -54.4625
+        ],
+        [
+          33.6404,
+          80.7701
+        ]
+      ],
+      "flag": "🇳🇴",
+      "small": false
+    },
+    {
+      "iso_a2": "NP",
+      "iso_a3": "NPL",
+      "name": "Nepal",
+      "region": "Asia",
+      "subregion": "Southern Asia",
+      "centroid": [
+        83.639914,
+        28.297925
+      ],
+      "bounds": [
+        [
+          80.0303,
+          26.3438
+        ],
+        [
+          88.1691,
+          30.4169
+        ]
+      ],
+      "flag": "🇳🇵",
+      "small": false
+    },
+    {
+      "iso_a2": "NR",
+      "iso_a3": "NRU",
+      "name": "Nauru",
+      "region": "Oceania",
+      "subregion": "Micronesia",
+      "centroid": [
+        166.932644,
+        -0.520261
+      ],
+      "bounds": [
+        [
+          166.907,
+          -0.5519
+        ],
+        [
+          166.9583,
+          -0.4904
+        ]
+      ],
+      "flag": "🇳🇷",
+      "small": true
+    },
+    {
+      "iso_a2": "NU",
+      "iso_a3": "NIU",
+      "name": "Niue",
+      "region": "Oceania",
+      "subregion": "Polynesia",
+      "centroid": [
+        -169.862565,
+        -19.045956
+      ],
+      "bounds": [
+        [
+          -169.9504,
+          -19.1428
+        ],
+        [
+          -169.7829,
+          -18.964
+        ]
+      ],
+      "flag": "🇳🇺",
+      "small": true
+    },
+    {
+      "iso_a2": "NZ",
+      "iso_a3": "NZL",
+      "name": "New Zealand",
+      "region": "Oceania",
+      "subregion": "Australia and New Zealand",
+      "centroid": [
+        172.787,
+        -39.759
+      ],
+      "bounds": [
+        [
+          165.8865,
+          -52.6003
+        ],
+        [
+          188.8143,
+          -8.5432
+        ]
+      ],
+      "flag": "🇳🇿",
+      "small": false
+    },
+    {
+      "iso_a2": "OM",
+      "iso_a3": "OMN",
+      "name": "Oman",
+      "region": "Asia",
+      "subregion": "Western Asia",
+      "centroid": [
+        57.336553,
+        22.120427
+      ],
+      "bounds": [
+        [
+          51.9786,
+          16.6424
+        ],
+        [
+          59.8446,
+          26.386
+        ]
+      ],
+      "flag": "🇴🇲",
+      "small": false
+    },
+    {
+      "iso_a2": "PA",
+      "iso_a3": "PAN",
+      "name": "Panama",
+      "region": "Americas",
+      "subregion": "Central America",
+      "centroid": [
+        -80.352106,
+        8.72198
+      ],
+      "bounds": [
+        [
+          -83.0532,
+          7.2057
+        ],
+        [
+          -77.1633,
+          9.6293
+        ]
+      ],
+      "flag": "🇵🇦",
+      "small": false
+    },
+    {
+      "iso_a2": "PE",
+      "iso_a3": "PER",
+      "name": "Peru",
+      "region": "Americas",
+      "subregion": "South America",
+      "centroid": [
+        -72.90016,
+        -12.976679
+      ],
+      "bounds": [
+        [
+          -81.3376,
+          -18.3377
+        ],
+        [
+          -68.6843,
+          -0.0291
+        ]
+      ],
+      "flag": "🇵🇪",
+      "small": false
+    },
+    {
+      "iso_a2": "PF",
+      "iso_a3": "PYF",
+      "name": "French Polynesia",
+      "region": "Oceania",
+      "subregion": "Polynesia",
+      "centroid": [
+        -149.46157,
+        -17.628081
+      ],
+      "bounds": [
+        [
+          -154.537,
+          -27.6412
+        ],
+        [
+          -134.943,
+          -7.9501
+        ]
+      ],
+      "flag": "🇵🇫",
+      "small": true
+    },
+    {
+      "iso_a2": "PG",
+      "iso_a3": "PNG",
+      "name": "Papua New Guinea",
+      "region": "Oceania",
+      "subregion": "Melanesia",
+      "centroid": [
+        143.910216,
+        -5.695285
+      ],
+      "bounds": [
+        [
+          140.8492,
+          -11.6363
+        ],
+        [
+          155.9675,
+          -1.3464
+        ]
+      ],
+      "flag": "🇵🇬",
+      "small": false
+    },
+    {
+      "iso_a2": "PH",
+      "iso_a3": "PHL",
+      "name": "Philippines",
+      "region": "Asia",
+      "subregion": "South-Eastern Asia",
+      "centroid": [
+        122.465,
+        11.198
+      ],
+      "bounds": [
+        [
+          116.9549,
+          4.6557
+        ],
+        [
+          126.6177,
+          21.1224
+        ]
+      ],
+      "flag": "🇵🇭",
+      "small": false
+    },
+    {
+      "iso_a2": "PK",
+      "iso_a3": "PAK",
+      "name": "Pakistan",
+      "region": "Asia",
+      "subregion": "Southern Asia",
+      "centroid": [
+        68.545632,
+        29.328389
+      ],
+      "bounds": [
+        [
+          60.8444,
+          23.6945
+        ],
+        [
+          77.049,
+          37.0545
+        ]
+      ],
+      "flag": "🇵🇰",
+      "small": false
+    },
+    {
+      "iso_a2": "PL",
+      "iso_a3": "POL",
+      "name": "Poland",
+      "region": "Europe",
+      "subregion": "Eastern Europe",
+      "centroid": [
+        19.490468,
+        51.990316
+      ],
+      "bounds": [
+        [
+          14.1239,
+          48.994
+        ],
+        [
+          24.1432,
+          54.8383
+        ]
+      ],
+      "flag": "🇵🇱",
+      "small": false
+    },
+    {
+      "iso_a2": "PM",
+      "iso_a3": "SPM",
+      "name": "Saint Pierre and Miquelon",
+      "region": "Americas",
+      "subregion": "Northern America",
+      "centroid": [
+        -56.332352,
+        47.040344
+      ],
+      "bounds": [
+        [
+          -56.3966,
+          46.7528
+        ],
+        [
+          -56.1448,
+          47.1413
+        ]
+      ],
+      "flag": "🇵🇲",
+      "small": true
+    },
+    {
+      "iso_a2": "PN",
+      "iso_a3": "PCN",
+      "name": "Pitcairn Islands",
+      "region": "Oceania",
+      "subregion": "Polynesia",
+      "centroid": [
+        -128.317536,
+        -24.364576
+      ],
+      "bounds": [
+        [
+          -130.7531,
+          -25.0771
+        ],
+        [
+          -124.7781,
+          -23.9244
+        ]
+      ],
+      "flag": "🇵🇳",
+      "small": false
+    },
+    {
+      "iso_a2": "PR",
+      "iso_a3": "PRI",
+      "name": "Puerto Rico",
+      "region": "Americas",
+      "subregion": "Caribbean",
+      "centroid": [
+        -66.481065,
+        18.234668
+      ],
+      "bounds": [
+        [
+          -67.9378,
+          17.9229
+        ],
+        [
+          -65.2446,
+          18.5228
+        ]
+      ],
+      "flag": "🇵🇷",
+      "small": false
+    },
+    {
+      "iso_a2": "PS",
+      "iso_a3": "PSE",
+      "name": "Palestine",
+      "region": "Asia",
+      "subregion": "Western Asia",
+      "centroid": [
+        35.291341,
+        32.047431
+      ],
+      "bounds": [
+        [
+          34.2003,
+          31.2114
+        ],
+        [
+          35.5725,
+          32.5426
+        ]
+      ],
+      "flag": "🇵🇸",
+      "small": false
+    },
+    {
+      "iso_a2": "PT",
+      "iso_a3": "PRT",
+      "name": "Portugal",
+      "region": "Europe",
+      "subregion": "Southern Europe",
+      "centroid": [
+        -8.271754,
+        39.606675
+      ],
+      "bounds": [
+        [
+          -31.2849,
+          30.0292
+        ],
+        [
+          -6.2059,
+          42.1536
+        ]
+      ],
+      "flag": "🇵🇹",
+      "small": false
+    },
+    {
+      "iso_a2": "PW",
+      "iso_a3": "PLW",
+      "name": "Palau",
+      "region": "Oceania",
+      "subregion": "Micronesia",
+      "centroid": [
+        134.580157,
+        7.518252
+      ],
+      "bounds": [
+        [
+          131.1311,
+          2.949
+        ],
+        [
+          134.7273,
+          8.0966
+        ]
+      ],
+      "flag": "🇵🇼",
+      "small": true
+    },
+    {
+      "iso_a2": "PY",
+      "iso_a3": "PRY",
+      "name": "Paraguay",
+      "region": "Americas",
+      "subregion": "South America",
+      "centroid": [
+        -60.146394,
+        -21.674509
+      ],
+      "bounds": [
+        [
+          -62.6504,
+          -27.5868
+        ],
+        [
+          -54.2453,
+          -19.2867
+        ]
+      ],
+      "flag": "🇵🇾",
+      "small": false
+    },
+    {
+      "iso_a2": "QA",
+      "iso_a3": "QAT",
+      "name": "Qatar",
+      "region": "Asia",
+      "subregion": "Western Asia",
+      "centroid": [
+        51.143509,
+        25.237383
+      ],
+      "bounds": [
+        [
+          50.751,
+          24.5599
+        ],
+        [
+          51.6165,
+          26.1601
+        ]
+      ],
+      "flag": "🇶🇦",
+      "small": false
+    },
+    {
+      "iso_a2": "RO",
+      "iso_a3": "ROU",
+      "name": "Romania",
+      "region": "Europe",
+      "subregion": "Eastern Europe",
+      "centroid": [
+        24.972624,
+        45.733237
+      ],
+      "bounds": [
+        [
+          20.2428,
+          43.65
+        ],
+        [
+          29.6996,
+          48.2748
+        ]
+      ],
+      "flag": "🇷🇴",
+      "small": false
+    },
+    {
+      "iso_a2": "RS",
+      "iso_a3": "SRB",
+      "name": "Serbia",
+      "region": "Europe",
+      "subregion": "Southern Europe",
+      "centroid": [
+        20.787989,
+        44.189919
+      ],
+      "bounds": [
+        [
+          18.845,
+          42.2349
+        ],
+        [
+          22.9846,
+          46.1739
+        ]
+      ],
+      "flag": "🇷🇸",
+      "small": false
+    },
+    {
+      "iso_a2": "RU",
+      "iso_a3": "RUS",
+      "name": "Russia",
+      "region": "Europe",
+      "subregion": "Eastern Europe",
+      "centroid": [
+        44.686469,
+        58.249357
+      ],
+      "bounds": [
+        [
+          19.6095,
+          41.1927
+        ],
+        [
+          191.0054,
+          81.8587
+        ]
+      ],
+      "flag": "🇷🇺",
+      "small": false
+    },
+    {
+      "iso_a2": "RW",
+      "iso_a3": "RWA",
+      "name": "Rwanda",
+      "region": "Africa",
+      "subregion": "Eastern Africa",
+      "centroid": [
+        30.103894,
+        -1.897196
+      ],
+      "bounds": [
+        [
+          28.8572,
+          -2.8269
+        ],
+        [
+          30.8878,
+          -1.0587
+        ]
+      ],
+      "flag": "🇷🇼",
+      "small": false
+    },
+    {
+      "iso_a2": "SA",
+      "iso_a3": "SAU",
+      "name": "Saudi Arabia",
+      "region": "Asia",
+      "subregion": "Western Asia",
+      "centroid": [
+        44.6996,
+        23.806908
+      ],
+      "bounds": [
+        [
+          34.5728,
+          16.371
+        ],
+        [
+          55.6376,
+          32.1213
+        ]
+      ],
+      "flag": "🇸🇦",
+      "small": false
+    },
+    {
+      "iso_a2": "SB",
+      "iso_a3": "SLB",
+      "name": "Solomon Islands",
+      "region": "Oceania",
+      "subregion": "Melanesia",
+      "centroid": [
+        159.170468,
+        -8.029548
+      ],
+      "bounds": [
+        [
+          155.508,
+          -12.2906
+        ],
+        [
+          168.8259,
+          -6.5999
+        ]
+      ],
+      "flag": "🇸🇧",
+      "small": false
+    },
+    {
+      "iso_a2": "SC",
+      "iso_a3": "SYC",
+      "name": "Seychelles",
+      "region": "Africa",
+      "subregion": "Eastern Africa",
+      "centroid": [
+        55.480175,
+        -4.676659
+      ],
+      "bounds": [
+        [
+          46.2074,
+          -9.7555
+        ],
+        [
+          56.2874,
+          -3.7911
+        ]
+      ],
+      "flag": "🇸🇨",
+      "small": true
+    },
+    {
+      "iso_a2": "SD",
+      "iso_a3": "SDN",
+      "name": "Sudan",
+      "region": "Africa",
+      "subregion": "Northern Africa",
+      "centroid": [
+        29.260657,
+        16.330746
+      ],
+      "bounds": [
+        [
+          21.8094,
+          8.6816
+        ],
+        [
+          38.6039,
+          22.227
+        ]
+      ],
+      "flag": "🇸🇩",
+      "small": false
+    },
+    {
+      "iso_a2": "SE",
+      "iso_a3": "SWE",
+      "name": "Sweden",
+      "region": "Europe",
+      "subregion": "Northern Europe",
+      "centroid": [
+        19.01705,
+        65.85918
+      ],
+      "bounds": [
+        [
+          11.1082,
+          55.3427
+        ],
+        [
+          24.1634,
+          69.0364
+        ]
+      ],
+      "flag": "🇸🇪",
+      "small": false
+    },
+    {
+      "iso_a2": "SG",
+      "iso_a3": "SGP",
+      "name": "Singapore",
+      "region": "Asia",
+      "subregion": "South-Eastern Asia",
+      "centroid": [
+        103.816925,
+        1.366587
+      ],
+      "bounds": [
+        [
+          103.6404,
+          1.2643
+        ],
+        [
+          104.0034,
+          1.4486
+        ]
+      ],
+      "flag": "🇸🇬",
+      "small": true
+    },
+    {
+      "iso_a2": "SH",
+      "iso_a3": "SHN",
+      "name": "Saint Helena",
+      "region": "Africa",
+      "subregion": "Western Africa",
+      "centroid": [
+        -5.71262,
+        -15.950487
+      ],
+      "bounds": [
+        [
+          -14.4177,
+          -40.3979
+        ],
+        [
+          -5.6504,
+          -7.8779
+        ]
+      ],
+      "flag": "🇸🇭",
+      "small": false
+    },
+    {
+      "iso_a2": "SI",
+      "iso_a3": "SVN",
+      "name": "Slovenia",
+      "region": "Europe",
+      "subregion": "Southern Europe",
+      "centroid": [
+        14.915312,
+        46.06076
+      ],
+      "bounds": [
+        [
+          13.3653,
+          45.4236
+        ],
+        [
+          16.5153,
+          46.864
+        ]
+      ],
+      "flag": "🇸🇮",
+      "small": false
+    },
+    {
+      "iso_a2": "SK",
+      "iso_a3": "SVK",
+      "name": "Slovakia",
+      "region": "Europe",
+      "subregion": "Eastern Europe",
+      "centroid": [
+        19.049868,
+        48.734044
+      ],
+      "bounds": [
+        [
+          16.8445,
+          47.75
+        ],
+        [
+          22.5396,
+          49.6018
+        ]
+      ],
+      "flag": "🇸🇰",
+      "small": false
+    },
+    {
+      "iso_a2": "SL",
+      "iso_a3": "SLE",
+      "name": "Sierra Leone",
+      "region": "Africa",
+      "subregion": "Western Africa",
+      "centroid": [
+        -11.763677,
+        8.617449
+      ],
+      "bounds": [
+        [
+          -13.3011,
+          6.9194
+        ],
+        [
+          -10.2822,
+          9.996
+        ]
+      ],
+      "flag": "🇸🇱",
+      "small": false
+    },
+    {
+      "iso_a2": "SM",
+      "iso_a3": "SMR",
+      "name": "San Marino",
+      "region": "Europe",
+      "subregion": "Southern Europe",
+      "centroid": [
+        12.441206,
+        43.933916
+      ],
+      "bounds": [
+        [
+          12.3856,
+          43.8921
+        ],
+        [
+          12.4924,
+          43.9826
+        ]
+      ],
+      "flag": "🇸🇲",
+      "small": true
+    },
+    {
+      "iso_a2": "SN",
+      "iso_a3": "SEN",
+      "name": "Senegal",
+      "region": "Africa",
+      "subregion": "Western Africa",
+      "centroid": [
+        -14.778586,
+        15.138125
+      ],
+      "bounds": [
+        [
+          -17.536,
+          12.3056
+        ],
+        [
+          -11.3778,
+          16.6914
+        ]
+      ],
+      "flag": "🇸🇳",
+      "small": false
+    },
+    {
+      "iso_a2": "SO",
+      "iso_a3": "SOM",
+      "name": "Somalia",
+      "region": "Africa",
+      "subregion": "Eastern Africa",
+      "centroid": [
+        45.19238,
+        3.568925
+      ],
+      "bounds": [
+        [
+          40.9654,
+          -1.6963
+        ],
+        [
+          51.417,
+          11.9891
+        ]
+      ],
+      "flag": "🇸🇴",
+      "small": false
+    },
+    {
+      "iso_a2": "SR",
+      "iso_a3": "SUR",
+      "name": "Suriname",
+      "region": "Americas",
+      "subregion": "South America",
+      "centroid": [
+        -55.91094,
+        4.143987
+      ],
+      "bounds": [
+        [
+          -58.0677,
+          1.8335
+        ],
+        [
+          -53.9864,
+          6.0116
+        ]
+      ],
+      "flag": "🇸🇷",
+      "small": false
+    },
+    {
+      "iso_a2": "SS",
+      "iso_a3": "SSD",
+      "name": "South Sudan",
+      "region": "Africa",
+      "subregion": "Eastern Africa",
+      "centroid": [
+        30.390151,
+        7.230477
+      ],
+      "bounds": [
+        [
+          24.1216,
+          3.4902
+        ],
+        [
+          35.9208,
+          12.2162
+        ]
+      ],
+      "flag": "🇸🇸",
+      "small": false
+    },
+    {
+      "iso_a2": "ST",
+      "iso_a3": "STP",
+      "name": "São Tomé and Príncipe",
+      "region": "Africa",
+      "subregion": "Middle Africa",
+      "centroid": [
+        7.021,
+        0.9709
+      ],
+      "bounds": [
+        [
+          6.4617,
+          0.0241
+        ],
+        [
+          7.4627,
+          1.6998
+        ]
+      ],
+      "flag": "🇸🇹",
+      "small": true
+    },
+    {
+      "iso_a2": "SV",
+      "iso_a3": "SLV",
+      "name": "El Salvador",
+      "region": "Americas",
+      "subregion": "Central America",
+      "centroid": [
+        -88.890124,
+        13.685371
+      ],
+      "bounds": [
+        [
+          -90.1148,
+          13.1586
+        ],
+        [
+          -87.6932,
+          14.4454
+        ]
+      ],
+      "flag": "🇸🇻",
+      "small": false
+    },
+    {
+      "iso_a2": "SX",
+      "iso_a3": "SXM",
+      "name": "Sint Maarten",
+      "region": "Americas",
+      "subregion": "Caribbean",
+      "centroid": [
+        -63.070133,
+        18.04088
+      ],
+      "bounds": [
+        [
+          -63.1189,
+          18.0191
+        ],
+        [
+          -63.0176,
+          18.0621
+        ]
+      ],
+      "flag": "🇸🇽",
+      "small": true
+    },
+    {
+      "iso_a2": "SY",
+      "iso_a3": "SYR",
+      "name": "Syria",
+      "region": "Asia",
+      "subregion": "Western Asia",
+      "centroid": [
+        38.277783,
+        35.006636
+      ],
+      "bounds": [
+        [
+          35.7234,
+          32.313
+        ],
+        [
+          42.3772,
+          37.3249
+        ]
+      ],
+      "flag": "🇸🇾",
+      "small": false
+    },
+    {
+      "iso_a2": "SZ",
+      "iso_a3": "SWZ",
+      "name": "Eswatini",
+      "region": "Africa",
+      "subregion": "Southern Africa",
+      "centroid": [
+        31.467264,
+        -26.533676
+      ],
+      "bounds": [
+        [
+          30.7829,
+          -27.3163
+        ],
+        [
+          32.1174,
+          -25.736
+        ]
+      ],
+      "flag": "🇸🇿",
+      "small": false
+    },
+    {
+      "iso_a2": "TC",
+      "iso_a3": "TCA",
+      "name": "Turks and Caicos Islands",
+      "region": "Americas",
+      "subregion": "Caribbean",
+      "centroid": [
+        -71.752704,
+        21.81663
+      ],
+      "bounds": [
+        [
+          -72.4813,
+          21.2901
+        ],
+        [
+          -71.1289,
+          21.9592
+        ]
+      ],
+      "flag": "🇹🇨",
+      "small": false
+    },
+    {
+      "iso_a2": "TD",
+      "iso_a3": "TCD",
+      "name": "Chad",
+      "region": "Africa",
+      "subregion": "Middle Africa",
+      "centroid": [
+        18.645041,
+        15.142959
+      ],
+      "bounds": [
+        [
+          13.4492,
+          7.4556
+        ],
+        [
+          23.9844,
+          23.4447
+        ]
+      ],
+      "flag": "🇹🇩",
+      "small": false
+    },
+    {
+      "iso_a2": "TF",
+      "iso_a3": "ATF",
+      "name": "French Southern and Antarctic Lands",
+      "region": "Africa",
+      "subregion": "Seven seas (open ocean)",
+      "centroid": [
+        69.122136,
+        -49.303721
+      ],
+      "bounds": [
+        [
+          39.7283,
+          -49.7216
+        ],
+        [
+          77.5852,
+          -11.5506
+        ]
+      ],
+      "flag": "🇹🇫",
+      "small": true
+    },
+    {
+      "iso_a2": "TG",
+      "iso_a3": "TGO",
+      "name": "Togo",
+      "region": "Africa",
+      "subregion": "Western Africa",
+      "centroid": [
+        1.058113,
+        8.80722
+      ],
+      "bounds": [
+        [
+          -0.1661,
+          6.1005
+        ],
+        [
+          1.7824,
+          11.135
+        ]
+      ],
+      "flag": "🇹🇬",
+      "small": false
+    },
+    {
+      "iso_a2": "TH",
+      "iso_a3": "THA",
+      "name": "Thailand",
+      "region": "Asia",
+      "subregion": "South-Eastern Asia",
+      "centroid": [
+        101.073198,
+        15.45974
+      ],
+      "bounds": [
+        [
+          97.3514,
+          5.6299
+        ],
+        [
+          105.651,
+          20.445
+        ]
+      ],
+      "flag": "🇹🇭",
+      "small": false
+    },
+    {
+      "iso_a2": "TJ",
+      "iso_a3": "TJK",
+      "name": "Tajikistan",
+      "region": "Asia",
+      "subregion": "Central Asia",
+      "centroid": [
+        72.587276,
+        38.199835
+      ],
+      "bounds": [
+        [
+          67.3427,
+          36.6786
+        ],
+        [
+          75.1641,
+          41.04
+        ]
+      ],
+      "flag": "🇹🇯",
+      "small": false
+    },
+    {
+      "iso_a2": "TL",
+      "iso_a3": "TLS",
+      "name": "East Timor",
+      "region": "Asia",
+      "subregion": "South-Eastern Asia",
+      "centroid": [
+        125.854679,
+        -8.803705
+      ],
+      "bounds": [
+        [
+          124.03,
+          -9.5012
+        ],
+        [
+          127.3132,
+          -8.135
+        ]
+      ],
+      "flag": "🇹🇱",
+      "small": false
+    },
+    {
+      "iso_a2": "TM",
+      "iso_a3": "TKM",
+      "name": "Turkmenistan",
+      "region": "Asia",
+      "subregion": "Central Asia",
+      "centroid": [
+        58.676647,
+        39.855246
+      ],
+      "bounds": [
+        [
+          52.4377,
+          35.1406
+        ],
+        [
+          66.6458,
+          42.7912
+        ]
+      ],
+      "flag": "🇹🇲",
+      "small": false
+    },
+    {
+      "iso_a2": "TN",
+      "iso_a3": "TUN",
+      "name": "Tunisia",
+      "region": "Africa",
+      "subregion": "Northern Africa",
+      "centroid": [
+        9.007881,
+        33.687263
+      ],
+      "bounds": [
+        [
+          7.4798,
+          30.2289
+        ],
+        [
+          11.5641,
+          37.3452
+        ]
+      ],
+      "flag": "🇹🇳",
+      "small": false
+    },
+    {
+      "iso_a2": "TO",
+      "iso_a3": "TON",
+      "name": "Tonga",
+      "region": "Oceania",
+      "subregion": "Polynesia",
+      "centroid": [
+        -175.163014,
+        -21.210026
+      ],
+      "bounds": [
+        [
+          -176.2193,
+          -22.3388
+        ],
+        [
+          -173.9143,
+          -15.5595
+        ]
+      ],
+      "flag": "🇹🇴",
+      "small": true
+    },
+    {
+      "iso_a2": "TR",
+      "iso_a3": "TUR",
+      "name": "Turkey",
+      "region": "Asia",
+      "subregion": "Western Asia",
+      "centroid": [
+        34.508268,
+        39.345388
+      ],
+      "bounds": [
+        [
+          25.6633,
+          35.8198
+        ],
+        [
+          44.807,
+          42.0988
+        ]
+      ],
+      "flag": "🇹🇷",
+      "small": false
+    },
+    {
+      "iso_a2": "TT",
+      "iso_a3": "TTO",
+      "name": "Trinidad and Tobago",
+      "region": "Americas",
+      "subregion": "Caribbean",
+      "centroid": [
+        -60.9184,
+        10.9989
+      ],
+      "bounds": [
+        [
+          -61.9287,
+          10.0421
+        ],
+        [
+          -60.5221,
+          11.3511
+        ]
+      ],
+      "flag": "🇹🇹",
+      "small": true
+    },
+    {
+      "iso_a2": "TV",
+      "iso_a3": "TUV",
+      "name": "Tuvalu",
+      "region": "Oceania",
+      "subregion": "Polynesia",
+      "centroid": [
+        179.209587,
+        -8.513717
+      ],
+      "bounds": [
+        [
+          176.1253,
+          -9.4207
+        ],
+        [
+          179.9067,
+          -5.6775
+        ]
+      ],
+      "flag": "🇹🇻",
+      "small": true
+    },
+    {
+      "iso_a2": "TW",
+      "iso_a3": "TWN",
+      "name": "Taiwan",
+      "region": "Asia",
+      "subregion": "Eastern Asia",
+      "centroid": [
+        120.868204,
+        23.652408
+      ],
+      "bounds": [
+        [
+          118.2796,
+          21.9046
+        ],
+        [
+          122.0054,
+          25.2874
+        ]
+      ],
+      "flag": "🇹🇼",
+      "small": false
+    },
+    {
+      "iso_a2": "TZ",
+      "iso_a3": "TZA",
+      "name": "Tanzania",
+      "region": "Africa",
+      "subregion": "Eastern Africa",
+      "centroid": [
+        34.959183,
+        -6.051866
+      ],
+      "bounds": [
+        [
+          29.321,
+          -11.7313
+        ],
+        [
+          40.4494,
+          -0.9858
+        ]
+      ],
+      "flag": "🇹🇿",
+      "small": false
+    },
+    {
+      "iso_a2": "UA",
+      "iso_a3": "UKR",
+      "name": "Ukraine",
+      "region": "Europe",
+      "subregion": "Eastern Europe",
+      "centroid": [
+        32.140865,
+        49.724739
+      ],
+      "bounds": [
+        [
+          22.1328,
+          45.2136
+        ],
+        [
+          40.1595,
+          52.3689
+        ]
+      ],
+      "flag": "🇺🇦",
+      "small": false
+    },
+    {
+      "iso_a2": "UG",
+      "iso_a3": "UGA",
+      "name": "Uganda",
+      "region": "Africa",
+      "subregion": "Eastern Africa",
+      "centroid": [
+        32.948555,
+        1.972589
+      ],
+      "bounds": [
+        [
+          29.5485,
+          -1.4752
+        ],
+        [
+          35.0065,
+          4.2197
+        ]
+      ],
+      "flag": "🇺🇬",
+      "small": false
+    },
+    {
+      "iso_a2": "UM",
+      "iso_a3": "UMI",
+      "name": "United States Minor Outlying Islands",
+      "region": "Oceania",
+      "subregion": "Seven seas (open ocean)",
+      "centroid": [
+        166.644535,
+        19.285663
+      ],
+      "bounds": [
+        [
+          166.6194,
+          -0.3888
+        ],
+        [
+          284.9974,
+          28.2153
+        ]
+      ],
+      "flag": "🇺🇲",
+      "small": false
+    },
+    {
+      "iso_a2": "US",
+      "iso_a3": "USA",
+      "name": "United States of America",
+      "region": "Americas",
+      "subregion": "Northern America",
+      "centroid": [
+        -97.482602,
+        39.538479
+      ],
+      "bounds": [
+        [
+          172.4761,
+          18.9061
+        ],
+        [
+          293.0227,
+          71.4125
+        ]
+      ],
+      "flag": "🇺🇸",
+      "small": false
+    },
+    {
+      "iso_a2": "UY",
+      "iso_a3": "URY",
+      "name": "Uruguay",
+      "region": "Americas",
+      "subregion": "South America",
+      "centroid": [
+        -55.966942,
+        -32.961127
+      ],
+      "bounds": [
+        [
+          -58.4394,
+          -34.9734
+        ],
+        [
+          -53.1108,
+          -30.0969
+        ]
+      ],
+      "flag": "🇺🇾",
+      "small": false
+    },
+    {
+      "iso_a2": "UZ",
+      "iso_a3": "UZB",
+      "name": "Uzbekistan",
+      "region": "Asia",
+      "subregion": "Central Asia",
+      "centroid": [
+        64.005429,
+        41.693603
+      ],
+      "bounds": [
+        [
+          55.9758,
+          37.1851
+        ],
+        [
+          73.1486,
+          45.5587
+        ]
+      ],
+      "flag": "🇺🇿",
+      "small": true
+    },
+    {
+      "iso_a2": "VA",
+      "iso_a3": "VAT",
+      "name": "Vatican City",
+      "region": "Europe",
+      "subregion": "Southern Europe",
+      "centroid": [
+        12.453418,
+        41.903323
+      ],
+      "bounds": [
+        [
+          12.4527,
+          41.9028
+        ],
+        [
+          12.454,
+          41.9039
+        ]
+      ],
+      "flag": "🇻🇦",
+      "small": true
+    },
+    {
+      "iso_a2": "VC",
+      "iso_a3": "VCT",
+      "name": "Saint Vincent and the Grenadines",
+      "region": "Americas",
+      "subregion": "Caribbean",
+      "centroid": [
+        -61.3359,
+        13.0879
+      ],
+      "bounds": [
+        [
+          -61.4598,
+          12.5852
+        ],
+        [
+          -61.1239,
+          13.3808
+        ]
+      ],
+      "flag": "🇻🇨",
+      "small": false
+    },
+    {
+      "iso_a2": "VE",
+      "iso_a3": "VEN",
+      "name": "Venezuela",
+      "region": "Americas",
+      "subregion": "South America",
+      "centroid": [
+        -64.599381,
+        7.182476
+      ],
+      "bounds": [
+        [
+          -73.3911,
+          0.6493
+        ],
+        [
+          -59.8156,
+          15.7029
+        ]
+      ],
+      "flag": "🇻🇪",
+      "small": false
+    },
+    {
+      "iso_a2": "VG",
+      "iso_a3": "VGB",
+      "name": "British Virgin Islands",
+      "region": "Americas",
+      "subregion": "Caribbean",
+      "centroid": [
+        -64.63661,
+        18.426606
+      ],
+      "bounds": [
+        [
+          -64.774,
+          18.3347
+        ],
+        [
+          -64.2707,
+          18.7462
+        ]
+      ],
+      "flag": "🇻🇬",
+      "small": true
+    },
+    {
+      "iso_a2": "VI",
+      "iso_a3": "VIR",
+      "name": "United States Virgin Islands",
+      "region": "Americas",
+      "subregion": "Caribbean",
+      "centroid": [
+        -64.779172,
+        17.746706
+      ],
+      "bounds": [
+        [
+          -65.0415,
+          17.6828
+        ],
+        [
+          -64.5594,
+          18.3866
+        ]
+      ],
+      "flag": "🇻🇮",
+      "small": true
+    },
+    {
+      "iso_a2": "VN",
+      "iso_a3": "VNM",
+      "name": "Vietnam",
+      "region": "Asia",
+      "subregion": "South-Eastern Asia",
+      "centroid": [
+        105.387292,
+        21.715416
+      ],
+      "bounds": [
+        [
+          102.1187,
+          8.5656
+        ],
+        [
+          109.4724,
+          23.3663
+        ]
+      ],
+      "flag": "🇻🇳",
+      "small": true
+    },
+    {
+      "iso_a2": "VU",
+      "iso_a3": "VUT",
+      "name": "Vanuatu",
+      "region": "Oceania",
+      "subregion": "Melanesia",
+      "centroid": [
+        166.908762,
+        -15.37153
+      ],
+      "bounds": [
+        [
+          166.5205,
+          -20.2531
+        ],
+        [
+          169.8989,
+          -13.0649
+        ]
+      ],
+      "flag": "🇻🇺",
+      "small": true
+    },
+    {
+      "iso_a2": "WF",
+      "iso_a3": "WLF",
+      "name": "Wallis and Futuna",
+      "region": "Oceania",
+      "subregion": "Polynesia",
+      "centroid": [
+        -178.137436,
+        -14.286415
+      ],
+      "bounds": [
+        [
+          -178.1857,
+          -14.3194
+        ],
+        [
+          -176.1256,
+          -13.2089
+        ]
+      ],
+      "flag": "🇼🇫",
+      "small": true
+    },
+    {
+      "iso_a2": "WS",
+      "iso_a3": "WSM",
+      "name": "Samoa",
+      "region": "Oceania",
+      "subregion": "Polynesia",
+      "centroid": [
+        -172.438241,
+        -13.639139
+      ],
+      "bounds": [
+        [
+          -172.7826,
+          -14.0528
+        ],
+        [
+          -171.4377,
+          -13.4628
+        ]
+      ],
+      "flag": "🇼🇸",
+      "small": false
+    },
+    {
+      "iso_a2": "YE",
+      "iso_a3": "YEM",
+      "name": "Yemen",
+      "region": "Asia",
+      "subregion": "Western Asia",
+      "centroid": [
+        45.874383,
+        15.328226
+      ],
+      "bounds": [
+        [
+          42.5457,
+          12.1114
+        ],
+        [
+          54.5403,
+          18.9956
+        ]
+      ],
+      "flag": "🇾🇪",
+      "small": false
+    },
+    {
+      "iso_a2": "ZA",
+      "iso_a3": "ZAF",
+      "name": "South Africa",
+      "region": "Africa",
+      "subregion": "Southern Africa",
+      "centroid": [
+        23.665734,
+        -29.708776
+      ],
+      "bounds": [
+        [
+          16.47,
+          -46.9658
+        ],
+        [
+          37.9778,
+          -22.1265
+        ]
+      ],
+      "flag": "🇿🇦",
+      "small": false
+    },
+    {
+      "iso_a2": "ZM",
+      "iso_a3": "ZMB",
+      "name": "Zambia",
+      "region": "Africa",
+      "subregion": "Eastern Africa",
+      "centroid": [
+        26.395298,
+        -14.660804
+      ],
+      "bounds": [
+        [
+          21.9799,
+          -18.0692
+        ],
+        [
+          33.6742,
+          -8.1941
+        ]
+      ],
+      "flag": "🇿🇲",
+      "small": false
+    },
+    {
+      "iso_a2": "ZW",
+      "iso_a3": "ZWE",
+      "name": "Zimbabwe",
+      "region": "Africa",
+      "subregion": "Eastern Africa",
+      "centroid": [
+        29.925444,
+        -18.91164
+      ],
+      "bounds": [
+        [
+          25.2194,
+          -22.3973
+        ],
+        [
+          33.0428,
+          -15.6148
+        ]
+      ],
+      "flag": "🇿🇼",
+      "small": false
+    }
+  ]
+}

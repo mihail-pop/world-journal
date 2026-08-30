@@ -1,10 +1,47 @@
-<section class="page page-map" data-page="map" aria-labelledby="map-title">
-    <div class="page-copy">
-        <p class="eyebrow">World view</p>
-        <h1 id="map-title">Map</h1>
-        <p>The interactive country map will be introduced in Phase 2.</p>
-    </div>
-    <div class="placeholder-surface" role="img" aria-label="Map placeholder">
-        <span>Map workspace</span>
+{% load static %}
+<section
+    class="page page-map"
+    data-page="map"
+    data-map-style-url="{{ map_style_url }}"
+    data-country-metadata-url="{% url 'countries:metadata' %}"
+    data-country-geometry-url="{% static 'data/countries.geojson' %}"
+    aria-labelledby="map-title"
+>
+    <h1 id="map-title" class="visually-hidden">Map</h1>
+    <div class="map-workspace">
+        <div id="world-map" class="world-map" role="application" aria-label="Interactive world map" tabindex="0"></div>
+        <div class="map-toolbar" aria-label="Map controls">
+            <button type="button" class="map-command" data-world-view>World view</button>
+        </div>
+        <div class="map-status" data-map-status role="status" aria-live="polite">
+            Loading map and country boundaries…
+        </div>
+        <p class="map-notice" data-map-notice role="status" aria-live="polite" hidden></p>
+
+        <aside class="country-drawer" data-country-drawer aria-labelledby="country-name" tabindex="-1" hidden>
+            <button class="country-drawer-close" type="button" data-country-close aria-label="Close country details" title="Close country details">×</button>
+            <p class="eyebrow">Country identity</p>
+            <div class="country-heading">
+                <span class="country-flag" data-country-flag aria-hidden="true"></span>
+                <div>
+                    <h2 id="country-name" data-country-name></h2>
+                    <p class="country-code" data-country-code></p>
+                </div>
+            </div>
+            <dl class="country-identity">
+                <div>
+                    <dt>Region</dt>
+                    <dd data-country-region></dd>
+                </div>
+                <div>
+                    <dt>Subregion</dt>
+                    <dd data-country-subregion></dd>
+                </div>
+            </dl>
+        </aside>
+
+        <noscript>
+            <p class="map-fallback">JavaScript is required for the interactive map. Journal and Settings navigation remain available.</p>
+        </noscript>
     </div>
 </section>

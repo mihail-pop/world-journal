@@ -7,6 +7,7 @@ def render_page(request: HttpRequest, page: str) -> HttpResponse:
     context = {
         "active_page": page,
         "app_display_name": settings.APP_DISPLAY_NAME,
+        "map_style_url": settings.MAP_STYLE_URL,
         "page_template": f"core/partials/{page}.html",
     }
     template_name = context["page_template"] if request.headers.get("HX-Request") == "true" else "core/app_shell.html"

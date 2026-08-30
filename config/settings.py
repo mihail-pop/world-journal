@@ -15,6 +15,7 @@ from pathlib import Path
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 APP_DISPLAY_NAME = 'World Journal'
+MAP_STYLE_URL = 'https://tiles.openfreemap.org/styles/liberty'
 
 
 # Quick-start development settings - unsuitable for production
