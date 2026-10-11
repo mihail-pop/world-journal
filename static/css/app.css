@@ -1263,3 +1263,17 @@ body:has(.persistent-player[data-player-state="playing"]) #app-content:not(:has(
 .source-details summary { cursor: pointer; }
 .source-settings-message { border: 1px solid var(--overview-border); border-left: 3px solid var(--special-color); padding: 0.85rem; color: var(--text-secondary); }
 .source-check-progress { font-size: 0.8rem; }
+
+.backup-page { max-width: 68rem; }
+.backup-section { margin-block: 2.5rem; }
+.backup-section h2, .backup-preview h3 { color: var(--text-secondary); }
+.backup-form { margin-block: 1.25rem; }
+.backup-form p { display: flex; flex-wrap: wrap; align-items: center; gap: 0.65rem; }
+.backup-form input[type="file"] { max-width: 100%; min-width: 0; color: var(--text-primary); }
+.backup-form input[type="checkbox"] { accent-color: var(--special-color); }
+.backup-preview { margin-top: 2rem; padding-top: 1rem; border-top: 1px solid var(--overview-border); }
+.backup-table-scroll { overflow-x: auto; max-width: 100%; }
+.backup-summary { width: 100%; border-collapse: collapse; margin-block: 1rem; }
+.backup-summary caption { text-align: left; padding-block: 0.5rem; color: var(--text-secondary); }
+.backup-summary th, .backup-summary td { text-align: left; padding: 0.65rem; border-bottom: 1px solid var(--overview-border); }
+.backup-summary th:first-child { min-width: 10rem; }

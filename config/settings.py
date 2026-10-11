@@ -175,6 +175,8 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 JOURNAL_IMAGE_MAX_BYTES = 10 * 1024 * 1024
+BACKUP_MAX_BYTES = 512 * 1024 * 1024
+BACKUP_STAGING_ROOT = BASE_DIR / ".backup-imports"
 
 # Country facts ship as a dated local Wikidata snapshot; no API calls on browsing.
 COUNTRY_FACTS_PATH = BASE_DIR / "data" / "country_facts.json"
