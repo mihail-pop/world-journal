@@ -1,5 +1,5 @@
 {% for group in groups %}<div class="country-demographic-group">
     {% if group.year or group.scope_name %}<p class="country-fact-year">{% if group.year %}{{ group.year }}{% endif %}{% if group.scope_name %}{% if group.year %} · {% endif %}{{ group.scope_name }}{% endif %}</p>{% endif %}
-    <ul class="country-demographics-list">{% for item in group.items %}<li><a href="{{ item.topic_url }}" target="_blank" rel="noopener noreferrer">{{ item.name }}</a><strong>{{ item.percentage }}%</strong><a class="country-demographic-source" href="{{ item.source_url }}" target="_blank" rel="noopener noreferrer" aria-label="Source for {{ item.name }}" title="Source for {{ item.name }}">{% include 'core/partials/icon.html' with name='external' %}</a></li>{% endfor %}</ul>
+    <ul class="country-demographics-list">{% for item in group.items %}<li><span>{{ item.name }}</span><strong>{{ item.percentage }}%</strong></li>{% endfor %}</ul>
     {% if group.conflicting %}<p class="field-note">Conflicting source percentages are both shown.</p>{% endif %}
 </div>{% endfor %}

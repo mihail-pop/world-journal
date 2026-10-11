@@ -26,9 +26,6 @@ export function applyPersonalLayers(controller) {
     }
     if (map.getLayer(FAVORITE_LAYER)) {
         map.setFilter(FAVORITE_LAYER, ["in", ["get", "iso_a2"], ["literal", [...personal.favorites]]]);
-        const style = getComputedStyle(document.documentElement);
-        map.setPaintProperty(FAVORITE_LAYER, "circle-stroke-color", style.getPropertyValue("--special-color").trim());
-        map.setPaintProperty(FAVORITE_LAYER, "circle-color", style.getPropertyValue("--bg-primary").trim());
     }
 }
 
@@ -48,8 +45,8 @@ function updatePersonalControls(controller) {
     select.disabled = !state.ready || state.activating;
     const button = controller.page.querySelector("[data-country-favorite]");
     const favored = state.favorites.has(controller.selectedCode);
-    const favoriteLabel = button.querySelector("[data-button-label]") || button;
-    favoriteLabel.textContent = favored ? "Favorited" : "Add favorite";
+    button.setAttribute("aria-label", favored ? "Remove country from favorites" : "Add country to favorites");
+    button.title = favored ? "Remove from favorites" : "Add to favorites";
     button.setAttribute("aria-pressed", String(favored));
     button.disabled = !state.ready || !controller.selectedCode || state.favoritePending.has(controller.selectedCode);
     applyPersonalLayers(controller);
@@ -80,7 +77,7 @@ export async function loadPersonalData(controller) {
         state.defaultColor = snapshot.default_color;
         state.colors = validColors(snapshot);
         state.ready = true;
-        state.status.textContent = state.activePreset ? "Preset colors are active. Favorites are marked with rings." : "Favorites are marked with rings. Saved for all browsers.";
+        state.status.textContent = state.activePreset ? "Preset colors are active." : "";
         updatePersonalControls(controller);
     } catch (error) {
         if (error.name !== "AbortError" && isAlive(controller) && id === state.loadId) {
@@ -172,7 +169,7 @@ export function initializePersonalMap(controller, selectCountry) {
             if (!isAlive(controller)) return;
             if (result.favorite) state.favorites.add(code);
             else state.favorites.delete(code);
-            if (controller.selectedCode === code) state.favoriteStatus.textContent = "Saved.";
+            if (controller.selectedCode === code) state.favoriteStatus.textContent = "";
         } catch (error) {
             if (error.name !== "AbortError" && isAlive(controller) && controller.selectedCode === code) state.favoriteStatus.textContent = "Could not save the favorite. Try again.";
         } finally {

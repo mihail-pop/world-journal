@@ -6,7 +6,7 @@
 <div class="journal-field"><label for="journal-date">Exact day</label><input id="journal-date" type="date" name="date" value="{{ filters.date }}"></div>
 <div class="journal-field"><label for="journal-year">Year</label><input id="journal-year" type="number" name="year" min="1" max="9999" value="{{ filters.year }}" placeholder="Any year"></div>
 <div class="journal-field"><label for="journal-month">Month (1–12)</label><input id="journal-month" type="number" name="month" min="1" max="12" value="{{ filters.month }}" placeholder="Any month"></div>
-<div class="journal-field journal-field-wide"><label for="journal-country">Countries</label><select id="journal-country" name="country" multiple size="5">{% for country in countries %}<option value="{{ country.pk }}" {% if country.pk in selected_countries %}selected{% endif %}>{{ country.name }}</option>{% endfor %}</select><p class="field-note">Select multiple with Ctrl/Cmd. Entries matching any selected country are included.</p></div>
+<div class="journal-field journal-field-wide"><label for="journal-country">Countries</label><select id="journal-country" name="country" data-country-select multiple size="5">{% for country in countries %}<option value="{{ country.pk }}" {% if country.pk in selected_countries %}selected{% endif %}>{{ country.name }}</option>{% endfor %}</select><p class="field-note">Choose one or more countries. Entries matching any selected country are included.</p></div>
 <div class="journal-checkboxes">
     <label><input type="checkbox" name="favorite" value="1" {% if filters.favorite == '1' %}checked{% endif %}> Favorites</label>
     <label><input type="checkbox" name="pinned" value="1" {% if filters.pinned == '1' %}checked{% endif %}> Pinned</label>

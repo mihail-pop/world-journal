@@ -15,6 +15,7 @@
     data-country-videos-url-template="{% url 'news:country_videos' iso2='COUNTRY_CODE' %}"
     data-country-geometry-url="{% static 'data/countries.geojson' %}"
     data-capital-geometry-url="{% static 'data/capitals.geojson' %}"
+    data-favorite-icon-url="{% static 'vendor/heroicons/heart-map.svg' %}"
     aria-labelledby="map-title"
 >
     <div hidden data-personal-csrf>{% csrf_token %}</div>
@@ -43,7 +44,7 @@
                 </fieldset>
                 <fieldset class="map-personal-controls">
                     <legend>Your map</legend>
-                    <label for="map-favorites">Favorite country</label><select id="map-favorites" data-favorite-jump disabled><option value="">No favorites yet</option></select>
+                    <label for="map-favorites">Favorite country</label><select id="map-favorites" data-favorite-jump data-country-select disabled><option value="">No favorites yet</option></select>
                     <label for="map-active-preset">Color preset</label><select id="map-active-preset" data-active-preset disabled><option value="">No preset</option></select>
                     <a href="{% url 'countries:preset_list' %}" hx-boost="true" hx-target="#app-content" hx-push-url="true">Manage color presets</a>
                     <p class="field-note" data-personal-map-status role="status">Loading saved map data…</p>
@@ -66,7 +67,7 @@
                 </span>
                 <h2 id="country-name" data-country-name></h2>
             </div>
-            <div class="country-personal-actions"><button class="map-command" type="button" data-country-favorite aria-pressed="false" disabled>{% include 'core/partials/icon.html' with name='bookmark' %}<span data-button-label>Add favorite</span></button><p class="field-note" data-country-favorite-status role="status"></p></div>
+            <div class="country-personal-actions"><button class="country-favorite-button" type="button" data-country-favorite aria-pressed="false" aria-label="Add country to favorites" title="Add to favorites" disabled>{% include 'core/partials/icon.html' with name='heart' %}</button></div><p class="field-note country-personal-status" data-country-favorite-status role="status"></p>
             <div class="country-identity"><span data-country-region></span><span data-country-subregion></span></div>
             <section class="country-news" aria-labelledby="country-news-title">
                 <h3 id="country-news-title" class="visually-hidden">Country details</h3>

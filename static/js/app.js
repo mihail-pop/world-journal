@@ -5,9 +5,11 @@ import { registerMapPage } from "./pages/map.js";
 import { registerSettingsPage } from "./pages/settings.js";
 import { initializePlayer } from "./player.js";
 import { initializeTheme } from "./theme.js";
+import { registerUiControls } from "./ui_controls.js";
 
 function initializeApplication() {
     initializeTheme();
+    registerUiControls();
     initializePlayer();
     registerMapPage();
     registerSettingsPage();

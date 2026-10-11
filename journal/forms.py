@@ -53,7 +53,7 @@ class EntryForm(ContentForm):
         fields = (*CONTENT_FIELDS, "collection", "event_date", "countries", "is_favorite", "is_pinned")
         widgets = {
             "event_date": forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
-            "countries": forms.SelectMultiple(attrs={"size": 8}),
+            "countries": forms.SelectMultiple(attrs={"size": 8, "data-country-select": ""}),
         }
 
 

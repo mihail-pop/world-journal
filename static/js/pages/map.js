@@ -16,6 +16,7 @@ const WORLD_CAMERA = { center: [8, 18], zoom: 1.35 };
 const SOURCE_ID = "world-journal-countries";
 const CENTROID_SOURCE_ID = "world-journal-country-centroids";
 const CAPITAL_SOURCE_ID = "world-journal-capitals";
+const FAVORITE_ICON_ID = "world-journal-favorite-heart";
 const COUNTRY_NEWS_DELAY_MS = 300;
 const LAYERS = {
     simpleBackground: "world-journal-simple-background",
@@ -521,7 +522,7 @@ function closeCountry(controller, { pushHistory = true, focusMap = true } = {}) 
 }
 
 function queryCountryCode(controller, point) {
-    const layers = [LAYERS.hitTarget, LAYERS.fill].filter((layerId) => controller.map.getLayer(layerId));
+    const layers = [LAYERS.favoriteMarkers, LAYERS.hitTarget, LAYERS.fill].filter((layerId) => controller.map.getLayer(layerId));
     if (!layers.length) {
         return null;
     }
@@ -707,11 +708,17 @@ function installCountryLayers(controller) {
             "line-opacity-transition": { duration: 0, delay: 0 },
         },
     });
-    addLayer(controller, {
-        id: LAYERS.favoriteMarkers, type: "circle", source: CENTROID_SOURCE_ID,
-        filter: ["in", ["get", "iso_a2"], ["literal", []]],
-        paint: { "circle-color": "#0b1622", "circle-opacity": 0.7, "circle-radius": 6, "circle-stroke-width": 2, "circle-stroke-color": "#00bfff" },
-    });
+    if (controller.favoriteIcon) {
+        if (!map.hasImage(FAVORITE_ICON_ID)) map.addImage(FAVORITE_ICON_ID, controller.favoriteIcon, {pixelRatio: 2});
+        addLayer(controller, {
+            id: LAYERS.favoriteMarkers, type: "symbol", source: CENTROID_SOURCE_ID,
+            filter: ["in", ["get", "iso_a2"], ["literal", []]],
+            layout: {
+                "icon-image": FAVORITE_ICON_ID, "icon-size": .9, "icon-offset": [0, -12],
+                "icon-allow-overlap": true, "icon-ignore-placement": true,
+            },
+        });
+    }
     addLayer(controller, {
         id: LAYERS.smallMarker,
         type: "circle",
@@ -992,6 +999,40 @@ async function loadJson(url, signal) {
     return response.json();
 }
 
+function loadFavoriteIcon(url, signal) {
+    // Rasterize the bundled Heroicons SVG for MapLibre's image API once per map.
+    return new Promise(resolve => {
+        const image = new Image();
+        let timer;
+        const finish = value => {
+            clearTimeout(timer);
+            signal.removeEventListener("abort", cancel);
+            image.onload = null;
+            image.onerror = null;
+            resolve(value);
+        };
+        const cancel = () => { finish(null); image.src = ""; };
+        if (signal.aborted || !url) { finish(null); return; }
+        signal.addEventListener("abort", cancel, {once: true});
+        timer = setTimeout(cancel, 5000);
+        image.onload = () => {
+            try {
+                const canvas = document.createElement("canvas");
+                canvas.width = canvas.height = 48;
+                const context = canvas.getContext("2d");
+                if (!context) { finish(null); return; }
+                context.drawImage(image, 0, 0, 48, 48);
+                finish(context.getImageData(0, 0, 48, 48));
+            } catch {
+                // An unavailable icon must not prevent the country map loading.
+                finish(null);
+            }
+        };
+        image.onerror = () => finish(null);
+        image.src = url;
+    });
+}
+
 async function initializeMapPage() {
     const page = document.querySelector('[data-page="map"]');
     if (!page) return;
@@ -1132,10 +1173,11 @@ async function initializeMapPage() {
     }, {signal: abortController.signal});
 
     try {
-        const [metadata, geometry, capitals] = await Promise.all([
+        const [metadata, geometry, capitals, favoriteIcon] = await Promise.all([
             loadJson(page.dataset.countryMetadataUrl, abortController.signal),
             loadJson(page.dataset.countryGeometryUrl, abortController.signal),
             loadJson(page.dataset.capitalGeometryUrl, abortController.signal),
+            loadFavoriteIcon(page.dataset.favoriteIconUrl, abortController.signal),
         ]);
         if (activeController !== controller) {
             return;
@@ -1153,6 +1195,7 @@ async function initializeMapPage() {
         controller.geometry = geometry;
         controller.centroids = createCentroids(metadata.countries);
         controller.capitals = capitals;
+        controller.favoriteIcon = favoriteIcon;
         initializeCountryFacts(controller);
         initializePersonalMap(controller, selectCountry);
         initializeControls(controller);

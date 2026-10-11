@@ -26,12 +26,12 @@
     <header class="app-header">
         <a class="app-name" href="{% url 'core:map' %}" aria-label="{{ app_display_name }} map">{{ app_display_name }}</a>
         <nav class="primary-nav" aria-label="Primary" hx-boost="true" hx-target="#app-content" hx-push-url="true" hx-swap="innerHTML show:top">
-            <a data-nav-page="map" href="{% url 'core:map' %}"{% if active_page == 'map' %} aria-current="page"{% endif %}>{% include 'core/partials/icon.html' with name='globe' %} Map</a>
-            <a data-nav-page="journal" href="{% url 'core:journal' %}"{% if active_page == 'journal' %} aria-current="page"{% endif %}>{% include 'core/partials/icon.html' with name='book' %} Journal</a>
+            <a data-nav-page="map" href="{% url 'core:map' %}"{% if active_page == 'map' %} aria-current="page"{% endif %}>Map</a>
+            <a data-nav-page="journal" href="{% url 'core:journal' %}"{% if active_page == 'journal' %} aria-current="page"{% endif %}>Journal</a>
         </nav>
         <div class="header-actions">
-            <a class="settings-link" data-nav-page="settings" href="{% url 'core:settings' %}"{% if active_page == 'settings' %} aria-current="page"{% endif %} hx-boost="true" hx-target="#app-content" hx-push-url="true" hx-swap="innerHTML show:top">{% include 'core/partials/icon.html' with name='settings' %} <span>Settings</span></a>
-            <button class="player-toggle" type="button" data-player-toggle aria-controls="persistent-player" aria-expanded="false" hidden>Restore player</button>
+            <a class="settings-link" data-nav-page="settings" href="{% url 'core:settings' %}"{% if active_page == 'settings' %} aria-current="page"{% endif %} hx-boost="true" hx-target="#app-content" hx-push-url="true" hx-swap="innerHTML show:top">Settings</a>
+            <button class="player-toggle" type="button" data-player-toggle aria-controls="persistent-player" aria-expanded="false" aria-label="Restore video player" title="Restore player" hidden>Player</button>
         </div>
     </header>
 
@@ -53,5 +53,7 @@
         </div>
         <div class="player-stage" data-player-stage></div>
     </aside>
+    <template data-control-icon="down">{% include 'core/partials/icon.html' with name='down' %}</template>
+    <template data-control-icon="close">{% include 'core/partials/icon.html' with name='close' %}</template>
 </body>
 </html>

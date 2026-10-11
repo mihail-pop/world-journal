@@ -25,6 +25,7 @@ class PresetCountryForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.fields["country"].widget.attrs["data-country-select"] = ""
         if not self.instance.pk:
             self.initial["color"] = "#4a90e2"
 
