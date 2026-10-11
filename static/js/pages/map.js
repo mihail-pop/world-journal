@@ -198,10 +198,16 @@ function scheduleHoverUpdate(controller) {
 }
 
 function drawerPadding() {
+    const drawer = document.querySelector("[data-country-drawer]");
+    const workspace = document.querySelector(".map-workspace");
     if (window.matchMedia("(max-width: 46rem)").matches) {
-        return { top: 56, right: 36, bottom: 260, left: 36 };
+        const drawerHeight = drawer && !drawer.hidden ? drawer.offsetHeight : 240;
+        const playerOffset = Number.parseFloat(document.documentElement.style.getPropertyValue("--persistent-player-map-offset")) || 0;
+        const availableHeight = workspace?.clientHeight || window.innerHeight;
+        return { top: 56, right: 24, bottom: Math.min(drawerHeight + playerOffset + 24, availableHeight * .65), left: 24 };
     }
-    return { top: 56, right: 380, bottom: 56, left: 56 };
+    const drawerWidth = drawer?.offsetWidth || 480;
+    return { top: 56, right: Math.min(drawerWidth + 48, (workspace?.clientWidth || window.innerWidth) * .6), bottom: 56, left: 56 };
 }
 
 function focusCountry(controller, country, animate = true) {

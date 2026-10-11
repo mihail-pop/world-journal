@@ -1,0 +1,7 @@
+<header class="settings-page-heading"><h1 id="{{ heading_id|default:'settings-title' }}">Settings</h1></header>
+<nav class="settings-tabs" aria-label="Settings sections" hx-boost="true" hx-target="#app-content" hx-push-url="true">
+    <a href="{% url 'core:settings' %}"{% if section == 'preferences' %} aria-current="page"{% endif %}>{% include 'core/partials/icon.html' with name='settings' %}Preferences</a>
+    <a href="{% url 'core:backups' %}"{% if section == 'backup' %} aria-current="page"{% endif %}>{% include 'core/partials/icon.html' with name='download' %}Backup</a>
+    <a href="{% url 'news:settings' %}"{% if section == 'sources' %} aria-current="page"{% endif %}>{% include 'core/partials/icon.html' with name='feed' %}Sources</a>
+    <a href="{% url 'core:settings' %}?section=information"{% if section == 'information' %} aria-current="page"{% endif %}>{% include 'core/partials/icon.html' with name='info' %}Information</a>
+</nav>

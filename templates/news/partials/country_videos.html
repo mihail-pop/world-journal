@@ -41,7 +41,7 @@
                         <h4>{{ item.title }}</h4>
                         <p class="country-news-byline">
                             <span>{{ item.channel_name }}{% if item.is_stale %} · cached{% endif %}</span>
-                            {% if item.published_at %}<time datetime="{{ item.published_at|date:'c' }}">{{ item.published_at|date:'M j, H:i T' }}</time>{% else %}<span>Publication time unavailable</span>{% endif %}
+                            {% if item.published_at %}<time datetime="{{ item.published_at|date:'c' }}">{{ item.published_at|date:'M j, H:i T' }}</time>{% endif %}
                         </p>
                         <div class="video-card-actions">
                             <button
@@ -51,9 +51,9 @@
                                 data-video-id="{{ item.video_id }}"
                                 data-video-title="{{ item.title }}"
                                 data-video-channel="{{ item.channel_name }}"
-                            >Play</button>
-                            <a href="{{ item.watch_url }}" target="_blank" rel="noopener noreferrer">Watch on YouTube</a>
-                            <a href="{% url 'journal:new' %}?type=youtube&amp;title={{ item.title|urlencode }}&amp;video={{ item.video_id|urlencode }}&amp;source={{ item.channel_name|urlencode }}&amp;country={{ video_page.country_code }}{% if item.published_at %}&amp;published={{ item.published_at|date:'c'|urlencode }}{% endif %}" hx-boost="true" hx-target="#app-content" hx-push-url="true">Save to Journal</a>
+                            >{% include 'core/partials/icon.html' with name='play' %} Play</button>
+                            <a href="{{ item.watch_url }}" target="_blank" rel="noopener noreferrer">{% include 'core/partials/icon.html' with name='external' %} YouTube</a>
+                            <a href="{% url 'journal:new' %}?type=youtube&amp;title={{ item.title|urlencode }}&amp;video={{ item.video_id|urlencode }}&amp;source={{ item.channel_name|urlencode }}&amp;country={{ video_page.country_code }}{% if item.published_at %}&amp;published={{ item.published_at|date:'c'|urlencode }}{% endif %}" hx-boost="true" hx-target="#app-content" hx-push-url="true">{% include 'core/partials/icon.html' with name='bookmark' %} Save</a>
                         </div>
                     </div>
                 </li>
@@ -66,5 +66,5 @@
     {% else %}
         <p class="country-news-message">No country references were found in the channels' recent uploads.</p>
     {% endif %}
-    <p class="video-feed-note">Channel feeds contain only a limited set of recent uploads. Playing a video connects your browser to YouTube.</p>
+    <details class="video-feed-note"><summary>About these videos</summary><p>Channel feeds contain only a limited set of recent uploads. Playing a video connects your browser to YouTube.</p></details>
 </div>

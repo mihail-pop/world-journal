@@ -23,6 +23,14 @@ function syncPlayerLayout(player) {
 function setMinimized(player, minimized) {
     player.classList.toggle("is-minimized", minimized);
     player.querySelector("[data-player-minimize]")?.setAttribute("aria-label", minimized ? "Restore video player" : "Minimize video player");
+    const minimize = player.querySelector("[data-player-minimize]");
+    if (minimize) {
+        minimize.title = minimized ? "Restore" : "Minimize";
+        const minimizeIcon = minimize.querySelector("[data-player-minimize-icon]");
+        const restoreIcon = minimize.querySelector("[data-player-restore-icon]");
+        if (minimizeIcon) minimizeIcon.hidden = minimized;
+        if (restoreIcon) restoreIcon.hidden = !minimized;
+    }
     const toggle = document.querySelector("[data-player-toggle]");
     toggle?.setAttribute("aria-expanded", String(!minimized));
     toggle?.toggleAttribute("hidden", !minimized);

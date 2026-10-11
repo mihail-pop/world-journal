@@ -27,4 +27,6 @@ def journal_page(request: HttpRequest) -> HttpResponse:
 
 
 def settings_page(request: HttpRequest) -> HttpResponse:
+    if request.GET.get("section") == "information":
+        return render_page(request, "settings", page_template="core/partials/information.html")
     return render_page(request, "settings")

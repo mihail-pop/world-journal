@@ -58,6 +58,18 @@ async function initializeSettingsPage() {
         const preferences = readMapPreferences(validCountryCodes);
         controller.select.value = preferences.homeCountry ?? "";
         controller.select.disabled = false;
+        const labelChoices = page.querySelectorAll("[data-settings-map-preference]");
+        const labelKeys = new Set(["countryNames", "capitalNames", "allOtherText"]);
+        for (const input of labelChoices) {
+            input.checked = preferences[input.dataset.settingsMapPreference];
+            input.disabled = false;
+            input.addEventListener("change", () => {
+                const key = input.dataset.settingsMapPreference;
+                if (!labelKeys.has(key)) return;
+                writeMapPreferences({ ...readMapPreferences(validCountryCodes), [key]: input.checked }, validCountryCodes);
+                setStatus(controller, "Map labels saved.");
+            }, { signal: controller.abortController.signal });
+        }
         setStatus(controller, "");
 
         controller.select.addEventListener("change", () => {

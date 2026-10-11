@@ -1,44 +1,17 @@
-{% load static %}
-<section
-    class="page page-standard"
-    data-page="settings"
-    data-country-metadata-url="{% url 'countries:metadata' %}"
-    aria-labelledby="settings-title"
->
-    <div class="page-copy">
-        <p class="eyebrow">Local preferences</p>
-        <h1 id="settings-title">Settings</h1>
+<section class="page page-standard settings-page" data-page="settings" data-country-metadata-url="{% url 'countries:metadata' %}" aria-labelledby="settings-title">
+    {% include 'core/partials/settings_nav.html' with section='preferences' %}
+    <div class="settings-grid">
+        <section class="settings-card"><h2>{% include 'core/partials/icon.html' with name='palette' %}Appearance</h2>
+            <label class="visually-hidden" for="theme-selector">Color theme</label><select id="theme-selector"><option value="dark">Dark</option><option value="light">Light</option><option value="brown">Brown</option></select>
+            <div class="theme-choices" role="group" aria-label="Color theme" data-theme-choices hidden>
+                <button class="theme-choice" type="button" data-theme-choice="dark" aria-pressed="false"><span class="theme-swatch theme-swatch-dark"><i></i><i></i><i></i></span>Dark</button>
+                <button class="theme-choice" type="button" data-theme-choice="light" aria-pressed="false"><span class="theme-swatch theme-swatch-light"><i></i><i></i><i></i></span>Light</button>
+                <button class="theme-choice" type="button" data-theme-choice="brown" aria-pressed="false"><span class="theme-swatch theme-swatch-brown"><i></i><i></i><i></i></span>Brown</button>
+            </div>
+        </section>
+        <section class="settings-card"><h2>{% include 'core/partials/icon.html' with name='home' %}Home country</h2><div class="settings-field"><label class="visually-hidden" for="home-country">Home country</label><select id="home-country" data-home-country-select disabled><option value="">World view</option></select><p class="field-note">Starting view for a fresh map.</p><p class="settings-status" data-settings-status role="status" aria-live="polite">Loading countries…</p></div></section>
+        <section class="settings-card"><h2>{% include 'core/partials/icon.html' with name='layers' %}Color presets</h2><p class="field-note">Group countries with your own colors.</p><a class="journal-button" href="{% url 'countries:preset_list' %}" hx-boost="true" hx-target="#app-content" hx-push-url="true">Manage presets{% include 'core/partials/icon.html' with name='edit' %}</a></section>
+        <section class="settings-card settings-card-full"><h2>Map labels</h2><div class="settings-toggle-list"><label><span>Country names</span><input type="checkbox" disabled data-settings-map-preference="countryNames"></label><label><span>Capitals</span><input type="checkbox" disabled data-settings-map-preference="capitalNames"></label><label><span>Other labels</span><input type="checkbox" disabled data-settings-map-preference="allOtherText"></label></div></section>
+
     </div>
-    <section class="settings-section" aria-labelledby="appearance-settings-title">
-        <div>
-            <p class="eyebrow">Appearance</p>
-            <h2 id="appearance-settings-title">Theme</h2>
-        </div>
-        <div class="settings-field">
-            <label for="theme-selector">Color theme</label>
-            <select id="theme-selector" name="theme">
-                <option value="dark">Dark</option>
-                <option value="light">Light</option>
-                <option value="brown">Brown</option>
-            </select>
-            <p class="field-note">Saved in this browser.</p>
-        </div>
-    </section>
-    <section class="settings-section" aria-labelledby="map-settings-title">
-        <div>
-            <p class="eyebrow">Map</p>
-            <h2 id="map-settings-title">Opening position</h2>
-        </div>
-        <div class="settings-field">
-            <label for="home-country">Home country</label>
-            <select id="home-country" data-home-country-select disabled>
-                <option value="">No home country</option>
-            </select>
-            <p class="field-note">Used when the map opens without a country link.</p>
-            <p class="settings-status" data-settings-status role="status" aria-live="polite">Loading countries…</p>
-        </div>
-    </section>
-    <section class="settings-section" aria-labelledby="personal-map-settings-title"><div><p class="eyebrow">Shared map data</p><h2 id="personal-map-settings-title">Color presets</h2></div><div><p>Create country color groups and choose the active preset. Favorites and country overview notes are managed from the map.</p><a class="journal-button" href="{% url 'countries:preset_list' %}" hx-boost="true" hx-target="#app-content" hx-push-url="true">Manage color presets</a></div></section>
-    <section class="settings-section" aria-labelledby="news-settings-title"><div><p class="eyebrow">Shared preferences</p><h2 id="news-settings-title">News sources</h2></div><div><p>Choose article feeds and video channels, view their cached health, and refresh a source when needed.</p><a class="journal-button" href="{% url 'news:settings' %}" hx-boost="true" hx-target="#app-content" hx-push-url="true">Manage news sources</a></div></section>
-    <section class="settings-section" aria-labelledby="backup-settings-title"><div><p class="eyebrow">Shared data</p><h2 id="backup-settings-title">Backups</h2></div><div><p>Export your journal and local images, or preview an import that keeps existing content.</p><a class="journal-button" href="{% url 'core:backups' %}" hx-boost="true" hx-target="#app-content" hx-push-url="true">Manage backups</a></div></section>
 </section>

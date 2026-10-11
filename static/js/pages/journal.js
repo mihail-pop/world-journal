@@ -1,13 +1,31 @@
 let registered = false;
 const pendingPreviews = new Set();
 
+function updateWritingControls(scope) {
+    const format = scope.querySelector('select[name$="body_format"]');
+    for (const button of scope.querySelectorAll("[data-journal-format]")) {
+        button.hidden = format?.value !== "markdown";
+    }
+}
+
 function updatePositions(editor) {
     let position = 0;
     for (const card of editor.querySelectorAll("[data-journal-section]")) {
         const deleted = card.querySelector('[name$="-DELETE"]')?.checked;
         card.classList.toggle("is-deleted", Boolean(deleted));
         card.querySelector(".journal-section-deleted").hidden = !deleted;
-        card.querySelector(".journal-section-fields").hidden = Boolean(deleted);
+        const fields = card.querySelector(".journal-section-fields");
+        fields.hidden = Boolean(deleted);
+        for (const input of fields.querySelectorAll("input, select, textarea")) {
+            // Deleted sections must not fail native validation while hidden.
+            if (deleted && !input.disabled) {
+                input.dataset.sectionDisabled = "true";
+                input.disabled = true;
+            } else if (!deleted && input.dataset.sectionDisabled) {
+                input.disabled = false;
+                delete input.dataset.sectionDisabled;
+            }
+        }
         const input = card.querySelector('[name$="-position"]');
         if (input && !deleted) input.value = position++;
     }
@@ -22,6 +40,7 @@ function addSection(editor) {
     container.insertAdjacentHTML("beforeend", template.innerHTML.replaceAll("__prefix__", String(index)));
     total.value = index + 1;
     updatePositions(editor);
+    updateWritingControls(container.lastElementChild);
     container.lastElementChild.querySelector('input[name$="-title"]')?.focus();
 }
 
@@ -97,7 +116,23 @@ export function registerJournalPage() {
             previewBody(event.target.closest("[data-journal-preview]"));
         }
     });
+    document.addEventListener("invalid", event => {
+        // Browser validation must be able to focus fields inside folded panels.
+        if (!event.target.closest("[data-journal-editor]")) return;
+        for (let parent = event.target.parentElement; parent; parent = parent.parentElement) {
+            if (parent.matches("details")) parent.open = true;
+        }
+    }, true);
+    document.addEventListener("input", event => {
+        if (!event.target.matches('input[name$="-title"]')) return;
+        const caption = event.target.closest("[data-journal-section]")?.querySelector("[data-section-caption]");
+        if (caption) caption.textContent = event.target.value.trim() || "Untitled section";
+    });
     document.addEventListener("change", event => {
+        if (event.target.matches('select[name$="body_format"]')) {
+            const scope = event.target.closest("[data-content-fields]");
+            if (scope) updateWritingControls(scope);
+        }
         if (event.target.matches('[name$="-DELETE"]')) {
             const editor = event.target.closest("[data-journal-editor]");
             if (editor) updatePositions(editor);
@@ -108,7 +143,15 @@ export function registerJournalPage() {
     }, true);
     document.addEventListener("world-journal:page-ready", () => {
         const editor = document.querySelector("[data-journal-editor]");
-        if (editor) updatePositions(editor);
+        if (editor) {
+            updatePositions(editor);
+            for (const scope of editor.querySelectorAll("[data-content-fields]")) updateWritingControls(scope);
+        }
+        const collections = document.querySelector(".journal-collections");
+        if (collections && !collections.dataset.initialized) {
+            collections.open = !window.matchMedia("(max-width: 46rem)").matches;
+            collections.dataset.initialized = "true";
+        }
     });
     document.addEventListener("world-journal:page-cleanup", () => {
         for (const abort of pendingPreviews) abort.abort();

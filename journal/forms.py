@@ -17,7 +17,8 @@ class ContentForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields["body"].widget.attrs.update(rows=12, **{"data-journal-body": ""})
+        self.fields["title"].widget.attrs["placeholder"] = "Untitled entry"
+        self.fields["body"].widget.attrs.update(rows=12, placeholder="Start writing…", **{"data-journal-body": ""})
         self.fields["source_published_at"].widget = forms.DateTimeInput(attrs={"type": "datetime-local"}, format="%Y-%m-%dT%H:%M")
         self.fields["source_published_at"].input_formats = ["%Y-%m-%dT%H:%M", "%Y-%m-%dT%H:%M:%S"]
         self.fields["youtube_start_seconds"].label = "Start time in seconds"

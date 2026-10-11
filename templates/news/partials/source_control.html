@@ -3,10 +3,13 @@
     {% if row.enabled %}<form method="post" action="{% url 'news:source_refresh' row.id %}" hx-disabled-elt="find button" hx-indicator="find .source-check-progress">{% csrf_token %}<input type="hidden" name="country" value="{{ country.pk }}"><button type="submit" class="journal-button">Refresh now</button><span class="source-check-progress htmx-indicator" role="status">Checking feed…</span></form>{% endif %}
 </div>
 {% if row.disabled_reason %}<p class="field-note">{{ row.disabled_reason }}</p>{% elif not row.enabled %}<p class="field-note">Switched off, or paused because its publisher is off. Save an enabled choice before refreshing.</p>{% endif %}
+<details class="source-details"><summary>Feed details</summary>
 <dl class="source-health-details">
     <div><dt>Last attempt</dt><dd>{% if row.health.last_attempt %}<time datetime="{{ row.health.last_attempt|date:'c' }}">{{ row.health.last_attempt|date:'M j, Y, H:i T' }}</time>{% else %}No retained check{% endif %}</dd></div>
     <div><dt>Last successful check</dt><dd>{% if row.health.last_success %}<time datetime="{{ row.health.last_success|date:'c' }}">{{ row.health.last_success|date:'M j, Y, H:i T' }}</time>{% else %}No retained success{% endif %}</dd></div>
     <div><dt>Cached entries</dt><dd>{% if row.health.item_count != None %}{{ row.health.item_count }}{% else %}None{% endif %}</dd></div>
 </dl>
 {% if row.verification_date %}<p class="field-note">Registry review: {{ row.verification_date|date:'M j, Y' }}. This is separate from a live feed check.</p>{% endif %}
-{% if row.notes %}<details class="source-details"><summary>Source notes</summary><p>{{ row.notes }}</p>{% if row.feed_url %}<a href="{{ row.feed_url }}" target="_blank" rel="noopener noreferrer">Open feed ↗</a>{% endif %}</details>{% endif %}
+{% if row.notes %}<p>{{ row.notes }}</p>{% if row.feed_url %}<a href="{{ row.feed_url }}" target="_blank" rel="noopener noreferrer">Open feed ↗</a>{% endif %}{% endif %}
+
+</details>

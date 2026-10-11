@@ -1,29 +1,26 @@
 <section class="page page-standard journal-page" data-page="journal" aria-labelledby="journal-title" hx-boost="true" hx-target="#app-content" hx-push-url="true">
     <div class="journal-page-heading">
-        <div class="page-copy"><p class="eyebrow">Research archive</p><h1 id="journal-title">Journal</h1><p>Your notes, sources and videos in one place.</p></div>
-        <div class="journal-actions"><a class="journal-button" href="{% url 'journal:statistics' %}{% if statistics_query %}?{{ statistics_query }}{% endif %}">Statistics</a><a class="journal-button is-primary" href="{% url 'journal:new' %}{% if filters.collection and filters.collection != 'unfiled' %}?collection={{ filters.collection|urlencode }}{% endif %}">New entry</a></div>
+        <h1 id="journal-title">Journal</h1>
+        <div class="journal-actions"><a class="journal-button" href="{% url 'journal:statistics' %}{% if statistics_query %}?{{ statistics_query }}{% endif %}">{% include 'core/partials/icon.html' with name='chart' %} Statistics</a><a class="journal-button is-primary" href="{% url 'journal:new' %}{% if filters.collection and filters.collection != 'unfiled' %}?collection={{ filters.collection|urlencode }}{% endif %}">{% include 'core/partials/icon.html' with name='plus' %} New entry</a></div>
     </div>
     <div class="journal-layout">
         <aside class="journal-sidebar" aria-label="Journal collections">
-            <h2>Collections</h2>
+            <details class="journal-collections" open><summary>Collections</summary>
             <a href="{% url 'core:journal' %}" {% if not filters.collection %}aria-current="page"{% endif %}>All entries <span>{{ total_entries }}</span></a>
             <a href="{% url 'core:journal' %}?collection=unfiled" {% if filters.collection == 'unfiled' %}aria-current="page"{% endif %}>Unfiled <span>{{ unfiled_count }}</span></a>
             {% for collection in collections %}
                 <div class="journal-collection-row">
                     <a href="{% url 'core:journal' %}?collection={{ collection.pk }}" {% if filters.collection == collection.pk|stringformat:'s' %}aria-current="page"{% endif %}>{{ collection.name }} <span>{{ collection.entry_count }}</span></a>
-                    <a class="journal-collection-edit" href="{% url 'journal:collection_edit' collection.pk %}" aria-label="Edit {{ collection.name }}">Edit</a>
+                    <a class="journal-collection-edit" href="{% url 'journal:collection_edit' collection.pk %}" aria-label="Edit {{ collection.name }}">{% include 'core/partials/icon.html' with name='edit' %}</a>
                 </div>
             {% endfor %}
-            <a class="journal-button" href="{% url 'journal:collection_new' %}">New collection</a>
+            <a class="journal-button" href="{% url 'journal:collection_new' %}">{% include 'core/partials/icon.html' with name='plus' %} Collection</a></details>
         </aside>
         <div class="journal-main">
-            <details class="journal-filter-panel" {% if filters %}open{% endif %}>
-                <summary>Search and filters</summary>
-                <form method="get" action="{% url 'core:journal' %}" class="journal-filter-form">
-                    {% include "journal/partials/filter_fields.html" %}
-                    <div class="journal-actions"><button class="journal-button is-primary" type="submit">Apply</button><a href="{% url 'core:journal' %}">Clear filters</a></div>
-                </form>
-            </details>
+            <form method="get" action="{% url 'core:journal' %}" class="journal-search-form">
+                <div class="journal-search-bar"><label class="visually-hidden" for="journal-search">Search journal</label>{% include 'core/partials/icon.html' with name='search' %}<input id="journal-search" type="search" name="q" value="{{ filters.q }}" placeholder="Search your journal"><button class="journal-button" type="submit">Search</button></div>
+                <details class="journal-filter-panel" {% if filters.type or filters.date or filters.year or filters.month or filters.favorite or filters.pinned or filters.undated or filters.untagged or selected_countries %}open{% endif %}><summary>{% include 'core/partials/icon.html' with name='filter' %} Filters{% if filters.collection %} · Collection selected{% endif %}</summary><div class="journal-filter-form">{% include 'journal/partials/filter_fields.html' with exclude_search=True %}<div class="journal-actions"><button class="journal-button" type="submit">Apply filters</button><a href="{% url 'core:journal' %}">Clear</a></div></div></details>
+            </form>
             <p class="journal-results-count">{{ entries_page.paginator.count }} entr{{ entries_page.paginator.count|pluralize:'y,ies' }}</p>
             <div class="journal-entry-list">
                 {% for entry in entries_page %}
@@ -31,7 +28,7 @@
                         <div class="journal-entry-meta"><span class="journal-badge">{{ entry.get_entry_type_display }}</span>{% if entry.is_pinned %}<span>Pinned</span>{% endif %}{% if entry.is_favorite %}<span>Favorite</span>{% endif %}{% if entry.collection %}<span>{{ entry.collection.name }}</span>{% endif %}</div>
                         <h2><a href="{{ entry.get_absolute_url }}">{{ entry.title }}</a></h2>
                         {% if entry.excerpt %}<p class="journal-excerpt">{{ entry.excerpt|truncatechars:250 }}</p>{% endif %}
-                        <div class="journal-entry-meta">{% if entry.event_date %}<span>Event: <time datetime="{{ entry.event_date|date:'Y-m-d' }}">{{ entry.event_date|date:'M j, Y' }}</time></span>{% else %}<span>No event date</span>{% endif %}<span>Saved {{ entry.created_at|date:'M j, Y' }}</span>{% if entry.source_name %}<span>{{ entry.source_name }}</span>{% endif %}</div>
+                        <div class="journal-entry-meta">{% if entry.event_date %}<span>Event: <time datetime="{{ entry.event_date|date:'Y-m-d' }}">{{ entry.event_date|date:'M j, Y' }}</time></span>{% endif %}<span>Saved {{ entry.created_at|date:'M j, Y' }}</span>{% if entry.source_name %}<span>{{ entry.source_name }}</span>{% endif %}</div>
                         <div class="journal-country-tags">{% for country in entry.countries.all %}<a href="{% url 'core:journal' %}?country={{ country.pk }}">{{ country.name }}</a>{% endfor %}</div>
                     </article>
                 {% empty %}<div class="empty-state"><p>{% if total_entries %}No entries match these filters.{% else %}Your journal is empty. Create your first entry or save an article/video from the map.{% endif %}</p></div>{% endfor %}

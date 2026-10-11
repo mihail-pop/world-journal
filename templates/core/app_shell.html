@@ -18,6 +18,7 @@
     </script>
     <link rel="stylesheet" href="{% static 'vendor/maplibre-gl/maplibre-gl.css' %}">
     <link rel="stylesheet" href="{% static 'css/app.css' %}">
+    <link rel="stylesheet" href="{% static 'css/ui.css' %}">
     <script src="{% static 'vendor/htmx/htmx-2.0.8.min.js' %}" defer></script>
     <script type="module" src="{% static 'js/app.js' %}"></script>
 </head>
@@ -25,11 +26,11 @@
     <header class="app-header">
         <a class="app-name" href="{% url 'core:map' %}" aria-label="{{ app_display_name }} map">{{ app_display_name }}</a>
         <nav class="primary-nav" aria-label="Primary" hx-boost="true" hx-target="#app-content" hx-push-url="true" hx-swap="innerHTML show:top">
-            <a data-nav-page="map" href="{% url 'core:map' %}"{% if active_page == 'map' %} aria-current="page"{% endif %}>Map</a>
-            <a data-nav-page="journal" href="{% url 'core:journal' %}"{% if active_page == 'journal' %} aria-current="page"{% endif %}>Journal</a>
+            <a data-nav-page="map" href="{% url 'core:map' %}"{% if active_page == 'map' %} aria-current="page"{% endif %}>{% include 'core/partials/icon.html' with name='globe' %} Map</a>
+            <a data-nav-page="journal" href="{% url 'core:journal' %}"{% if active_page == 'journal' %} aria-current="page"{% endif %}>{% include 'core/partials/icon.html' with name='book' %} Journal</a>
         </nav>
         <div class="header-actions">
-            <a class="settings-link" data-nav-page="settings" href="{% url 'core:settings' %}"{% if active_page == 'settings' %} aria-current="page"{% endif %} hx-boost="true" hx-target="#app-content" hx-push-url="true" hx-swap="innerHTML show:top">Settings</a>
+            <a class="settings-link" data-nav-page="settings" href="{% url 'core:settings' %}"{% if active_page == 'settings' %} aria-current="page"{% endif %} hx-boost="true" hx-target="#app-content" hx-push-url="true" hx-swap="innerHTML show:top">{% include 'core/partials/icon.html' with name='settings' %} <span>Settings</span></a>
             <button class="player-toggle" type="button" data-player-toggle aria-controls="persistent-player" aria-expanded="false" hidden>Restore player</button>
         </div>
     </header>
@@ -41,13 +42,13 @@
     <aside id="persistent-player" class="persistent-player" aria-label="Video player" data-player-state="empty">
         <div class="player-heading">
             <div>
-                <p class="eyebrow">Now playing</p>
+
                 <p class="player-title" data-player-title>No video selected</p>
                 <p class="player-channel" data-player-channel></p>
             </div>
             <div class="player-actions" data-player-actions hidden>
-                <button type="button" data-player-minimize aria-label="Minimize video player">Minimize</button>
-                <button type="button" data-player-close aria-label="Close video player">Close</button>
+                <button type="button" data-player-minimize aria-label="Minimize video player" title="Minimize"><span data-player-minimize-icon>{% include 'core/partials/icon.html' with name='minimize' %}</span><span data-player-restore-icon hidden>{% include 'core/partials/icon.html' with name='restore' %}</span></button>
+                <button type="button" data-player-close aria-label="Close video player" title="Close">{% include 'core/partials/icon.html' with name='close' %}</button>
             </div>
         </div>
         <div class="player-stage" data-player-stage></div>

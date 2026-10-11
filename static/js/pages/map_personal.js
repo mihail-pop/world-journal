@@ -48,7 +48,8 @@ function updatePersonalControls(controller) {
     select.disabled = !state.ready || state.activating;
     const button = controller.page.querySelector("[data-country-favorite]");
     const favored = state.favorites.has(controller.selectedCode);
-    button.textContent = favored ? "★ Favorited" : "☆ Add favorite";
+    const favoriteLabel = button.querySelector("[data-button-label]") || button;
+    favoriteLabel.textContent = favored ? "Favorited" : "Add favorite";
     button.setAttribute("aria-pressed", String(favored));
     button.disabled = !state.ready || !controller.selectedCode || state.favoritePending.has(controller.selectedCode);
     applyPersonalLayers(controller);
