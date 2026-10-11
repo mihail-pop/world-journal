@@ -49,7 +49,7 @@ function renderGroups(controller) {
         card.style.setProperty("--group-color", group.color);
         const heading = document.createElement("div");
         heading.className = "preset-map-group-heading";
-        const choose = button(`Color ${index + 1} · ${group.countries.length}`, "preset-map-group-select", () => {
+        const choose = button(`${group.title?.trim() || `Color ${index + 1}`} · ${group.countries.length}`, "preset-map-group-select", () => {
             draft.activeGroup = index;
             renderGroups(controller);
         });
@@ -58,6 +58,7 @@ function renderGroups(controller) {
         color.type = "color";
         color.value = group.color;
         color.setAttribute("aria-label", `Change color ${index + 1}`);
+        const originalColor = group.color;
         color.addEventListener("input", () => {
             group.color = color.value.toLowerCase();
             card.style.setProperty("--group-color", group.color);
@@ -66,6 +67,16 @@ function renderGroups(controller) {
         color.addEventListener("change", () => {
             const same = draft.groups.find(other => other !== group && other.color === group.color);
             if (same) {
+                const combinedTitle = [...new Set([same.title, group.title].map(title => (title || "").trim()).filter(Boolean))].join(" / ");
+                if (combinedTitle.length > 160) {
+                    group.color = originalColor;
+                    color.value = originalColor;
+                    card.style.setProperty("--group-color", originalColor);
+                    preview(controller);
+                    state.status.textContent = "Shorten the group titles before combining these colors (160 characters maximum).";
+                    return;
+                }
+                same.title = combinedTitle;
                 same.countries.push(...group.countries);
                 draft.groups.splice(index, 1);
                 draft.activeGroup = draft.groups.indexOf(same);
@@ -80,6 +91,20 @@ function renderGroups(controller) {
             markChanged(controller);
             renderGroups(controller);
         }));
+        const titleLabel = document.createElement("label");
+        titleLabel.className = "preset-map-group-title";
+        titleLabel.textContent = "Title";
+        const title = document.createElement("input");
+        title.type = "text";
+        title.maxLength = 160;
+        title.value = group.title || "";
+        title.placeholder = `Color ${index + 1}, e.g. Western aligned`;
+        title.addEventListener("input", () => {
+            group.title = title.value;
+            choose.textContent = `${group.title.trim() || `Color ${index + 1}`} · ${group.countries.length}`;
+            markChanged(controller);
+        });
+        titleLabel.append(title);
         const countries = document.createElement("div");
         countries.className = "preset-map-country-chips";
         for (const code of [...group.countries].sort((a, b) => controller.countriesByCode.get(a).name.localeCompare(controller.countriesByCode.get(b).name))) {
@@ -102,7 +127,7 @@ function renderGroups(controller) {
             hint.textContent = "Select this color, then click countries on the map.";
             countries.append(hint);
         }
-        card.append(heading, countries);
+        card.append(heading, titleLabel, countries);
         state.groups.append(card);
     });
     const current = draft.groups[draft.activeGroup];
@@ -173,8 +198,8 @@ export async function syncPresetEditor(controller, {reload = false} = {}) {
         if (!response.ok) throw new Error(response.status === 404 ? "This preset no longer exists." : "The preset could not be loaded.");
         const draft = await response.json();
         if (abort.signal.aborted || !state.active || state.id !== id) return;
-        draft.groups = draft.groups.map(group => ({color: group.color, countries: group.countries.filter(code => controller.countriesByCode.has(code))}));
-        if (!draft.groups.length) draft.groups.push({color: COLORS[0], countries: []});
+        draft.groups = draft.groups.map(group => ({color: group.color, title: group.title || "", countries: group.countries.filter(code => controller.countriesByCode.has(code))}));
+        if (!draft.groups.length) draft.groups.push({color: COLORS[0], title: "", countries: []});
         draft.activeGroup = 0;
         draft.dirty = false;
         state.drafts.set(id, draft);
@@ -198,7 +223,7 @@ export function selectPresetCountry(controller, code) {
     const assigned = draft.groups.findIndex(group => group.countries.includes(code));
     if (assigned !== -1) {
         draft.activeGroup = assigned;
-        state.status.textContent = `${controller.countriesByCode.get(code).name} belongs to color ${assigned + 1}. That group is now selected.`;
+        state.status.textContent = `${controller.countriesByCode.get(code).name} belongs to ${draft.groups[assigned].title?.trim() || `color ${assigned + 1}`}. That group is now selected.`;
     } else {
         const group = draft.groups[draft.activeGroup];
         if (!group) { state.status.textContent = "Add a color before selecting countries."; return true; }
@@ -246,7 +271,7 @@ export function initializePresetMap(controller, callbacks) {
         while (!color || draft.groups.some(group => group.color === color)) {
             color = `#${(number++ & 0xffffff).toString(16).padStart(6, "0")}`;
         }
-        draft.groups.push({color, countries: []});
+        draft.groups.push({color, title: "", countries: []});
         draft.activeGroup = draft.groups.length - 1;
         markChanged(controller);
         renderGroups(controller);

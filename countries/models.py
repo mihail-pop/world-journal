@@ -54,6 +54,18 @@ class PresetCountry(models.Model):
         constraints = [models.UniqueConstraint(fields=("preset", "country"), name="unique_preset_country")]
 
 
+class PresetColorGroup(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    preset = models.ForeignKey(MapPreset, on_delete=models.CASCADE, related_name="color_groups")
+    color = models.CharField(max_length=7, validators=[validate_map_color])
+    title = models.CharField(max_length=160, blank=True)
+    position = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ("position", "id")
+        constraints = [models.UniqueConstraint(fields=("preset", "color"), name="unique_preset_group_color")]
+
+
 class MapPersonalState(models.Model):
     # One shared active preset; zero or one row exists, always at key 1.
     id = models.PositiveSmallIntegerField(primary_key=True, default=1, editable=False)

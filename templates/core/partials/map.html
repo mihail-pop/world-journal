@@ -61,6 +61,13 @@
         </div>
         <p class="map-notice" data-map-notice role="status" aria-live="polite" hidden></p>
 
+        <aside class="map-preset-legend" data-map-preset-legend aria-labelledby="map-preset-legend-title" hidden>
+            <details open>
+                <summary id="map-preset-legend-title" data-map-preset-legend-title>Color preset</summary>
+                <ul data-map-preset-legend-rows></ul>
+            </details>
+        </aside>
+
         <aside class="country-drawer" data-country-drawer aria-labelledby="country-name" tabindex="-1" hidden>
             <button class="country-drawer-close" type="button" data-country-close aria-label="Close country details" title="Close country details">{% include 'core/partials/icon.html' with name='close' %}</button>
             <div class="country-heading">

@@ -11,8 +11,58 @@ function validColors(snapshot) {
     return Object.fromEntries(Object.entries(snapshot.colors || {}).filter(([code, color]) => /^[A-Z]{2}$/.test(code) && COLOR.test(color)));
 }
 
+function updatePresetLegend(controller) {
+    const state = controller.personal;
+    const legend = controller.page.querySelector("[data-map-preset-legend]");
+    if (!state || !legend) return;
+    const rows = (state.groups || []).map((group, index) => ({...group, title: group.title?.trim() || `Color ${index + 1}`}))
+        .filter(group => COLOR.test(group.color) && group.countries?.length);
+    if (COLOR.test(state.defaultColor) && Object.keys(state.colors).length < controller.countriesByCode.size) {
+        rows.push({color: state.defaultColor, title: "Other countries"});
+    }
+    legend.hidden = !state.activePreset || Boolean(controller.presetEditor?.active) || !rows.length;
+    if (legend.hidden) return;
+    controller.page.querySelector("[data-map-preset-legend-title]").textContent = state.activePresetName || "Color preset";
+    const list = legend.querySelector("[data-map-preset-legend-rows]");
+    list.replaceChildren();
+    for (const row of rows) {
+        const item = document.createElement("li");
+        const swatch = document.createElement("span");
+        swatch.className = "map-legend-swatch";
+        swatch.style.backgroundColor = row.color;
+        swatch.setAttribute("aria-hidden", "true");
+        const title = document.createElement("span");
+        title.textContent = row.title;
+        item.append(swatch, title);
+        list.append(item);
+    }
+    positionPresetLegend(controller);
+}
+
+function positionPresetLegend(controller) {
+    if (controller.suspended || !controller.page.isConnected) return;
+    const legend = controller.page.querySelector("[data-map-preset-legend]");
+    if (!legend || legend.hidden) return;
+    const workspace = controller.page.querySelector(".map-workspace").getBoundingClientRect();
+    const rect = legend.getBoundingClientRect();
+    let bottom = 44; // Keep bundled/provider attribution visible below the legend.
+    const blockers = [controller.page.querySelector("[data-country-drawer]"), document.querySelector("#persistent-player")];
+    for (const blocker of blockers) {
+        if (!blocker || blocker.hidden || (blocker.id === "persistent-player" && blocker.dataset.playerState !== "playing")) continue;
+        const block = blocker.getBoundingClientRect();
+        if (block.width && rect.left < block.right && rect.right > block.left && block.top < workspace.bottom && block.bottom > workspace.top) {
+            bottom = Math.max(bottom, workspace.bottom - block.top + 12);
+        }
+    }
+    legend.style.bottom = `${bottom}px`;
+    const space = workspace.height - bottom - 76;
+    legend.classList.toggle("is-obscured", space < 40);
+    legend.style.maxHeight = `${Math.max(40, space)}px`;
+}
+
 export function applyPersonalLayers(controller) {
     const {map, personal} = controller;
+    updatePresetLegend(controller);
     if (!map || !personal || !controller.layersInstalled) return;
     const preview = controller.presetEditor?.active ? controller.presetEditor.preview : null;
     const palette = preview || personal;
@@ -76,6 +126,8 @@ export async function loadPersonalData(controller) {
         state.favorites = new Set(snapshot.favorites);
         state.presets = snapshot.presets;
         state.activePreset = snapshot.active_preset;
+        state.activePresetName = snapshot.active_preset_name;
+        state.groups = snapshot.groups || [];
         state.defaultColor = snapshot.default_color;
         state.colors = validColors(snapshot);
         state.ready = true;
@@ -146,12 +198,24 @@ export function initializePersonalMap(controller, selectCountry) {
     const {page} = controller;
     const signal = controller.abortController.signal;
     const state = controller.personal = {
-        ready: false, favorites: new Set(), presets: [], colors: {}, defaultColor: "", activePreset: null,
+        ready: false, favorites: new Set(), presets: [], colors: {}, defaultColor: "", activePreset: null, activePresetName: "", groups: [],
         favoritePending: new Set(), activating: false, loadId: 0, notesId: 0, notesAbort: null,
         status: page.querySelector("[data-personal-map-status]"), retry: page.querySelector("[data-personal-map-retry]"),
         favoriteStatus: page.querySelector("[data-country-favorite-status]"), notesContent: page.querySelector("[data-country-notes-content]"),
     };
     signal.addEventListener("abort", () => {state.notesId += 1; state.notesAbort?.abort();}, {once: true});
+    const workspace = page.querySelector(".map-workspace");
+    const drawer = page.querySelector("[data-country-drawer]");
+    const player = document.querySelector("#persistent-player");
+    const position = () => positionPresetLegend(controller);
+    const resize = new ResizeObserver(position);
+    for (const element of [workspace, drawer, player]) if (element) resize.observe(element);
+    const visibility = new MutationObserver(position);
+    visibility.observe(drawer, {attributes: true, attributeFilter: ["hidden"]});
+    if (player) visibility.observe(player, {attributes: true, attributeFilter: ["data-player-state", "class"]});
+    window.addEventListener("resize", position, {signal});
+    window.addEventListener("scroll", position, {signal, passive: true});
+    signal.addEventListener("abort", () => {resize.disconnect(); visibility.disconnect();}, {once: true});
     state.retry.addEventListener("click", () => loadPersonalData(controller), {signal});
     page.querySelector("[data-favorite-jump]").addEventListener("change", event => {
         if (event.target.value) selectCountry(controller, event.target.value, {focusDrawer: true});
@@ -189,6 +253,8 @@ export function initializePersonalMap(controller, selectCountry) {
             const snapshot = await post(controller, url, {});
             if (!isAlive(controller)) return;
             state.activePreset = snapshot.active_preset;
+            state.activePresetName = snapshot.active_preset_name;
+            state.groups = snapshot.groups || [];
             state.presets = snapshot.presets;
             state.colors = validColors(snapshot);
             state.defaultColor = snapshot.default_color;

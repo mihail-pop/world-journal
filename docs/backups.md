@@ -1,12 +1,12 @@
 # Backup and import
 
 Open **Settings → Manage backups** (`/settings/backups/`). No additional
-dependencies, migrations, accounts, or background service are needed.
+dependencies, accounts, or background service are needed.
 
 ## Portable export
 
 Download backup ZIP after saving open editors. The archive contains a UTF-8
-`manifest.json` identifying format `world-journal-backup`, version `1`, export
+`manifest.json` identifying format `world-journal-backup`, version `2`, export
 time, record datasets, and SHA-256 image checksums. Image files use generated
 archive paths under `media/`; original display filenames remain in metadata.
 
@@ -15,7 +15,7 @@ Included data:
 - Journal collections, entries, ordered subsections, country tags, event dates,
   source links, video IDs/timestamps, favorite/pinned flags, and original dates.
 - Local image bytes, captions, subsection links, names, dimensions, and ordering.
-- Country favorites, map presets/colors, the shared active preset, and country
+- Country favorites, map presets/colors, ordered group titles, the shared active preset, and country
   overview-to-journal links.
 - Shared source choices and cache freshness.
 
@@ -42,7 +42,7 @@ The first import policy is a merge:
 - Subsections and images import only for entries being added. Existing entry
   content is never augmented from an older backup. An attachment whose subsection
   conflicts is also skipped.
-- Colors import only for new presets. Existing preset colors remain unchanged.
+- Colors and titled color groups import only for new presets. Existing preset colors and group titles remain unchanged.
 - Existing country favorites, overview links, source choices, news preferences,
   and active-preset state are kept. A conflicting one-entry-per-country overview
   association is skipped.
@@ -65,9 +65,10 @@ HTMX swaps only page content so the persistent player remains mounted.
 
 Defaults: 512 MiB for the ZIP and its expanded content; 32 MiB for the manifest;
 100,000 records; existing image upload size and 40-megapixel limits. Configure
-`BACKUP_MAX_BYTES` if a legitimate archive grows past the default. Version 1 field
-names are frozen in the service; future format changes must preserve an older
-version reader instead of silently changing the meaning of existing backups.
+`BACKUP_MAX_BYTES` if a legitimate archive grows past the default. Version 2 adds the `preset_groups` dataset without changing the version 1 fields.
+The importer accepts version 1 archives, which have no titled group metadata;
+the preset editor and legend derive untitled groups from their country colors.
+Older app versions cannot read the new version 2 exports.
 
 ## Exact manual backup
 

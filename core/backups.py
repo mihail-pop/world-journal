@@ -19,13 +19,13 @@ from django.db import models, transaction
 from django.utils import timezone
 from PIL import Image
 
-from countries.models import Country, CountryFavorite, CountryProfile, MapPersonalState, MapPreset, PresetCountry
+from countries.models import Country, CountryFavorite, CountryProfile, MapPersonalState, MapPreset, PresetColorGroup, PresetCountry
 from journal.models import Attachment, Collection, Entry, EntrySection
 from news.models import NewsPreferences, SourcePreference
 
 
 FORMAT = "world-journal-backup"
-VERSION = 1
+VERSION = 2
 MANIFEST_LIMIT = 32 * 1024 * 1024
 RECORD_LIMIT = 100_000
 IMAGE_TYPES = {"image/jpeg": (".jpg", "JPEG"), "image/png": (".png", "PNG"), "image/webp": (".webp", "WEBP"), "image/gif": (".gif", "GIF")}
@@ -36,7 +36,7 @@ MEDIA_PATH = re.compile(r"media/[0-9a-f]{32}\.(jpg|png|webp|gif)\Z")
 DATASETS = {
     "collections": Collection, "presets": MapPreset, "entries": Entry,
     "sections": EntrySection, "attachments": Attachment,
-    "favorites": CountryFavorite, "preset_colors": PresetCountry,
+    "favorites": CountryFavorite, "preset_groups": PresetColorGroup, "preset_colors": PresetCountry,
     "country_profiles": CountryProfile, "source_preferences": SourcePreference,
     "news_preferences": NewsPreferences, "map_state": MapPersonalState,
 }
@@ -44,11 +44,13 @@ LABELS = {
     "collections": "Collections", "presets": "Map presets", "entries": "Journal entries",
     "sections": "Subsections", "attachments": "Images", "favorites": "Country favorites",
     "preset_colors": "Preset country colors", "country_profiles": "Country overview notes",
+    "preset_groups": "Preset color groups",
     "source_preferences": "Source choices", "news_preferences": "News preferences",
     "map_state": "Active map preset",
 }
 
-# Freeze the version 1 schema independently of future optional model fields.
+# Freeze archive fields independently of future optional model fields.
+# Version 2 adds preset_groups; all version 1 datasets remain unchanged.
 # New backup versions must retain a reader for older archive versions.
 CONTENT_FIELDS = "title body body_format entry_type source_url source_name source_published_at youtube_video_id youtube_start_seconds"
 SCHEMA_FIELDS = {
@@ -59,6 +61,7 @@ SCHEMA_FIELDS = {
     Attachment: "id entry_id section_id file original_name caption content_type byte_size width height position created_at",
     CountryFavorite: "country_id created_at",
     PresetCountry: "preset_id country_id color",
+    PresetColorGroup: "id preset_id color title position",
     CountryProfile: "country_id entry_id updated_at",
     SourcePreference: "source_id enabled updated_at",
     NewsPreferences: "id freshness_minutes updated_at",
@@ -143,11 +146,14 @@ def _read_archive(archive):
     if total > settings.BACKUP_MAX_BYTES:
         raise BackupError("The expanded backup exceeds the configured size limit.")
     manifest = json.loads(archive.read("manifest.json"))
-    if not isinstance(manifest, dict) or manifest.get("format") != FORMAT or type(manifest.get("version")) is not int or manifest["version"] != VERSION:
-        raise BackupError("Unsupported backup format or version. Use a World Journal version 1 archive.")
+    if not isinstance(manifest, dict) or manifest.get("format") != FORMAT or type(manifest.get("version")) is not int or manifest["version"] not in {1, VERSION}:
+        raise BackupError("Unsupported backup format or version. Use a World Journal version 1 or 2 archive.")
     records, media = manifest.get("records"), manifest.get("media")
-    if not isinstance(records, dict) or set(records) != set(DATASETS) or not isinstance(media, dict):
+    expected_datasets = set(DATASETS) - ({"preset_groups"} if manifest["version"] == 1 else set())
+    if not isinstance(records, dict) or set(records) != expected_datasets or not isinstance(media, dict):
         raise BackupError("The backup manifest has missing or unrecognized datasets.")
+    if manifest["version"] == 1:
+        records["preset_groups"] = []
     if set(names) != {"manifest.json", *media}:
         raise BackupError("The attachment list does not match the files in the archive.")
     if any(not isinstance(items, list) for items in records.values()) or sum(map(len, records.values())) > RECORD_LIMIT:
@@ -186,10 +192,18 @@ def _decode_records(records):
                 obj.clean()
             if obj.pk is None and not isinstance(model._meta.pk, models.AutoField):
                 raise BackupError("A backup record has no identifier.")
-            key = (obj.preset_id, obj.country_id) if model is PresetCountry else obj.pk
-            if key in seen:
+            if model is PresetCountry:
+                key = (obj.preset_id, obj.country_id)
+            elif model is PresetColorGroup:
+                key = (obj.preset_id, obj.color.lower())
+            else:
+                key = obj.pk
+            if key in seen or (model is PresetColorGroup and obj.pk in seen):
                 raise BackupError(f"{LABELS[name]} contain duplicate identifiers.")
             seen.add(key)
+            if model is PresetColorGroup:
+                obj.color = obj.color.lower()
+                seen.add(obj.pk)
             if model in (MapPersonalState, NewsPreferences) and obj.pk != 1:
                 raise BackupError("Shared preferences must use their singleton identifier.")
             if model is Entry:
@@ -288,9 +302,9 @@ def import_plan(data):
                 action = "skip"
             if model is Attachment and obj.section_id and obj.section_id not in additions["sections"]:
                 action = "skip"
-            if model is PresetCountry:
+            if model in (PresetCountry, PresetColorGroup):
                 target = remap[MapPreset][obj.preset_id]
-                if target not in additions["presets"] or (target, obj.country_id) in colors:
+                if target not in additions["presets"] or (model is PresetCountry and (target, obj.country_id) in colors):
                     action = "skip"
             if model is CountryProfile and obj.entry_id in claimed_profiles:
                 action = "skip"

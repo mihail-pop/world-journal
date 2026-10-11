@@ -14,7 +14,7 @@ from journal.models import Entry
 from journal.views import ConfirmationForm, navigate
 
 from .forms import ColorGroups, CountryProfileForm, DuplicatePresetForm, PresetForm
-from .models import Country, CountryFavorite, CountryProfile, MapPersonalState, MapPreset, PresetCountry
+from .models import Country, CountryFavorite, CountryProfile, MapPersonalState, MapPreset, PresetColorGroup, PresetCountry
 
 
 def personal_snapshot():
@@ -24,6 +24,8 @@ def personal_snapshot():
         "favorites": list(CountryFavorite.objects.values_list("country_id", flat=True)),
         "presets": [{"id": str(p.pk), "name": p.name} for p in MapPreset.objects.all()],
         "active_preset": str(active.pk) if active else None,
+        "active_preset_name": active.name if active else "",
+        "groups": preset_groups(active) if active else [],
         "default_color": active.default_color if active else "",
         "colors": dict(active.country_colors.values_list("country_id", "color")) if active else {},
     }
@@ -57,21 +59,33 @@ def page(request, template, context):
 @require_http_methods(["GET"])
 def preset_list(request):
     state = MapPersonalState.objects.filter(pk=1).first()
-    return page(request, "countries/preset_list.html", {"presets": MapPreset.objects.prefetch_related("country_colors__country"), "active_preset_id": state.active_preset_id if state else None})
+    presets = MapPreset.objects.prefetch_related("country_colors__country", "color_groups")
+    for preset in presets:
+        preset.display_groups = preset_groups(preset)
+        names = {row.country_id: row.country.name for row in preset.country_colors.all()}
+        for group in preset.display_groups:
+            group["country_names"] = [names[code] for code in group["countries"]]
+    return page(request, "countries/preset_list.html", {"presets": presets, "active_preset_id": state.active_preset_id if state else None})
 
 
 def preset_groups(preset):
     grouped = {}
     if not preset._state.adding:
-        for code, color in preset.country_colors.values_list("country_id", "color"):
-            grouped.setdefault(color.lower(), []).append(code)
-    return [{"color": color, "countries": codes} for color, codes in grouped.items()]
+        for row in preset.country_colors.all():
+            grouped.setdefault(row.color.lower(), []).append(row.country_id)
+        result = [{"color": group.color.lower(), "title": group.title, "countries": grouped.pop(group.color.lower(), [])} for group in preset.color_groups.all()]
+    else:
+        result = []
+    # Old version 1 backups have colors but no group metadata.
+    return result + [{"color": color, "title": "", "countries": codes} for color, codes in grouped.items()]
 
 
 def save_preset(form, groups):
     preset = form.save()
     preset.country_colors.all().delete()
     PresetCountry.objects.bulk_create([PresetCountry(preset=preset, country_id=code, color=color) for code, color in groups.assignments().items()])
+    preset.color_groups.all().delete()
+    PresetColorGroup.objects.bulk_create([PresetColorGroup(preset=preset, color=group["color"], title=group["title"], position=index) for index, group in enumerate(groups.groups())])
     return preset
 
 
@@ -113,9 +127,10 @@ def preset_data(request, pk=None):
             for index, group in enumerate(payload["groups"]):
                 if not isinstance(group, dict) or not isinstance(group.get("countries"), list):
                     raise ValueError
-                if not isinstance(group.get("color", ""), str) or len(group["countries"]) > 238 or not all(isinstance(code, str) for code in group["countries"]):
+                if not isinstance(group.get("color", ""), str) or not isinstance(group.get("title", ""), str) or len(group["countries"]) > 238 or not all(isinstance(code, str) for code in group["countries"]):
                     raise ValueError
                 rows[f"colors-{index}-color"] = group.get("color", "")
+                rows[f"colors-{index}-title"] = group.get("title", "")
                 rows.setlist(f"colors-{index}-countries", group["countries"])
         except (ValueError, TypeError):
             return JsonResponse({"error": "The color groups could not be read. Reload the editor and try again."}, status=400)
@@ -156,6 +171,7 @@ def preset_duplicate(request, pk):
             copy.description, copy.default_color = original.description, original.default_color
             copy.save()
             PresetCountry.objects.bulk_create([PresetCountry(preset=copy, country_id=row.country_id, color=row.color) for row in original.country_colors.all()])
+            PresetColorGroup.objects.bulk_create([PresetColorGroup(preset=copy, color=group["color"], title=group["title"], position=index) for index, group in enumerate(preset_groups(original))])
         return navigate(request, reverse("countries:preset_edit", kwargs={"pk": copy.pk}))
     return page(request, "countries/preset_duplicate.html", {"form": form, "preset": original})
 

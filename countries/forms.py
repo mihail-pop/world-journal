@@ -18,6 +18,7 @@ class PresetForm(forms.ModelForm):
 
 
 class ColorGroupForm(forms.Form):
+    title = forms.CharField(max_length=160, required=False, widget=forms.TextInput(attrs={"placeholder": "Group title, e.g. Western aligned"}))
     color = forms.CharField(max_length=7, validators=[validate_map_color], widget=forms.TextInput(attrs={"type": "color"}), initial="#4a90e2")
     countries = forms.ModelMultipleChoiceField(queryset=Country.objects.all(), required=False, widget=forms.SelectMultiple(attrs={"data-country-select": ""}))
 
@@ -38,9 +39,24 @@ class ColorGroupFormSet(BaseFormSet):
                 if country.pk in assigned:
                     raise forms.ValidationError(f"{country.name} is selected in more than one color group. Remove it from one group first.")
                 assigned.add(country.pk)
+        if any(len(group["title"]) > 160 for group in self.groups()):
+            raise forms.ValidationError("Groups using the same color are combined. Shorten their combined titles to 160 characters or choose different colors.")
 
     def assignments(self):
         return {country.pk: form.cleaned_data["color"] for form in self.forms if not form.cleaned_data.get("DELETE") for country in form.cleaned_data.get("countries", [])}
+
+    def groups(self):
+        grouped = {}
+        for form in self.forms:
+            data = form.cleaned_data
+            if data.get("DELETE") or not data.get("color"):
+                continue
+            group = grouped.setdefault(data["color"], {"color": data["color"], "titles": [], "countries": []})
+            title = data.get("title", "").strip()
+            if title and title not in group["titles"]:
+                group["titles"].append(title)
+            group["countries"].extend(country.pk for country in data.get("countries", []))
+        return [{"color": group["color"], "title": " / ".join(group["titles"]), "countries": group["countries"]} for group in grouped.values()]
 
 
 ColorGroups = formset_factory(ColorGroupForm, formset=ColorGroupFormSet, extra=1, can_delete=True, max_num=238, validate_max=True, absolute_max=238)

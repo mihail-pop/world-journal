@@ -7,6 +7,7 @@ Favorites, color presets and country overview notes are shared SQLite data. Them
 - `CountryFavorite`: one row per ISO country, with its creation timestamp. Favorites do not affect news eligibility or ranking.
 - `MapPreset`: stable UUID, unique name, description, optional default color and creation/update timestamps.
 - `PresetCountry`: one color assignment per preset/country pair, enforced by a database uniqueness constraint. Colors are validated six-digit hex values, not arbitrary CSS.
+- `PresetColorGroup`: preset, color, optional title (up to 160 characters), and display position. One group per preset/color. The additive 0004 migration seeds untitled groups for existing presets without changing their country assignments.
 - `MapPersonalState`: singleton row at key 1 with a nullable active-preset foreign key. Deleting the active preset clears the selection; one preset is active at a time.
 - `CountryProfile`: one selected overview Journal entry per country. The entry retains its normal countries, subsections and attachments. Clearing/changing the selection does not delete an entry. Deleting that entry clears the profile reference.
 
@@ -16,7 +17,7 @@ The migration depends on the existing Journal migration and adds tables without 
 
 Favorite a country in its drawer. Favorites appear as hearts on the map and in the Display panel's jump selector. The selector and favorite actions become available after saved map data loads; failure leaves the ordinary map usable and offers Retry.
 
-Open Display → Manage color presets, or Settings → Manage color presets. Create a named preset and add color groups. Each group has a searchable multi-country selector; a country can belong to only one group. Optionally enter a default color for other countries. Add/remove groups, save, activate, duplicate, rename or delete with confirmation. Groups with equal colors are combined when reloaded. Existing presets keep their data; no schema migration is needed. The Display selector can also activate a preset or turn colors off.
+Open Display → Manage color presets, or Settings → Manage color presets. Create a named preset and add color groups. Each group has a searchable multi-country selector; a country can belong to only one group. Optionally enter a default color for other countries. Add/remove groups, save, activate, duplicate, rename or delete with confirmation. Groups with equal colors are combined when reloaded. Existing presets keep their country data. The group-title improvement adds a metadata table through migration 0004. The Display selector can also activate a preset or turn colors off.
 
 Preset fills use an application-owned layer below hover/selection. Tiny-country markers also use preset colors. Favorites are a separate centroid layer. Layers are reapplied on style load and theme changes, including the bundled fallback style. Saved data is fetched on each map mount; changes in another browser are visible on reload/re-entry rather than pushed live.
 
@@ -46,7 +47,7 @@ The preset drawer replaces the country drawer. Clicking an unassigned country ad
 
 **Save & use colors** saves all assignments atomically and activates the preset. **Discard changes** restores saved map colors and exits. The close button returns to the ordinary map while retaining the draft in the current tab. HTMX navigation to Journal/Settings and browser back/forward retain drafts with the Map workspace. Unsaved drafts are memory only; save before refreshing or closing the tab. The browser warns when leaving with an unsaved draft. A preset changed in another editor produces a conflict message and an explicit discard-and-reload action, rather than silently replacing newer saved data.
 
-The editor uses the existing MapPreset/PresetCountry tables and validates the same country identities and six-digit colors. No production data is created until a save (apart from the explicitly labeled regular editor save-and-open action).
+The editor uses MapPreset/PresetCountry and PresetColorGroup metadata, and validates the same country identities and six-digit colors. No production data is created until a save (apart from the explicitly labeled regular editor save-and-open action).
 
 ### Manual checks for the updated workflow
 
@@ -60,3 +61,22 @@ The editor uses the existing MapPreset/PresetCountry tables and validates the sa
 7. Check dark/light/brown themes, a 390px window, and a playing/minimized player: the preset drawer uses the same responsive placement as country details.
 
 Only source review and `git diff --check` were performed; no tests or browser checks were run, as requested.
+
+## Group titles and active-preset legend
+
+Both editors have a Title field for each color group. Titles and group order survive saving, reopening, duplicating, and backup export/import. Groups that use the same color combine their countries and distinct titles with ` / `; if the combined title exceeds 160 characters, shorten it or use different colors. Named empty groups stay saved but do not appear in the active legend until countries are assigned.
+
+During ordinary map use, the selected preset has a collapsible bottom-left legend showing a color swatch and title for each used group. Untitled groups use Color 1, Color 2, etc. An applicable default color appears as Other countries. The legend disappears when preset colors are disabled or when the selection editor is open. It follows theme colors and stays with the retained map during Journal/Settings navigation.
+
+The legend moves above overlapping country drawers and the player, while leaving attribution visible. Long titles wrap and long legends scroll. On a very small viewport with both drawer and player open, it temporarily hides if fewer than 40px of unobstructed space remain; closing either restores it.
+
+Manual checks:
+
+1. Add Western aligned, Neutral, and Chinese aligned titles to three groups using either editor. Save, reopen, and duplicate: titles, colors, countries and order should remain.
+2. Activate the preset and return to ordinary Map. The legend should show the matching swatch to the left of each title. Collapse/expand it, change presets, and turn colors off.
+3. Enter Select on map: the legend should hide. Change a title and save; exit selection mode and confirm the new title appears.
+4. Try long titles, empty groups, and merging two named groups. Names should stay saved and merged titles should remain visible.
+5. Check Map → Journal → Settings → Map, all themes, a 390px window, and player minimize/restore alongside the country drawer.
+6. Export a new backup; group names should be included. Older version 1 backups remain importable with untitled groups.
+
+The group migration is applied locally. No tests or browser checks were run for this improvement.

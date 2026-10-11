@@ -571,3 +571,22 @@ html::-webkit-scrollbar-thumb { background: var(--ui-border); border: 3px solid 
 }
 
 .preset-map-countries .select-tags { display: none; }
+
+/* Active preset legend; positioning also follows the player and country drawer. */
+.map-preset-legend { position: absolute; z-index: 6; left: 1rem; bottom: 2.75rem; width: max-content; max-width: min(19rem, calc(100% - 2rem)); max-height: min(18rem, 45%); overflow: auto; padding: .7rem .85rem; border: 1px solid var(--ui-border); border-radius: 6px; background: var(--ui-surface); box-shadow: 0 3px 14px #0002; color: var(--ui-text); scrollbar-width: thin; }
+.map-preset-legend summary { cursor: pointer; font-size: .95rem; font-weight: 600; overflow-wrap: anywhere; }
+.map-preset-legend ul { list-style: none; padding: 0; margin: .7rem 0 .1rem; display: grid; gap: .55rem; }
+.map-preset-legend li { display: flex; gap: .65rem; align-items: center; font-size: .95rem; line-height: 1.4; overflow-wrap: anywhere; }
+.map-legend-swatch { display: inline-block; flex: 0 0 auto; width: 1rem; height: 1rem; border: 1px solid #80808066; border-radius: 3px; }
+.map-preset-legend.is-obscured { visibility: hidden; pointer-events: none; }
+.preset-map-group-title { display: grid; gap: .3rem; margin-top: .6rem; color: var(--ui-muted); font-size: .875rem; }
+.preset-map-group-title input { width: 100%; min-width: 0; padding: .55rem .6rem; border: 1px solid var(--ui-border); border-radius: 4px; color: var(--ui-text); background: var(--ui-paper); font-size: 1rem; }
+.preset-map-group-select { overflow-wrap: anywhere; min-width: 0; }
+@media (max-width: 46rem) {
+    .map-preset-legend { left: .6rem; max-width: min(17rem, calc(100% - 1.2rem)); padding: .6rem .75rem; }
+}
+
+.preset-summary-group { min-width: 0; max-width: 100%; }
+.preset-summary-group summary { cursor: pointer; overflow-wrap: anywhere; }
+.preset-summary-group summary i { display: inline-block; vertical-align: -.1em; margin-right: .35rem; }
+.preset-summary-group p { max-width: 32rem; padding: .5rem 0; margin: 0; font-size: .95rem; color: var(--ui-muted); overflow-wrap: anywhere; }
