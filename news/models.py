@@ -16,7 +16,7 @@ class SourcePreference(models.Model):
 class NewsPreferences(models.Model):
     id = models.PositiveSmallIntegerField(primary_key=True, default=1, editable=False)
     freshness_minutes = models.PositiveSmallIntegerField(
-        default=15, validators=[MinValueValidator(5), MaxValueValidator(120)],
+        default=30, validators=[MinValueValidator(5), MaxValueValidator(120)],
     )
     updated_at = models.DateTimeField(auto_now=True)
 

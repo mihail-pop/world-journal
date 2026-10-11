@@ -55,7 +55,7 @@ def _result(country: dict, source, snapshot: dict, *, is_stale: bool = False) ->
         items=_items_from_snapshot(snapshot),
         fetched_at=last_success,
         is_stale=is_stale,
-        warning="Google News could not be refreshed; showing cached results." if is_stale else "",
+        warning=("Google News could not be refreshed; showing cached results." if error else "Showing saved headlines while the feed refreshes.") if is_stale else "",
         error="" if last_success else error,
         parser_warnings=tuple(item for item in warnings if isinstance(item, str)),
     )
@@ -71,6 +71,7 @@ def get_country_news(
     retry_failed: bool = False,
     force_refresh: bool = False,
     fresh_seconds: int | None = None,
+    cache_only: bool = False,
 ) -> CountryNewsResult:
     country = _country_for_code(iso2)
     source = (registry or effective_registry()).get(GOOGLE_SOURCE_ID)
@@ -85,13 +86,24 @@ def get_country_news(
         fresh_seconds = freshness_seconds() if registry is None else settings.NEWS_REFRESH_SECONDS
     backend = cache_backend or cache
 
+    if cache_only:
+        snapshot = backend.get(cache_key)
+        if not isinstance(snapshot, dict) or deserialize_items(snapshot) is None:
+            snapshot = {}
+        success_age = _age(current_time, snapshot.get("fetched_at"))
+        return _result(country, source, snapshot, is_stale=bool(
+            snapshot.get("last_success_at") and (
+                snapshot.get("last_error") or success_age is None or success_age.total_seconds() >= fresh_seconds
+            )
+        ))
+
     with _cache_lock(cache_key):
         snapshot = backend.get(cache_key)
         if not isinstance(snapshot, dict):
             snapshot = {}
         retrying_failure = retry_failed and bool(snapshot.get("last_error"))
         success_age = _age(current_time, snapshot.get("fetched_at"))
-        if not force_refresh and not retrying_failure and snapshot.get("last_success_at") and success_age is not None and success_age.total_seconds() < fresh_seconds:
+        if not force_refresh and not retrying_failure and not snapshot.get("last_error") and snapshot.get("last_success_at") and success_age is not None and success_age.total_seconds() < fresh_seconds:
             return _result(country, source, snapshot)
         failure_age = _age(current_time, snapshot.get("last_attempt_at"))
         if not force_refresh and not retrying_failure and snapshot.get("last_error") and failure_age is not None and failure_age.total_seconds() < settings.NEWS_FAILURE_BACKOFF_SECONDS:
@@ -162,10 +174,13 @@ def get_country_news_page(
     fetcher: Callable[..., FeedResponse] = fetch_feed,
     now: datetime | None = None,
     retry_failed: bool = False,
+    cache_only: bool = False,
+    fresh_seconds: int | None = None,
 ) -> CountryNewsPage:
     country = _country_for_code(iso2)
     source_registry = registry or effective_registry()
-    fresh_seconds = freshness_seconds() if registry is None else settings.NEWS_REFRESH_SECONDS
+    if fresh_seconds is None:
+        fresh_seconds = freshness_seconds() if registry is None else settings.NEWS_REFRESH_SECONDS
     google = get_country_news(
         iso2,
         cache_backend=cache_backend,
@@ -174,6 +189,7 @@ def get_country_news_page(
         now=now,
         retry_failed=retry_failed,
         fresh_seconds=fresh_seconds,
+        cache_only=cache_only,
     )
     fixed_feeds = eligible_fixed_feeds(country, source_registry)
     regional_items, regional_sources, regional_warning = get_regional_news(
@@ -185,6 +201,7 @@ def get_country_news_page(
         now=now,
         retry_failed=retry_failed,
         fresh_seconds=fresh_seconds,
+        cache_only=cache_only,
     )
     return CountryNewsPage(
         country_code=country["iso_a2"],

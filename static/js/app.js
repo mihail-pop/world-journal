@@ -1,4 +1,5 @@
 import { registerHtmxLifecycle } from "./htmx_lifecycle.js";
+import { initializeNewsCache } from "./news_cache.js";
 import { registerJournalPage } from "./pages/journal.js";
 import { registerPresetEditor } from "./pages/map_personal.js";
 import { registerMapPage } from "./pages/map.js";
@@ -11,6 +12,7 @@ function initializeApplication() {
     initializeTheme();
     registerUiControls();
     initializePlayer();
+    initializeNewsCache();
     registerMapPage();
     registerSettingsPage();
     registerJournalPage();

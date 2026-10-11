@@ -1,4 +1,5 @@
 import { countryFillExpression } from "./country_paint.js";
+import { getCountryFeed, prioritizeCountryFeed, rememberCountryFeed } from "../news_cache.js";
 import { basemapFeaturePreferences } from "./basemap_features.js";
 import { factsSelectionChanged, initializeCountryFacts, loadCountryOverview } from "./map_facts.js";
 import { applyPersonalLayers, initializePersonalMap, loadCountryNotes, loadPersonalData, personalSelectionChanged } from "./map_personal.js";
@@ -273,8 +274,14 @@ function applyNewsFilter(controller, filter) {
 
 function loadCountryNews(controller, code, countryName, { retryFailed = false } = {}) {
     cancelCountryNews(controller);
+    prioritizeCountryFeed(code);
+    const cached = getCountryFeed(code, "articles");
+    if (cached) {
+        renderCachedNews(controller, code, cached);
+        if (!retryFailed) return;
+    }
     controller.newsContent.setAttribute("aria-busy", "true");
-    showNewsMessage(controller, controller.newsAbortController
+    if (!cached) showNewsMessage(controller, controller.newsAbortController
         ? `Loading headlines for ${countryName}; waiting for the previous news request to finish…`
         : `Loading current English-language headlines for ${countryName}…`);
     controller.pendingNews = { code, countryName, retryFailed, requestId: controller.newsRequestId };
@@ -284,6 +291,29 @@ function loadCountryNews(controller, code, countryName, { retryFailed = false } 
         controller.newsTimer = null;
         startPendingCountryNews(controller);
     }, COUNTRY_NEWS_DELAY_MS);
+}
+
+function renderCachedNews(controller, code, entry) {
+    if (!entry) return;
+    let filter = controller.newsContent.dataset.loadedCountry === code
+        ? controller.newsContent.querySelector('[data-news-filter][aria-pressed="true"]')?.dataset.newsFilter || "all"
+        : "all";
+    controller.newsContent.innerHTML = entry.markup;
+    controller.newsContent.dataset.loadedCountry = code;
+    controller.newsContent.setAttribute("aria-busy", String(entry.pending));
+    window.htmx?.process(controller.newsContent);
+    if (![...controller.newsContent.querySelectorAll("[data-news-filter]")].some(button => button.dataset.newsFilter === filter)) {
+        filter = "all";
+    }
+    applyNewsFilter(controller, filter);
+}
+
+function renderCachedVideos(controller, code, entry) {
+    if (!entry) return;
+    controller.videoContent.innerHTML = entry.markup;
+    controller.videoContent.dataset.loadedCountry = code;
+    controller.videoContent.setAttribute("aria-busy", String(entry.pending));
+    window.htmx?.process(controller.videoContent);
 }
 
 function startPendingCountryNews(controller) {
@@ -304,10 +334,11 @@ function startPendingCountryNews(controller) {
 }
 
 async function fetchCountryNews(controller, { code, countryName, retryFailed, requestId }) {
+    const requestedAt = Date.now();
     const abortController = new AbortController();
     controller.newsAbortController = abortController;
     controller.newsContent.setAttribute("aria-busy", "true");
-    showNewsMessage(controller, `Loading current English-language headlines for ${countryName}…`);
+    if (!getCountryFeed(code, "articles")) showNewsMessage(controller, `Preparing headlines for ${countryName}…`);
     const url = new URL(
         controller.newsUrlTemplate.replace("COUNTRY_CODE", encodeURIComponent(code)),
         window.location.origin,
@@ -332,21 +363,16 @@ async function fetchCountryNews(controller, { code, countryName, retryFailed, re
         ) {
             return;
         }
-        const template = document.createElement("template");
-        template.innerHTML = markup;
-        if (template.content.querySelector("[data-country-news-result]")?.dataset.newsCountry !== code) {
-            throw new Error("Incorrect country news response");
-        }
-        controller.newsContent.replaceChildren(template.content);
-        window.htmx?.process(controller.newsContent);
-        controller.newsContent.setAttribute("aria-busy", "false");
-        applyNewsFilter(controller, "all");
+        const entry = rememberCountryFeed(code, "articles", markup, { requestedAt, version: response.headers.get("X-Feed-Version"), notify: false });
+        renderCachedNews(controller, code, entry);
     } catch (error) {
         if (error.name === "AbortError" || activeController !== controller || controller.newsRequestId !== requestId) {
             return;
         }
         controller.newsContent.setAttribute("aria-busy", "false");
-        showNewsMessage(controller, "Current news could not be loaded.", { retry: true });
+        const cached = getCountryFeed(code, "articles");
+        if (cached) renderCachedNews(controller, code, cached);
+        else showNewsMessage(controller, "Current news could not be loaded.", { retry: true });
         console.error("World Journal country news request failed", error);
     } finally {
         if (controller.newsAbortController === abortController) {
@@ -374,11 +400,18 @@ function showVideoMessage(controller, message, { retry = false } = {}) {
 
 async function loadCountryVideos(controller, code, countryName, { retryFailed = false } = {}) {
     cancelCountryVideos(controller);
+    prioritizeCountryFeed(code);
+    const cached = getCountryFeed(code, "videos");
+    if (cached) {
+        renderCachedVideos(controller, code, cached);
+        if (!retryFailed) return;
+    }
     const requestId = controller.videoRequestId;
+    const requestedAt = Date.now();
     const abortController = new AbortController();
     controller.videoAbortController = abortController;
     controller.videoContent.setAttribute("aria-busy", "true");
-    showVideoMessage(controller, `Loading recent videos for ${countryName}…`);
+    if (!cached) showVideoMessage(controller, `Preparing recent videos for ${countryName}…`);
     const url = new URL(
         controller.videoUrlTemplate.replace("COUNTRY_CODE", encodeURIComponent(code)),
         window.location.origin,
@@ -403,16 +436,16 @@ async function loadCountryVideos(controller, code, countryName, { retryFailed = 
         ) {
             return;
         }
-        controller.videoContent.innerHTML = markup;
-        window.htmx?.process(controller.videoContent);
-        controller.videoContent.dataset.loadedCountry = code;
-        controller.videoContent.setAttribute("aria-busy", "false");
+        const entry = rememberCountryFeed(code, "videos", markup, { requestedAt, version: response.headers.get("X-Feed-Version"), notify: false });
+        renderCachedVideos(controller, code, entry);
     } catch (error) {
         if (error.name === "AbortError" || activeController !== controller || controller.videoRequestId !== requestId) {
             return;
         }
         controller.videoContent.setAttribute("aria-busy", "false");
-        showVideoMessage(controller, "Current videos could not be loaded.", { retry: true });
+        const retained = getCountryFeed(code, "videos");
+        if (retained) renderCachedVideos(controller, code, retained);
+        else showVideoMessage(controller, "Current videos could not be loaded.", { retry: true });
         console.error("World Journal country videos request failed", error);
     } finally {
         if (controller.videoRequestId === requestId) {
@@ -1074,6 +1107,15 @@ async function initializeMapPage() {
         videoRequestId: 0,
     };
     activeController = controller;
+
+    document.addEventListener("world-journal:feed-cache-changed", event => {
+        const { code, kind, entry } = event.detail;
+        if (activeController !== controller || controller.selectedCode !== code) return;
+        if (kind === "articles") renderCachedNews(controller, code, entry);
+        else if (controller.page.querySelector('[data-country-section="videos"]').getAttribute("aria-selected") === "true") {
+            renderCachedVideos(controller, code, entry);
+        }
+    }, { signal: abortController.signal });
 
     page.querySelector("[data-country-close]").addEventListener("click", () => closeCountry(controller), { signal: abortController.signal });
     controller.newsContent.addEventListener("click", (event) => {

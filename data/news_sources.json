@@ -173,17 +173,6 @@
       "enabled_by_default": true
     },
     {
-      "id": "al_arabiya_en",
-      "display_name": "Al Arabiya English",
-      "homepage_url": "https://english.alarabiya.net/",
-      "language": "en",
-      "publisher_country_code": null,
-      "editorial_region": "middle_east",
-      "coverage_regions": ["middle_east"],
-      "display_priority": 20,
-      "enabled_by_default": false
-    },
-    {
       "id": "cgtn",
       "display_name": "CGTN",
       "homepage_url": "https://www.cgtn.com/",
@@ -307,71 +296,6 @@
       "verification_date": "2026-10-11",
       "disabled_reason": "",
       "operational_notes": "Verified RSS with English titles, article links, and publication dates."
-    },
-    {
-      "id": "al_arabiya_en_top",
-      "provider_id": "al_arabiya_en",
-      "section_label": "Top Stories",
-      "feed_url": "https://english.alarabiya.net/feed/rss2/en.xml",
-      "source_type": "rss",
-      "language": "en",
-      "enabled_by_default": false,
-      "allowed_hosts": ["english.alarabiya.net"],
-      "verification_date": "2026-10-11",
-      "disabled_reason": "Cloudflare refuses the application's feed request (HTTP 403); direct browser access can differ. Reliable automated retrieval has not been verified.",
-      "operational_notes": "Audited once with one bounded recovery request; no usable feed items."
-    },
-    {
-      "id": "al_arabiya_en_news",
-      "provider_id": "al_arabiya_en",
-      "section_label": "News",
-      "feed_url": "https://english.alarabiya.net/feed/rss2/en/News.xml",
-      "source_type": "rss",
-      "language": "en",
-      "enabled_by_default": false,
-      "allowed_hosts": ["english.alarabiya.net"],
-      "verification_date": "2026-10-11",
-      "disabled_reason": "Cloudflare refuses the application's feed request (HTTP 403); direct browser access can differ. Reliable automated retrieval has not been verified.",
-      "operational_notes": "Audited once with one bounded recovery request; no usable feed items."
-    },
-    {
-      "id": "al_arabiya_en_business",
-      "provider_id": "al_arabiya_en",
-      "section_label": "Business",
-      "feed_url": "https://english.alarabiya.net/feed/rss2/en/business.xml",
-      "source_type": "rss",
-      "language": "en",
-      "enabled_by_default": false,
-      "allowed_hosts": ["english.alarabiya.net"],
-      "verification_date": "2026-10-11",
-      "disabled_reason": "Cloudflare refuses the application's feed request (HTTP 403); direct browser access can differ. Reliable automated retrieval has not been verified.",
-      "operational_notes": "Audited once with one bounded recovery request; no usable feed items."
-    },
-    {
-      "id": "al_arabiya_en_energy",
-      "provider_id": "al_arabiya_en",
-      "section_label": "Energy",
-      "feed_url": "https://english.alarabiya.net/feed/rss2/en/business/energy.xml",
-      "source_type": "rss",
-      "language": "en",
-      "enabled_by_default": false,
-      "allowed_hosts": ["english.alarabiya.net"],
-      "verification_date": "2026-10-11",
-      "disabled_reason": "Cloudflare refuses the application's feed request (HTTP 403); direct browser access can differ. Reliable automated retrieval has not been verified.",
-      "operational_notes": "Audited once with one bounded recovery request; no usable feed items."
-    },
-    {
-      "id": "al_arabiya_en_life",
-      "provider_id": "al_arabiya_en",
-      "section_label": "Life",
-      "feed_url": "https://english.alarabiya.net/feed/rss2/en/life-style.xml",
-      "source_type": "rss",
-      "language": "en",
-      "enabled_by_default": false,
-      "allowed_hosts": ["english.alarabiya.net"],
-      "verification_date": "2026-10-11",
-      "disabled_reason": "Cloudflare refuses the application's feed request (HTTP 403); direct browser access can differ. Reliable automated retrieval has not been verified.",
-      "operational_notes": "Audited once with one bounded recovery request; no usable feed items."
     },
     {
       "id": "cgtn_china",

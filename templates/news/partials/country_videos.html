@@ -3,7 +3,9 @@
     data-country-videos-result
     data-video-country="{{ video_page.country_code }}"
     data-video-status="{{ video_page.status }}"
+    data-feed-pending="{{ feed_pending|yesno:'true,false' }}"
 >
+    {% if feed_pending %}<p class="country-news-message" role="status">Preparing remaining channels… Videos appear here as they become available.</p>{% endif %}
     {% if video_page.warning %}
         <div class="country-news-message {% if video_page.status == 'unavailable' %}is-error{% else %}is-warning{% endif %}" {% if video_page.status == 'unavailable' %}role="alert"{% else %}role="status"{% endif %}>
             <p>{{ video_page.warning }}</p>
@@ -59,6 +61,7 @@
                 </li>
             {% endfor %}
         </ol>
+    {% elif feed_pending %}
     {% elif video_page.status == "unavailable" %}
         <p class="country-news-message">No cached videos are available for this country.</p>
     {% elif not video_page.sources %}

@@ -6,6 +6,7 @@ from . import settings_views, views
 app_name = "news"
 
 urlpatterns = [
+    path("news/cache/", views.cached_drawers, name="cached_drawers"),
     path("settings/news/", settings_views.source_settings, name="settings"),
     path("settings/news/<str:source_id>/refresh/", settings_views.refresh_source, name="source_refresh"),
     path("news/countries/<str:iso2>/", views.country_news, name="country_news"),

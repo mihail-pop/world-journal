@@ -6,8 +6,8 @@ from .models import NewsPreferences, SourcePreference
 
 class NewsPreferencesForm(forms.Form):
     freshness_minutes = forms.IntegerField(
-        label="Cache freshness (minutes)", min_value=5, max_value=120,
-        help_text="Reuse successful feeds for this long. Feeds refresh when requested, not on a background timer.",
+        label="Background refresh interval (minutes)", min_value=5, max_value=120,
+        help_text="Refresh enabled feeds automatically while the Django server runs. Cached articles and videos remain available during refreshes.",
     )
 
     def __init__(self, *args, registry, choices, freshness, **kwargs):

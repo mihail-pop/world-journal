@@ -6,6 +6,7 @@ from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor, wait
 from dataclasses import replace
 from datetime import UTC, datetime
+from functools import lru_cache
 
 from django.conf import settings
 from django.core.cache import cache
@@ -53,6 +54,7 @@ def get_fixed_feed(
     retry_failed: bool = False,
     force_refresh: bool = False,
     fresh_seconds: int | None = None,
+    cache_only: bool = False,
 ) -> FeedResult:
     if not provider.enabled_by_default or not feed.enabled_by_default:
         return FeedResult(feed, (), None, error="Feed is disabled.")
@@ -62,6 +64,16 @@ def get_fixed_feed(
     current_time = now or datetime.now(UTC)
     fresh_seconds = settings.NEWS_REFRESH_SECONDS if fresh_seconds is None else fresh_seconds
     key = _cache_key(feed)
+    if cache_only:
+        snapshot = backend.get(key)
+        if not isinstance(snapshot, dict) or deserialize_items(snapshot) is None:
+            snapshot = {}
+        success_age = age(current_time, snapshot.get("fetched_at"))
+        return _feed_result(feed, snapshot, failed=bool(snapshot.get("last_error")), stale=bool(
+            snapshot.get("last_success_at") and (
+                snapshot.get("last_error") or success_age is None or success_age.total_seconds() >= fresh_seconds
+            )
+        ))
     with cache_lock(key):
         snapshot = backend.get(key)
         if not isinstance(snapshot, dict) or deserialize_items(snapshot) is None:
@@ -69,7 +81,7 @@ def get_fixed_feed(
         retrying_failure = retry_failed and bool(snapshot.get("last_error"))
         success_age = age(current_time, snapshot.get("fetched_at"))
         if (
-            not force_refresh and not retrying_failure
+            not force_refresh and not retrying_failure and not snapshot.get("last_error")
             and snapshot.get("last_success_at")
             and success_age is not None
             and success_age.total_seconds() < fresh_seconds
@@ -157,6 +169,7 @@ def get_fixed_feed(
             return _feed_result(feed, empty, failed=True)
 
 
+@lru_cache(maxsize=8192)
 def _normalized_identity(value: str) -> str:
     return " ".join(re.sub(r"[^\w]+", " ", value.casefold()).split())
 
@@ -197,15 +210,41 @@ def _merge_item(left: NewsItem, right: NewsItem) -> NewsItem:
 
 def _deduplicate(items: list[NewsItem]) -> list[NewsItem]:
     unique: list[NewsItem] = []
-    for item in items:
-        duplicate_index = next(
-            (index for index, current in enumerate(unique) if _same_item(current, item)),
-            None,
+    indexes = ({}, {}, {})
+
+    def keys(item):
+        title = _normalized_identity(item.title)
+        return (
+            item.link,
+            (title, item.provider_id),
+            (title, item.published_at, _normalized_identity(item.publisher)) if item.published_at else None,
         )
+
+    def index_item(item, position, *, remove=False):
+        for index, key in zip(indexes, keys(item)):
+            if key is None:
+                continue
+            if remove:
+                positions = index[key]
+                positions.discard(position)
+                if not positions:
+                    del index[key]
+            else:
+                index.setdefault(key, set()).add(position)
+
+    for item in items:
+        matches = set()
+        for index, key in zip(indexes, keys(item)):
+            if key is not None:
+                matches.update(index.get(key, ()))
+        duplicate_index = min(matches) if matches else None
         if duplicate_index is None:
             unique.append(item)
+            index_item(item, len(unique) - 1)
         else:
+            index_item(unique[duplicate_index], duplicate_index, remove=True)
             unique[duplicate_index] = _merge_item(unique[duplicate_index], item)
+            index_item(unique[duplicate_index], duplicate_index)
     return unique
 
 
@@ -263,6 +302,7 @@ def get_regional_news(
     now: datetime | None = None,
     retry_failed: bool = False,
     fresh_seconds: int | None = None,
+    cache_only: bool = False,
 ) -> tuple[tuple[NewsItem, ...], tuple[RegionalProviderResult, ...], str]:
     provider_map = {
         provider.id: provider
@@ -287,21 +327,25 @@ def get_regional_news(
                 now=now,
                 retry_failed=retry_failed,
                 fresh_seconds=fresh_seconds,
+                cache_only=cache_only,
             )
         except Exception as error:
             logger.warning("Regional feed %s failed with %s", feed.id, type(error).__name__)
             return _failed_feed(feed)
 
-    executor = ThreadPoolExecutor(max_workers=min(settings.NEWS_REGIONAL_WORKERS, len(enabled_feeds)))
-    futures = {executor.submit(load, feed): feed for feed in enabled_feeds}
-    done, pending = wait(futures, timeout=settings.NEWS_REGIONAL_FETCH_WAIT_SECONDS)
-    result_by_feed = {futures[future].id: future.result() for future in done}
-    for future in pending:
-        future.cancel()
-        feed = futures[future]
-        result_by_feed[feed.id] = _failed_feed(feed)
-    executor.shutdown(wait=False, cancel_futures=True)
-    feed_results = tuple(result_by_feed[feed.id] for feed in enabled_feeds)
+    if cache_only:
+        feed_results = tuple(load(feed) for feed in enabled_feeds)
+    else:
+        executor = ThreadPoolExecutor(max_workers=min(settings.NEWS_REGIONAL_WORKERS, len(enabled_feeds)))
+        futures = {executor.submit(load, feed): feed for feed in enabled_feeds}
+        done, pending = wait(futures, timeout=settings.NEWS_REGIONAL_FETCH_WAIT_SECONDS)
+        result_by_feed = {futures[future].id: future.result() for future in done}
+        for future in pending:
+            future.cancel()
+            feed = futures[future]
+            result_by_feed[feed.id] = _failed_feed(feed)
+        executor.shutdown(wait=False, cancel_futures=True)
+        feed_results = tuple(result_by_feed[feed.id] for feed in enabled_feeds)
 
     provider_results = []
     matched_items = []

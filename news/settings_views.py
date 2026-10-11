@@ -123,7 +123,10 @@ def source_settings(request):
     )
     if request.method == "POST" and form.is_valid():
         form.save()
-        messages.success(request, "News-source preferences saved. They apply to the next news or video request.")
+        from .services.background import feed_warmer
+
+        feed_warmer.rescan()
+        messages.success(request, "News-source preferences saved. Background refresh and cached results now use these choices.")
         return _navigate(request, country)
     return render_page(request, "settings", page_template="news/settings.html", context=_context(registry, choices, form, country, fresh_seconds))
 

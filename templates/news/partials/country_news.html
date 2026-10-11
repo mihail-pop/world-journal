@@ -1,4 +1,5 @@
-<div class="country-news-result" data-country-news-result data-news-country="{{ news_page.country_code }}">
+<div class="country-news-result" data-country-news-result data-news-country="{{ news_page.country_code }}" data-feed-pending="{{ feed_pending|yesno:'true,false' }}">
+    {% if feed_pending %}<p class="country-news-message" role="status">Preparing remaining feeds… Articles appear here as they become available.</p>{% endif %}
     {% if news_page.google.items or news_page.regional_items or news_page.google.warning or news_page.google.error or news_page.regional_warning %}<div class="news-filter" role="group" aria-label="Article source filter">
         <button type="button" data-news-filter="all" aria-pressed="true">All articles</button>
         {% if news_page.google.items or news_page.google.warning or news_page.google.error %}<button type="button" data-news-filter="google" aria-pressed="false">Google News</button>{% endif %}
@@ -37,7 +38,7 @@
                     </li>
                 {% endfor %}
             </ol>
-        {% else %}
+        {% elif not google_pending %}
             <p class="country-news-message">No current English-language headlines were returned for {{ news_page.country_name }}.</p>
         {% endif %}
     </section>{% endif %}
@@ -86,9 +87,9 @@
             <p class="country-news-message">No matched regional articles are available; some providers could not be checked.</p>
         {% elif not news_page.regional_sources %}
             <p class="country-news-message">No regional feeds are enabled. <a href="{% url 'news:settings' %}" hx-boost="true" hx-target="#app-content" hx-push-url="true">Manage news sources</a></p>
-        {% else %}
+        {% elif not feed_pending %}
             <p class="country-news-message">No country references were found in the current regional feed snapshot.</p>
         {% endif %}
     </section>{% endif %}
-    {% if not news_page.google.items and not news_page.regional_items and not news_page.google.warning and not news_page.google.error and not news_page.regional_warning %}<p class="country-news-message">No matching headlines in the current enabled feeds.</p>{% endif %}
+    {% if not feed_pending and not news_page.google.items and not news_page.regional_items and not news_page.google.warning and not news_page.google.error and not news_page.regional_warning %}<p class="country-news-message">No matching headlines in the current enabled feeds.</p>{% endif %}
 </div>

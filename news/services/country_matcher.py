@@ -147,10 +147,12 @@ def _match(
     return tuple(evidence)
 
 
-def match_country_text(
+@lru_cache(maxsize=8192)
+def _cached_country_text(
     title: str,
-    summary: str = "",
-    candidate_codes: set[str] | frozenset[str] | None = None,
+    summary: str,
+    alias_revision: int,
+    candidate_codes: frozenset[str] | None,
 ) -> tuple[MatchEvidence, ...]:
     aliases = _aliases()
     name_aliases = tuple(alias for alias in aliases if not alias.related)
@@ -165,6 +167,24 @@ def match_country_text(
             candidate_codes,
         ),
     )
+
+
+_matching_aliases = None
+_matching_revision = 0
+
+
+def match_country_text(
+    title: str,
+    summary: str = "",
+    candidate_codes: set[str] | frozenset[str] | None = None,
+) -> tuple[MatchEvidence, ...]:
+    # Shared feed entries are matched once, then reused across country drawers.
+    global _matching_aliases, _matching_revision
+    aliases = _aliases()
+    if aliases is not _matching_aliases:
+        _matching_aliases = aliases
+        _matching_revision += 1
+    return _cached_country_text(title, summary, _matching_revision, None if candidate_codes is None else frozenset(candidate_codes))
 
 
 def match_title(title: str, candidate_codes: set[str] | frozenset[str] | None = None) -> tuple[MatchEvidence, ...]:

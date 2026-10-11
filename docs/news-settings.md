@@ -10,22 +10,25 @@ dependencies are required.
   have separate on/off choices. Save the form to apply changes.
 - Switching off a publisher pauses its feeds without forgetting their individual
   choices. Re-enabling it restores those choices.
-- Unavailable records in the curated registry stay locked. Al Arabiya's blocked
-  feeds remain unavailable. The four YouTube candidate IDs were replaced with
-  verified working channels on October 11, 2026 and can now be enabled.
-- Successful cache entries are reused for 5–120 minutes (15 by default). This is
-  a freshness threshold, not a background timer: requests trigger refreshes.
+- Al Arabiya and its five feeds have been removed from the active configuration.
+  The four YouTube candidate IDs were replaced with verified working channels
+  on October 11, 2026 and can now be enabled.
+- Background refresh runs every 5–120 minutes (30 by default). Each feed's own
+  fetch/check timestamp determines when it is due. The previous default of 15
+  minutes is upgraded to 30 by the migration; other saved intervals are retained.
 - Changing preferences does not remove cached feeds, journal items, or the playing
-  video. Already displayed drawer results remain until a new request is made.
+  video. Visible drawer results update as refreshed feeds become available.
 
 The registry remains authoritative for endpoint URLs, channel identity, routing,
 language, and audit metadata. The preferences can disable reviewed records, but
 cannot enable an unavailable registry record. Disabled records are skipped before
-fetching. Videos remain lazy on the Map page.
+fetching. Video feeds are warmed in the background; thumbnails and playback remain
+lazy on the Map page. See [Background news cache](news-background.md).
 
 ## Health and manual refresh
 
-Opening this page reads the retained feed cache; it does not contact publishers.
+Health on this page reads the retained feed cache. The first application page
+request starts the background warmer, without waiting for publishers.
 Google News health is specific to the selected country. Regional and YouTube
 health covers the whole feed, so its entry count can differ from country matches.
 
@@ -57,8 +60,9 @@ Use the workspace virtual environment:
 
 Open `http://127.0.0.1:8000/` and reload with Ctrl+F5 after updating static files.
 
-1. Open source settings. Sources and saved choices appear without a bulk feed
-   refresh. Initially, some sources may have no retained check.
+1. Open source settings. Al Arabiya is absent. Sources and saved choices appear
+   immediately while background preparation proceeds. Reopening the page shows
+   the latest retained health.
 2. Turn Google News off and save. Open a country's Articles tab: Google shows a
    switched-off message while enabled regional coverage remains available.
 3. Disable a regional publisher and save, then enable it again. Its individual
@@ -71,5 +75,6 @@ Open `http://127.0.0.1:8000/` and reload with Ctrl+F5 after updating static file
 6. Try the page in all themes and a narrow window. Navigate between Map, Journal,
    and Settings while a video plays; the shell player should stay intact.
 
-Automated tests and browser acceptance were intentionally left to the user for
-this implementation step.
+Additional manual checks for first-load preparation, priority, persistence and
+automatic refresh are in [Background news cache](news-background.md). Automated
+tests and browser acceptance were intentionally left to the user.

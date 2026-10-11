@@ -4,6 +4,9 @@ from django.shortcuts import render
 
 
 def render_page(request: HttpRequest, page: str, *, page_template: str | None = None, context: dict | None = None) -> HttpResponse:
+    from news.services.background import feed_warmer
+
+    feed_warmer.start()
     page_context = {
         "active_page": page,
         "app_display_name": settings.APP_DISPLAY_NAME,

@@ -18,6 +18,17 @@ Shared source choices, bounded freshness, retained-cache health, and manual refr
 
 YouTube feed URLs are derived from trusted registry channel IDs as `https://www.youtube.com/feeds/videos.xml?channel_id=<CHANNEL_ID>`. Channel IDs are unique and match `UC[A-Za-z0-9_-]{22}`. Enabled records require complete audit metadata, the exact `www.youtube.com/channel/<CHANNEL_ID>` homepage, and only `www.youtube.com` in the feed-host allowlist. Disabled records remain visible in configuration but are never fetched.
 
+## Background preparation
+
+The app now prepares all enabled feeds and per-country Google searches in a
+bounded in-process queue, beginning with the first application page request.
+Country drawers read available snapshots without waiting for publishers and retain
+rendered country content in the browser. The default automatic refresh interval
+is 30 minutes, and the queue continues while Django runs even if the browser is
+closed. Al Arabiya and all five of its feeds have been removed from the active
+registry; earlier audits below are historical. See [Background news cache](news-background.md)
+for the queue, limits, restart behavior and manual acceptance steps.
+
 ## Feed audit
 
 ### Current review: October 11, 2026
@@ -159,7 +170,7 @@ Matching is deterministic evidence for filtering, not a relevance, truth, popula
 
 `news/services/fetch.py` accepts only registry-owned URLs. It requires HTTPS on the standard port, validates allowlisted hosts and public DNS results, revalidates every redirect, and caps redirects, response bytes, and request time. Conditional `ETag` and `Last-Modified` headers are reused when supplied.
 
-The browser requests articles from `/news/countries/<ISO2>/` and videos from `/news/countries/<ISO2>/videos/`. Django validates both through canonical country data and normalizes lowercase codes. Neither endpoint accepts a feed URL, channel ID, watch URL, embed URL, or iframe URL. Automated tests use local RSS, Atom, RDF, and YouTube Atom fixtures plus mocked fetchers; they do not contact live publishers or YouTube.
+The browser prepares cached drawer HTML through `/news/cache/` and requests priority articles from `/news/countries/<ISO2>/` and videos from `/news/countries/<ISO2>/videos/`. Django validates both through canonical country data and normalizes lowercase codes. Neither endpoint accepts a feed URL, channel ID, watch URL, embed URL, or iframe URL. Automated tests use local RSS, Atom, RDF, and YouTube Atom fixtures plus mocked fetchers; they do not contact live publishers or YouTube.
 
 Create the existing database-cache table once after setup:
 
@@ -169,11 +180,11 @@ Create the existing database-cache table once after setup:
 
 Google keys use `news:v<schema>:google_country:<ISO2>:<edition>`. Fixed feed keys use `news:v<schema>:rss:<feed_id>:<language>`. Raw fixed-feed snapshots are country-neutral and contain provider/feed attribution but no matched country codes, match evidence, match class, or stale presentation state. A fresh feed snapshot is reused across every country.
 
-YouTube keys use `news:v<schema>:youtube:<source_id>:<language>:<channel_id>`. Each channel is fetched and cached independently before country filtering, so switching between countries in one channel's route reuses the same fresh normalized snapshot. Corrupt values are discarded and fetched again. Successful entries are retained for 24 hours as stale fallback, and each channel has an independent 60-second failure backoff and process lock. Cold eligible channels use at most `NEWS_YOUTUBE_WORKERS` concurrent requests and return after `NEWS_YOUTUBE_FETCH_WAIT_SECONDS`; one failed or timed-out channel does not hide another. `NEWS_YOUTUBE_PER_CHANNEL_LIMIT` and `NEWS_YOUTUBE_TOTAL_LIMIT` bound rendered results.
+YouTube keys use `news:v<schema>:youtube:<source_id>:<language>:<channel_id>`. Each channel is fetched and cached independently before country filtering, so switching between countries in one channel's route reuses the same fresh normalized snapshot. Corrupt values are discarded and fetched again. Successful entries are retained for 24 hours as stale fallback, and each channel has an independent five-minute failure backoff and process lock. Cold eligible channels use at most `NEWS_YOUTUBE_WORKERS` concurrent requests and return after `NEWS_YOUTUBE_FETCH_WAIT_SECONDS`; one failed or timed-out channel does not hide another. `NEWS_YOUTUBE_PER_CHANNEL_LIMIT` and `NEWS_YOUTUBE_TOTAL_LIMIT` bound rendered results.
 
-Successful snapshots are fresh for approximately 15 minutes. Google stale content is retained for three days; fixed-feed stale content is retained for 24 hours. Each feed has independent conditional headers, failure state, 60-second backoff, and process lock. One failed sibling cannot invalidate another. A provider is `partial` when at least one sibling is usable and another fails, and `unavailable` only when none of its enabled siblings is usable. Google remains independent of every regional provider.
+Successful snapshots are fresh for 30 minutes by default, or the saved source refresh interval. Google stale content is retained for three days; fixed-feed stale content is retained for 24 hours. Each feed has independent conditional headers, failure state, five-minute backoff, and process lock. One failed sibling cannot invalidate another. A provider is `partial` when at least one sibling is usable and another fails, and `unavailable` only when none of its enabled siblings is usable. Google remains independent of every regional provider.
 
-A cold request can fan out to all 13 enabled feeds. Work is bounded to `NEWS_REGIONAL_WORKERS` concurrent requests and the aggregate waits at most `NEWS_REGIONAL_FETCH_WAIT_SECONDS`; unfinished feeds become scoped failures for that response. A fully warm request performs no fixed-feed network calls and only filters cached snapshots. This is a request-time compromise for a local app without workers, Redis, or scheduled refreshes.
+A cold request can fan out to all 13 enabled feeds. Work is bounded to `NEWS_REGIONAL_WORKERS` concurrent requests and the aggregate waits at most `NEWS_REGIONAL_FETCH_WAIT_SECONDS`; unfinished feeds become scoped failures for that response. A fully warm request performs no fixed-feed network calls and only filters cached snapshots. This synchronous service path is retained for explicit source refreshes and service callers. Browser drawers use cache-only reads while the process-local queue handles fetching.
 
 The cache is a rolling snapshot, not an article database or archive. Items disappear as upstream feeds roll forward or cached snapshots expire. The app cannot provide historical completeness, durable search, or guaranteed recovery of an article removed from a feed.
 
@@ -205,7 +216,7 @@ Manual check after Ctrl+F5: click several different countries in quick successio
 
 The player shell is outside `#app-content` and owns the only player controller. A validated Play button dispatches a custom event containing the video ID and plain title/channel text. The once-initialized controller validates the ID again, creates a `www.youtube-nocookie.com` iframe only after that click, and updates labels through `textContent`. It supports replace, minimize/restore without replacing the iframe, close with iframe removal, and a derived HTTPS YouTube link. HTMX Map, Journal, and Settings swaps cannot remove the iframe; a full browser refresh intentionally clears playback. Theme changes do not recreate it.
 
-The iframe uses `allowfullscreen`, `strict-origin-when-cross-origin`, and only `autoplay`, `encrypted-media`, and `picture-in-picture` capabilities. It has no sandbox or postMessage/API bridge. Thumbnail failures reveal a stable fallback. Feed text is Django-escaped, and external links use `target="_blank"` with `rel="noopener noreferrer"`. Opening Videos may lazily retrieve visible thumbnails from `i.ytimg.com`, but it does not create an iframe. The privacy-enhanced embed is created only after Play, which connects the browser to YouTube.
+The iframe uses `allowfullscreen`, `strict-origin-when-cross-origin`, and only `autoplay`, `encrypted-media`, and `picture-in-picture` capabilities. It has no sandbox or postMessage/API bridge. Thumbnail failures reveal a stable fallback. Feed text is Django-escaped, and external links use `target="_blank"` with `rel="noopener noreferrer"`. Feed preparation loads channel Atom feeds ahead of time. Opening Videos may lazily retrieve visible thumbnails from `i.ytimg.com`, but it does not create an iframe. The privacy-enhanced embed is created only after Play, which connects the browser to YouTube.
 
 YouTube feeds expose only a small rolling set of recent uploads. A country can legitimately have no title match, and title-only matching can miss videos that mention a country only in their description, spoken content, local-language name, or uncommon alias. Empty results are not evidence that a channel has no relevant coverage.
 

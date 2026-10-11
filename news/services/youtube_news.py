@@ -62,6 +62,7 @@ def get_youtube_feed(
     retry_failed: bool = False,
     force_refresh: bool = False,
     fresh_seconds: int | None = None,
+    cache_only: bool = False,
 ) -> VideoSourceResult:
     feed_url = source.youtube_feed_url
     if not source.enabled_by_default:
@@ -73,6 +74,16 @@ def get_youtube_feed(
     current_time = now or datetime.now(UTC)
     fresh_seconds = settings.NEWS_REFRESH_SECONDS if fresh_seconds is None else fresh_seconds
     key = _cache_key(source)
+    if cache_only:
+        snapshot = backend.get(key)
+        if not isinstance(snapshot, dict) or deserialize_video_items(snapshot, source) is None:
+            snapshot = {}
+        success_age = age(current_time, snapshot.get("fetched_at"))
+        return _source_result(source, snapshot, failed=bool(snapshot.get("last_error")), stale=bool(
+            snapshot.get("last_success_at") and (
+                snapshot.get("last_error") or success_age is None or success_age.total_seconds() >= fresh_seconds
+            )
+        ))
     with cache_lock(key):
         snapshot = backend.get(key)
         if not isinstance(snapshot, dict) or deserialize_video_items(snapshot, source) is None:
@@ -80,7 +91,7 @@ def get_youtube_feed(
         retrying_failure = retry_failed and bool(snapshot.get("last_error"))
         success_age = age(current_time, snapshot.get("fetched_at"))
         if (
-            not force_refresh and not retrying_failure
+            not force_refresh and not retrying_failure and not snapshot.get("last_error")
             and snapshot.get("last_success_at")
             and success_age is not None
             and success_age.total_seconds() < fresh_seconds
@@ -194,10 +205,13 @@ def get_country_videos(
     fetcher: Callable[..., FeedResponse] = fetch_feed,
     now: datetime | None = None,
     retry_failed: bool = False,
+    cache_only: bool = False,
+    fresh_seconds: int | None = None,
 ) -> CountryVideosPage:
     country = _country_for_code(iso2)
     source_registry = registry or effective_registry()
-    fresh_seconds = freshness_seconds() if registry is None else settings.NEWS_REFRESH_SECONDS
+    if fresh_seconds is None:
+        fresh_seconds = freshness_seconds() if registry is None else settings.NEWS_REFRESH_SECONDS
     sources = eligible_youtube_sources(country, source_registry)
     if not sources:
         return CountryVideosPage(country["iso_a2"], country["name"], (), (), "empty")
@@ -211,21 +225,25 @@ def get_country_videos(
                 now=now,
                 retry_failed=retry_failed,
                 fresh_seconds=fresh_seconds,
+                cache_only=cache_only,
             )
         except Exception as error:
             logger.warning("YouTube feed %s failed with %s", source.id, type(error).__name__)
             return _failed_source(source)
 
-    executor = ThreadPoolExecutor(max_workers=min(settings.NEWS_YOUTUBE_WORKERS, len(sources)))
-    futures = {executor.submit(load, source): source for source in sources}
-    done, pending = wait(futures, timeout=settings.NEWS_YOUTUBE_FETCH_WAIT_SECONDS)
-    result_by_source = {futures[future].id: future.result() for future in done}
-    for future in pending:
-        future.cancel()
-        source = futures[future]
-        result_by_source[source.id] = _failed_source(source)
-    executor.shutdown(wait=False, cancel_futures=True)
-    source_results = tuple(result_by_source[source.id] for source in sources)
+    if cache_only:
+        source_results = tuple(load(source) for source in sources)
+    else:
+        executor = ThreadPoolExecutor(max_workers=min(settings.NEWS_YOUTUBE_WORKERS, len(sources)))
+        futures = {executor.submit(load, source): source for source in sources}
+        done, pending = wait(futures, timeout=settings.NEWS_YOUTUBE_FETCH_WAIT_SECONDS)
+        result_by_source = {futures[future].id: future.result() for future in done}
+        for future in pending:
+            future.cancel()
+            source = futures[future]
+            result_by_source[source.id] = _failed_source(source)
+        executor.shutdown(wait=False, cancel_futures=True)
+        source_results = tuple(result_by_source[source.id] for source in sources)
 
     source_map = {source.id: source for source in sources}
     matched_by_source: dict[str, tuple[VideoItem, ...]] = {}
