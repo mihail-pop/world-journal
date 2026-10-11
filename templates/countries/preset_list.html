@@ -1,0 +1,11 @@
+<section class="page page-standard journal-page" data-page="settings" hx-boost="true" hx-target="#app-content" hx-push-url="true" aria-labelledby="presets-title">
+    <a class="journal-back-link" href="{% url 'core:map' %}">← Map</a>
+    <div class="journal-page-heading"><div class="page-copy"><p class="eyebrow">Personal map</p><h1 id="presets-title">Color presets</h1><p>Group countries using your own colors. One preset is active at a time, shared across browsers.</p></div><a class="journal-button is-primary" href="{% url 'countries:preset_new' %}">New preset</a></div>
+    {% if active_preset_id %}<form method="post" action="{% url 'countries:preset_clear' %}">{% csrf_token %}<button class="journal-button" type="submit">Turn off preset colors</button></form>{% endif %}
+    {% for preset in presets %}<article class="journal-entry-card">
+        <h2>{{ preset.name }}{% if preset.pk == active_preset_id %} <span class="journal-badge">· Active</span>{% endif %}</h2>
+        {% if preset.description %}<p>{{ preset.description|linebreaksbr }}</p>{% endif %}
+        <div class="preset-swatches">{% if preset.default_color %}<span><i style="--preset-swatch: {{ preset.default_color }}"></i>Default</span>{% endif %}{% for row in preset.country_colors.all %}<span><i style="--preset-swatch: {{ row.color }}"></i>{{ row.country.name }}</span>{% endfor %}</div>
+        <div class="journal-actions"><form method="post" action="{% url 'countries:preset_activate' preset.pk %}">{% csrf_token %}<button class="journal-button" type="submit">Activate</button></form><a href="{% url 'countries:preset_edit' preset.pk %}">Edit</a><a href="{% url 'countries:preset_duplicate' preset.pk %}">Duplicate</a><a href="{% url 'countries:preset_delete' preset.pk %}">Delete</a></div>
+    </article>{% empty %}<p class="empty-state">No presets yet. Create one and assign colors to the countries you want to group.</p>{% endfor %}
+</section>

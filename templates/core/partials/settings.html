@@ -38,4 +38,5 @@
             <p class="settings-status" data-settings-status role="status" aria-live="polite">Loading countries…</p>
         </div>
     </section>
+    <section class="settings-section" aria-labelledby="personal-map-settings-title"><div><p class="eyebrow">Shared map data</p><h2 id="personal-map-settings-title">Color presets</h2></div><div><p>Create country color groups and choose the active preset. Favorites and country overview notes are managed from the map.</p><a class="journal-button" href="{% url 'countries:preset_list' %}" hx-boost="true" hx-target="#app-content" hx-push-url="true">Manage color presets</a></div></section>
 </section>

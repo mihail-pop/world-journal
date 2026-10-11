@@ -11,8 +11,8 @@ function initializePage(root = document) {
     }
 
     const pageName = page.dataset.page;
-    document.querySelectorAll(".primary-nav a").forEach((link) => {
-        if (new URL(link.href).pathname === window.location.pathname) {
+    document.querySelectorAll("[data-nav-page]").forEach((link) => {
+        if (link.dataset.navPage === pageName) {
             link.setAttribute("aria-current", "page");
         } else {
             link.removeAttribute("aria-current");

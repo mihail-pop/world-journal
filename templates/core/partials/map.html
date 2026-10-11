@@ -4,6 +4,11 @@
     data-page="map"
     data-map-style-url="{{ map_style_url }}"
     data-map-glyphs-url="{{ map_glyphs_url }}"
+    data-map-personal-url="{% url 'countries:personal_data' %}"
+    data-favorite-url-template="{% url 'countries:favorite' iso2='COUNTRY_CODE' %}"
+    data-country-notes-url-template="{% url 'countries:notes' iso2='COUNTRY_CODE' %}"
+    data-preset-activate-url-template="{% url 'countries:preset_activate' pk='00000000-0000-0000-0000-000000000000' %}"
+    data-preset-clear-url="{% url 'countries:preset_clear' %}"
     data-country-metadata-url="{% url 'countries:metadata' %}"
     data-country-news-url-template="{% url 'news:country_news' iso2='COUNTRY_CODE' %}"
     data-country-videos-url-template="{% url 'news:country_videos' iso2='COUNTRY_CODE' %}"
@@ -11,6 +16,7 @@
     data-capital-geometry-url="{% static 'data/capitals.geojson' %}"
     aria-labelledby="map-title"
 >
+    <div hidden data-personal-csrf>{% csrf_token %}</div>
     <h1 id="map-title" class="visually-hidden">Map</h1>
     <div class="map-workspace">
         <div id="world-map" class="world-map" role="application" aria-label="Interactive world map" tabindex="0"></div>
@@ -34,6 +40,14 @@
                     <label><input type="checkbox" data-map-preference="capitalNames"> Capital names</label>
                     <label><input type="checkbox" data-map-preference="allOtherText"> All other text</label>
                 </fieldset>
+                <fieldset class="map-personal-controls">
+                    <legend>Your map</legend>
+                    <label for="map-favorites">Favorite country</label><select id="map-favorites" data-favorite-jump disabled><option value="">No favorites yet</option></select>
+                    <label for="map-active-preset">Color preset</label><select id="map-active-preset" data-active-preset disabled><option value="">No preset</option></select>
+                    <a href="{% url 'countries:preset_list' %}" hx-boost="true" hx-target="#app-content" hx-push-url="true">Manage color presets</a>
+                    <p class="field-note" data-personal-map-status role="status">Loading saved map data…</p>
+                    <button class="map-command" type="button" data-personal-map-retry hidden>Retry saved map data</button>
+                </fieldset>
                 <p class="map-home-summary" data-home-summary></p>
             </div>
         </div>
@@ -51,6 +65,7 @@
                 </span>
                 <h2 id="country-name" data-country-name></h2>
             </div>
+            <div class="country-personal-actions"><button class="map-command" type="button" data-country-favorite aria-pressed="false" disabled>Add favorite</button><p class="field-note" data-country-favorite-status role="status"></p></div>
             <dl class="country-identity">
                 <div>
                     <dt>Region</dt>
@@ -70,6 +85,7 @@
                 <div class="country-content-tabs" role="tablist" aria-label="Country coverage">
                     <button type="button" role="tab" id="country-articles-tab" aria-controls="country-articles-panel" aria-selected="true" tabindex="0" data-country-section="articles">Articles</button>
                     <button type="button" role="tab" id="country-videos-tab" aria-controls="country-videos-panel" aria-selected="false" tabindex="-1" data-country-section="videos">Videos</button>
+                    <button type="button" role="tab" id="country-notes-tab" aria-controls="country-notes-panel" aria-selected="false" tabindex="-1" data-country-section="notes">Notes</button>
                 </div>
                 <div id="country-articles-panel" role="tabpanel" aria-labelledby="country-articles-tab" data-country-section-panel="articles">
                     <div data-country-news-content aria-live="polite" aria-busy="true">
@@ -79,6 +95,7 @@
                 <div id="country-videos-panel" role="tabpanel" aria-labelledby="country-videos-tab" data-country-section-panel="videos" hidden>
                     <div data-country-videos-content aria-live="polite" aria-busy="false"></div>
                 </div>
+                <div id="country-notes-panel" role="tabpanel" aria-labelledby="country-notes-tab" data-country-section-panel="notes" hidden><div data-country-notes-content aria-live="polite" aria-busy="false"></div></div>
             </section>
         </aside>
 

@@ -1186,3 +1186,33 @@ body:has(.persistent-player[data-player-state="playing"]) #app-content:not(:has(
 }
 
 .country-journal-link { margin: 0.6rem 0; font-size: 0.8rem; color: var(--special-color-hover); }
+
+/* Shared favorites, presets and Journal-backed country notes. */
+.country-content-tabs { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.map-personal-controls { margin-top: 1rem; border-top: 1px solid var(--overview-border) !important; padding-top: 1rem !important; }
+.map-personal-controls label { min-height: auto; }
+.map-personal-controls select { min-width: 0; width: 100%; padding: 0.5rem; background: var(--button-bg); color: var(--text-secondary); border: 1px solid var(--overview-border); border-radius: 4px; }
+.map-personal-controls a { color: var(--special-color-hover); font-size: 0.85rem; }
+.map-personal-controls .field-note { margin: 0; }
+.country-personal-actions { margin-block: 0.85rem; }
+.country-personal-actions .field-note:empty { display: none; }
+.country-notes-heading { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; justify-content: space-between; }
+.country-notes-heading h4 { margin: 0; }
+.country-notes-heading a, .country-saved-research a, [data-country-notes-result] > a, [data-country-notes-result] .journal-actions a { color: var(--special-color-hover); }
+.country-overview-preview { font-size: 0.9rem; }
+.country-overview-preview h1 { font-size: 1.5rem; }
+.country-overview-preview h2 { font-size: 1.25rem; }
+.country-overview-images figure { margin: 0.75rem 0; }
+.country-overview-images img { display: block; max-width: 100%; max-height: 14rem; object-fit: contain; }
+.country-overview-images figcaption { font-size: 0.8rem; overflow-wrap: anywhere; }
+.country-saved-research { padding-left: 1rem; }
+.country-saved-research li { margin-bottom: 0.75rem; overflow-wrap: anywhere; }
+.country-saved-research span { display: block; font-size: 0.75rem; color: var(--text-primary); }
+.country-create-overview { margin-top: 2rem; }
+.preset-color-row { min-width: 0; margin-block: 1rem; padding: 1rem; border: 1px solid var(--overview-border); border-radius: 6px; }
+.preset-color-row legend { color: var(--text-secondary); padding-inline: 0.5rem; }
+.preset-color-fields { display: grid; grid-template-columns: minmax(0, 1fr) 6rem; gap: 1rem; }
+.preset-color-fields input[type=color] { padding: 0.25rem; cursor: pointer; }
+.preset-swatches { display: flex; flex-wrap: wrap; gap: 0.5rem 1rem; margin-block: 1rem; }
+.preset-swatches span { display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; overflow-wrap: anywhere; }
+.preset-swatches i { width: 1rem; height: 1rem; flex-shrink: 0; background: var(--preset-swatch); border: 1px solid var(--text-primary); border-radius: 2px; }

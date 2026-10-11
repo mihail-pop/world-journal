@@ -1,0 +1,9 @@
+<div data-country-notes-result="{{ country.pk }}" hx-boost="true" hx-target="#app-content" hx-push-url="true">
+    <div class="country-notes-heading"><h4>Personal overview</h4><a href="{% url 'countries:profile_edit' country.pk %}">Choose note</a></div>
+    {% if overview %}<h4><a href="{{ overview.get_absolute_url }}">{{ overview.title }}</a></h4><div class="journal-rendered country-overview-preview">{{ overview_preview }}</div>{% if overview_truncated %}<p class="field-note">Preview shortened. Open the entry to read everything.</p>{% endif %}
+        <div class="country-overview-images">{% for image in overview_images %}<figure><img src="{{ image.file.url }}" alt="{{ image.caption|default:image.original_name }}" loading="lazy">{% if image.caption %}<figcaption>{{ image.caption }}</figcaption>{% endif %}</figure>{% endfor %}</div>
+        <a href="{% url 'journal:edit' overview.pk %}">Edit overview and pictures</a>
+    {% else %}<p class="country-news-message">No overview note yet. Keep your country background and pictures in a Journal entry.</p><form method="post" action="{% url 'countries:profile_create' country.pk %}">{% csrf_token %}<button class="journal-button" type="submit">Create overview note</button></form>{% endif %}
+    <h4>Saved research</h4><ul class="country-saved-research">{% for entry in recent_entries %}<li><a href="{{ entry.get_absolute_url }}">{{ entry.title }}</a><span>{{ entry.get_entry_type_display }} · {{ entry.created_at|date:'M j, Y' }}</span></li>{% empty %}<li>No Journal entries tagged with {{ country.name }} yet.</li>{% endfor %}</ul>
+    <div class="journal-actions"><a href="{% url 'journal:new' %}?country={{ country.pk }}">New country entry</a><a href="{% url 'core:journal' %}?country={{ country.pk }}">View all saved entries</a></div>
+</div>

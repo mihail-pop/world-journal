@@ -1,3 +1,4 @@
+import { applyPersonalLayers, initializePersonalMap, loadCountryNotes, personalSelectionChanged } from "./map_personal.js";
 import {
     AttributionControl,
     Map as MapLibreMap,
@@ -18,6 +19,8 @@ const LAYERS = {
     simpleBackground: "world-journal-simple-background",
     fill: "world-journal-country-fill",
     outline: "world-journal-country-outline",
+    presetFill: "world-journal-country-presets",
+    favoriteMarkers: "world-journal-country-favorites",
     hoverFill: "world-journal-country-hover-fill",
     hoverLine: "world-journal-country-hover-line",
     selectedFill: "world-journal-country-selected-fill",
@@ -90,6 +93,7 @@ function updateLayerTheme(controller) {
     map.setPaintProperty(LAYERS.capitalMarkers, "circle-stroke-color", background);
     map.setPaintProperty(LAYERS.capitalNames, "text-color", selected);
     map.setPaintProperty(LAYERS.capitalNames, "text-halo-color", background);
+    applyPersonalLayers(controller);
     if (controller.usingFallbackStyle && map.getLayer("world-journal-background")) {
         map.setPaintProperty("world-journal-background", "background-color", background);
     }
@@ -108,6 +112,7 @@ function selectedCodeFromUrl(countriesByCode) {
 
 function updateHistory(code) {
     const url = new URL(window.location.href);
+    url.searchParams.delete("section");
     if (code) {
         url.searchParams.set("country", code);
     } else {
@@ -290,6 +295,7 @@ async function loadCountryVideos(controller, code, countryName, { retryFailed = 
 }
 
 function selectCountrySection(controller, section, { focus = false } = {}) {
+    if (section === "notes") loadCountryNotes(controller);
     for (const button of controller.page.querySelectorAll("[data-country-section]")) {
         const selected = button.dataset.countrySection === section;
         button.setAttribute("aria-selected", String(selected));
@@ -314,6 +320,7 @@ function selectCountrySection(controller, section, { focus = false } = {}) {
 
 function renderSelection(controller, code, { fit = true, focusDrawer = false } = {}) {
     controller.selectedCode = code;
+    personalSelectionChanged(controller);
     updateFilter(controller.map, LAYERS.selectedFill, code);
     updateFilter(controller.map, LAYERS.selectedLine, code);
     const drawer = controller.page.querySelector("[data-country-drawer]");
@@ -353,6 +360,7 @@ function renderSelection(controller, code, { fit = true, focusDrawer = false } =
     drawer.hidden = false;
     controller.page.classList.add("has-country-drawer");
     loadCountryNews(controller, code, country.name);
+    if (new URL(window.location.href).searchParams.get("section") === "notes") selectCountrySection(controller, "notes");
     if (fit) {
         focusCountry(controller, country);
     }
@@ -532,11 +540,17 @@ function installCountryLayers(controller) {
         paint: { "background-color": "#151f2e" },
     }, firstBasemapLayer);
     addLayer(controller, { id: LAYERS.fill, type: "fill", source: SOURCE_ID, paint: { "fill-color": "#32445b", "fill-opacity": 0.22 } });
+    addLayer(controller, { id: LAYERS.presetFill, type: "fill", source: SOURCE_ID, paint: { "fill-color": "rgba(0,0,0,0)", "fill-opacity": 0.65 } });
     addLayer(controller, { id: LAYERS.outline, type: "line", source: SOURCE_ID, paint: { "line-color": "#8596a5", "line-opacity": 0.62, "line-width": 0.8 } });
     addLayer(controller, { id: LAYERS.hoverFill, type: "fill", source: SOURCE_ID, filter: ["==", ["get", "iso_a2"], ""], paint: { "fill-color": "#00bfff", "fill-opacity": 0.32 } });
     addLayer(controller, { id: LAYERS.hoverLine, type: "line", source: SOURCE_ID, filter: ["==", ["get", "iso_a2"], ""], paint: { "line-color": "#00bfff", "line-width": 2 } });
     addLayer(controller, { id: LAYERS.selectedFill, type: "fill", source: SOURCE_ID, filter: ["==", ["get", "iso_a2"], ""], paint: { "fill-color": "#00bfff", "fill-opacity": 0.26 } });
     addLayer(controller, { id: LAYERS.selectedLine, type: "line", source: SOURCE_ID, filter: ["==", ["get", "iso_a2"], ""], paint: { "line-color": "#a8b5c4", "line-width": 3.5 } });
+    addLayer(controller, {
+        id: LAYERS.favoriteMarkers, type: "circle", source: CENTROID_SOURCE_ID,
+        filter: ["in", ["get", "iso_a2"], ["literal", []]],
+        paint: { "circle-color": "#0b1622", "circle-opacity": 0.7, "circle-radius": 6, "circle-stroke-width": 2, "circle-stroke-color": "#00bfff" },
+    });
     addLayer(controller, {
         id: LAYERS.smallMarker,
         type: "circle",
@@ -951,6 +965,7 @@ async function initializeMapPage() {
         controller.geometry = geometry;
         controller.centroids = createCentroids(metadata.countries);
         controller.capitals = capitals;
+        initializePersonalMap(controller, selectCountry);
         initializeControls(controller);
         controller.status.textContent = "Loading map provider…";
         createMap(controller, page.dataset.mapStyleUrl);
