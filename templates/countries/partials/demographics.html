@@ -1,0 +1,13 @@
+{% for group in groups %}
+    <div class="country-demographic-group">
+        <p class="country-fact-year">{% if group.year %}As of {{ group.year }}{% else %}Observation date not specified{% endif %}{% if group.scope_name %} · Scope: {{ group.scope_name }}{% endif %}</p>
+        <ul class="country-demographics-list">
+            {% for item in group.items %}
+                <li><a href="{{ item.topic_url }}" target="_blank" rel="noopener noreferrer">{{ item.name }}</a>: <strong>{{ item.percentage }}%</strong> <a class="country-demographic-source" href="{{ item.source_url }}" target="_blank" rel="noopener noreferrer">Source ↗</a></li>
+            {% endfor %}
+        </ul>
+        {% if group.conflicting %}<p class="field-note">The source gives conflicting percentages for a category; both are shown.</p>{% endif %}
+    </div>
+{% empty %}
+    No sourced percentage breakdown in this snapshot.
+{% endfor %}

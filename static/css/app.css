@@ -1216,3 +1216,21 @@ body:has(.persistent-player[data-player-state="playing"]) #app-content:not(:has(
 .preset-swatches { display: flex; flex-wrap: wrap; gap: 0.5rem 1rem; margin-block: 1rem; }
 .preset-swatches span { display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; overflow-wrap: anywhere; }
 .preset-swatches i { width: 1rem; height: 1rem; flex-shrink: 0; background: var(--preset-swatch); border: 1px solid var(--text-primary); border-radius: 2px; }
+
+/* Country facts retain their dates and source attribution in every theme. */
+.country-content-tabs { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.country-facts-list { margin: 1rem 0; }
+.country-facts-list > div { padding-block: 0.65rem; border-bottom: 1px solid var(--overview-border); }
+.country-facts-list dt { color: var(--text-primary); font-size: 0.78rem; margin-bottom: 0.3rem; }
+.country-facts-list dd { margin: 0; color: var(--text-secondary); overflow-wrap: anywhere; }
+.country-fact-source { color: var(--text-primary); font-size: 0.73rem; line-height: 1.6; margin: 0.5rem 0; }
+.country-facts-list a, .country-fact-source a, .country-fact-attribution a, .country-facts-links a { color: var(--special-color-hover); }
+.country-fact-year { font-size: 0.85rem; }
+.country-fact-attribution { font-size: 0.75rem; color: var(--text-primary); margin-top: 0.5rem; }
+.country-fact-attribution summary { cursor: pointer; }
+.country-facts-links { font-size: 0.85rem; margin-top: 1.25rem; }
+.country-demographic-group + .country-demographic-group { margin-top: 0.9rem; }
+.country-demographic-group > p { margin-block: 0.2rem 0.4rem; }
+.country-demographics-list { margin: 0; padding-left: 1.2rem; }
+.country-demographics-list li { margin-bottom: 0.4rem; overflow-wrap: anywhere; }
+.country-demographic-source { font-size: 0.73rem; margin-left: 0.3rem; }

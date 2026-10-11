@@ -1,3 +1,4 @@
+import { factsSelectionChanged, initializeCountryFacts, loadCountryOverview } from "./map_facts.js";
 import { applyPersonalLayers, initializePersonalMap, loadCountryNotes, personalSelectionChanged } from "./map_personal.js";
 import {
     AttributionControl,
@@ -296,6 +297,7 @@ async function loadCountryVideos(controller, code, countryName, { retryFailed = 
 
 function selectCountrySection(controller, section, { focus = false } = {}) {
     if (section === "notes") loadCountryNotes(controller);
+    if (section === "overview") loadCountryOverview(controller);
     for (const button of controller.page.querySelectorAll("[data-country-section]")) {
         const selected = button.dataset.countrySection === section;
         button.setAttribute("aria-selected", String(selected));
@@ -321,6 +323,7 @@ function selectCountrySection(controller, section, { focus = false } = {}) {
 function renderSelection(controller, code, { fit = true, focusDrawer = false } = {}) {
     controller.selectedCode = code;
     personalSelectionChanged(controller);
+    factsSelectionChanged(controller);
     updateFilter(controller.map, LAYERS.selectedFill, code);
     updateFilter(controller.map, LAYERS.selectedLine, code);
     const drawer = controller.page.querySelector("[data-country-drawer]");
@@ -360,7 +363,8 @@ function renderSelection(controller, code, { fit = true, focusDrawer = false } =
     drawer.hidden = false;
     controller.page.classList.add("has-country-drawer");
     loadCountryNews(controller, code, country.name);
-    if (new URL(window.location.href).searchParams.get("section") === "notes") selectCountrySection(controller, "notes");
+    const requestedSection = new URL(window.location.href).searchParams.get("section");
+    if (["overview", "notes"].includes(requestedSection)) selectCountrySection(controller, requestedSection);
     if (fit) {
         focusCountry(controller, country);
     }
@@ -965,6 +969,7 @@ async function initializeMapPage() {
         controller.geometry = geometry;
         controller.centroids = createCentroids(metadata.countries);
         controller.capitals = capitals;
+        initializeCountryFacts(controller);
         initializePersonalMap(controller, selectCountry);
         initializeControls(controller);
         controller.status.textContent = "Loading map provider…";

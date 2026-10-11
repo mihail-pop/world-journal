@@ -6,6 +6,7 @@
     data-map-glyphs-url="{{ map_glyphs_url }}"
     data-map-personal-url="{% url 'countries:personal_data' %}"
     data-favorite-url-template="{% url 'countries:favorite' iso2='COUNTRY_CODE' %}"
+    data-country-facts-url-template="{% url 'countries:facts' iso2='COUNTRY_CODE' %}"
     data-country-notes-url-template="{% url 'countries:notes' iso2='COUNTRY_CODE' %}"
     data-preset-activate-url-template="{% url 'countries:preset_activate' pk='00000000-0000-0000-0000-000000000000' %}"
     data-preset-clear-url="{% url 'countries:preset_clear' %}"
@@ -78,15 +79,17 @@
             </dl>
             <section class="country-news" aria-labelledby="country-news-title">
                 <div class="country-news-heading">
-                    <p class="eyebrow">Current coverage</p>
-                    <h3 id="country-news-title">Latest news</h3>
+                    <p class="eyebrow">Explore this country</p>
+                    <h3 id="country-news-title">Country details</h3>
                 </div>
                 <p class="country-journal-link"><a data-country-journal-link href="{% url 'core:journal' %}" hx-boost="true" hx-target="#app-content" hx-push-url="true">View saved entries for this country</a></p>
-                <div class="country-content-tabs" role="tablist" aria-label="Country coverage">
+                <div class="country-content-tabs" role="tablist" aria-label="Country details">
+                    <button type="button" role="tab" id="country-overview-tab" aria-controls="country-overview-panel" aria-selected="false" tabindex="-1" data-country-section="overview">Overview</button>
                     <button type="button" role="tab" id="country-articles-tab" aria-controls="country-articles-panel" aria-selected="true" tabindex="0" data-country-section="articles">Articles</button>
                     <button type="button" role="tab" id="country-videos-tab" aria-controls="country-videos-panel" aria-selected="false" tabindex="-1" data-country-section="videos">Videos</button>
                     <button type="button" role="tab" id="country-notes-tab" aria-controls="country-notes-panel" aria-selected="false" tabindex="-1" data-country-section="notes">Notes</button>
                 </div>
+                <div id="country-overview-panel" role="tabpanel" aria-labelledby="country-overview-tab" data-country-section-panel="overview" hidden><div data-country-overview-content aria-live="polite" aria-busy="false"></div></div>
                 <div id="country-articles-panel" role="tabpanel" aria-labelledby="country-articles-tab" data-country-section-panel="articles">
                     <div data-country-news-content aria-live="polite" aria-busy="true">
                         <p class="country-news-message">Loading current English-language headlines…</p>
