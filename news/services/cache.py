@@ -3,11 +3,25 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 from threading import Lock
 
+from django.conf import settings
 from news.types import NewsItem, NewsSource, VideoItem
 
 
 _CACHE_LOCKS: dict[str, Lock] = {}
 _CACHE_LOCKS_GUARD = Lock()
+
+
+def google_cache_key(source: NewsSource, country_code: str) -> str:
+    edition = source.edition_parameters["ceid"].replace(":", "-")
+    return f"news:v{settings.NEWS_CACHE_SCHEMA_VERSION}:google_country:{country_code}:{edition}"
+
+
+def fixed_feed_cache_key(feed) -> str:
+    return f"news:v{settings.NEWS_CACHE_SCHEMA_VERSION}:rss:{feed.id}:{feed.language}"
+
+
+def youtube_cache_key(source: NewsSource) -> str:
+    return f"news:v{settings.NEWS_CACHE_SCHEMA_VERSION}:youtube:{source.id}:{source.language}"
 
 
 def cache_lock(key: str) -> Lock:

@@ -10,12 +10,13 @@ from django.core.cache import cache
 from countries.data import ALPHA_2_PATTERN, load_country_data
 from news.adapters.google_news import build_feed_url
 from news.adapters.rss import FeedParseError, normalize_feed
-from news.registry import SourceRegistry, get_source_registry
+from news.preferences import effective_registry, freshness_seconds
+from news.registry import SourceRegistry
 from news.types import CountryNewsPage, CountryNewsResult, NewsItem
 
 from .cache import age as _age
 from .cache import cache_lock as _cache_lock
-from .cache import deserialize_items, parse_datetime as _parse_datetime
+from .cache import deserialize_items, google_cache_key, parse_datetime as _parse_datetime
 from .fetch import FeedFetchError, FeedResponse, fetch_feed
 from .region_routing import eligible_fixed_feeds
 from .regional_news import get_regional_news
@@ -68,17 +69,20 @@ def get_country_news(
     fetcher: Callable[..., FeedResponse] = fetch_feed,
     now: datetime | None = None,
     retry_failed: bool = False,
+    force_refresh: bool = False,
+    fresh_seconds: int | None = None,
 ) -> CountryNewsResult:
     country = _country_for_code(iso2)
-    source = (registry or get_source_registry()).get(GOOGLE_SOURCE_ID)
+    source = (registry or effective_registry()).get(GOOGLE_SOURCE_ID)
     if not source.enabled_by_default or not source.feed_host:
         return CountryNewsResult(
             country["iso_a2"], country["name"], source, (), None,
             error="Google News is not enabled.",
         )
     current_time = now or datetime.now(UTC)
-    edition = source.edition_parameters["ceid"].replace(":", "-")
-    cache_key = f"news:v{settings.NEWS_CACHE_SCHEMA_VERSION}:google_country:{country['iso_a2']}:{edition}"
+    cache_key = google_cache_key(source, country["iso_a2"])
+    if fresh_seconds is None:
+        fresh_seconds = freshness_seconds() if registry is None else settings.NEWS_REFRESH_SECONDS
     backend = cache_backend or cache
 
     with _cache_lock(cache_key):
@@ -87,10 +91,10 @@ def get_country_news(
             snapshot = {}
         retrying_failure = retry_failed and bool(snapshot.get("last_error"))
         success_age = _age(current_time, snapshot.get("fetched_at"))
-        if not retrying_failure and snapshot.get("last_success_at") and success_age is not None and success_age.total_seconds() < settings.NEWS_REFRESH_SECONDS:
+        if not force_refresh and not retrying_failure and snapshot.get("last_success_at") and success_age is not None and success_age.total_seconds() < fresh_seconds:
             return _result(country, source, snapshot)
         failure_age = _age(current_time, snapshot.get("last_attempt_at"))
-        if not retrying_failure and snapshot.get("last_error") and failure_age is not None and failure_age.total_seconds() < settings.NEWS_FAILURE_BACKOFF_SECONDS:
+        if not force_refresh and not retrying_failure and snapshot.get("last_error") and failure_age is not None and failure_age.total_seconds() < settings.NEWS_FAILURE_BACKOFF_SECONDS:
             return _result(country, source, snapshot, is_stale=bool(snapshot.get("last_success_at")))
 
         try:
@@ -156,7 +160,8 @@ def get_country_news_page(
     retry_failed: bool = False,
 ) -> CountryNewsPage:
     country = _country_for_code(iso2)
-    source_registry = registry or get_source_registry()
+    source_registry = registry or effective_registry()
+    fresh_seconds = freshness_seconds() if registry is None else settings.NEWS_REFRESH_SECONDS
     google = get_country_news(
         iso2,
         cache_backend=cache_backend,
@@ -164,6 +169,7 @@ def get_country_news_page(
         fetcher=fetcher,
         now=now,
         retry_failed=retry_failed,
+        fresh_seconds=fresh_seconds,
     )
     fixed_feeds = eligible_fixed_feeds(country, source_registry)
     regional_items, regional_sources, regional_warning = get_regional_news(
@@ -174,6 +180,7 @@ def get_country_news_page(
         fetcher=fetcher,
         now=now,
         retry_failed=retry_failed,
+        fresh_seconds=fresh_seconds,
     )
     return CountryNewsPage(
         country_code=country["iso_a2"],

@@ -62,7 +62,7 @@
     {% elif video_page.status == "unavailable" %}
         <p class="country-news-message">No cached videos are available for this country.</p>
     {% elif not video_page.sources %}
-        <p class="country-news-message">No enabled video channels cover this region.</p>
+        <p class="country-news-message">No enabled video channels cover this region. <a href="{% url 'news:settings' %}" hx-boost="true" hx-target="#app-content" hx-push-url="true">Manage news sources</a></p>
     {% else %}
         <p class="country-news-message">No country references were found in the channels' recent uploads.</p>
     {% endif %}

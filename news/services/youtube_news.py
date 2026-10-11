@@ -10,10 +10,11 @@ from django.conf import settings
 from django.core.cache import cache
 
 from news.adapters.youtube import YouTubeFeedParseError, normalize_youtube_feed
-from news.registry import SourceRegistry, get_source_registry
+from news.preferences import effective_registry, freshness_seconds
+from news.registry import SourceRegistry
 from news.types import CountryVideosPage, NewsSource, VideoItem, VideoSourceResult
 
-from .cache import age, cache_lock, deserialize_video_items, parse_datetime
+from .cache import age, cache_lock, deserialize_video_items, parse_datetime, youtube_cache_key
 from .country_matcher import match_title
 from .country_news import _country_for_code
 from .fetch import FeedFetchError, FeedResponse, fetch_feed
@@ -24,7 +25,7 @@ logger = logging.getLogger(__name__)
 
 
 def _cache_key(source: NewsSource) -> str:
-    return f"news:v{settings.NEWS_CACHE_SCHEMA_VERSION}:youtube:{source.id}:{source.language}"
+    return youtube_cache_key(source)
 
 
 def _source_result(
@@ -59,6 +60,8 @@ def get_youtube_feed(
     fetcher: Callable[..., FeedResponse] = fetch_feed,
     now: datetime | None = None,
     retry_failed: bool = False,
+    force_refresh: bool = False,
+    fresh_seconds: int | None = None,
 ) -> VideoSourceResult:
     feed_url = source.youtube_feed_url
     if not source.enabled_by_default:
@@ -68,6 +71,7 @@ def get_youtube_feed(
 
     backend = cache_backend or cache
     current_time = now or datetime.now(UTC)
+    fresh_seconds = settings.NEWS_REFRESH_SECONDS if fresh_seconds is None else fresh_seconds
     key = _cache_key(source)
     with cache_lock(key):
         snapshot = backend.get(key)
@@ -76,15 +80,15 @@ def get_youtube_feed(
         retrying_failure = retry_failed and bool(snapshot.get("last_error"))
         success_age = age(current_time, snapshot.get("fetched_at"))
         if (
-            not retrying_failure
+            not force_refresh and not retrying_failure
             and snapshot.get("last_success_at")
             and success_age is not None
-            and success_age.total_seconds() < settings.NEWS_REFRESH_SECONDS
+            and success_age.total_seconds() < fresh_seconds
         ):
             return _source_result(source, snapshot)
         failure_age = age(current_time, snapshot.get("last_attempt_at"))
         if (
-            not retrying_failure
+            not force_refresh and not retrying_failure
             and snapshot.get("last_error")
             and failure_age is not None
             and failure_age.total_seconds() < settings.NEWS_YOUTUBE_FAILURE_BACKOFF_SECONDS
@@ -188,7 +192,8 @@ def get_country_videos(
     retry_failed: bool = False,
 ) -> CountryVideosPage:
     country = _country_for_code(iso2)
-    source_registry = registry or get_source_registry()
+    source_registry = registry or effective_registry()
+    fresh_seconds = freshness_seconds() if registry is None else settings.NEWS_REFRESH_SECONDS
     sources = eligible_youtube_sources(country, source_registry)
     if not sources:
         return CountryVideosPage(country["iso_a2"], country["name"], (), (), "empty")
@@ -201,6 +206,7 @@ def get_country_videos(
                 fetcher=fetcher,
                 now=now,
                 retry_failed=retry_failed,
+                fresh_seconds=fresh_seconds,
             )
         except Exception as error:
             logger.warning("YouTube feed %s failed with %s", source.id, type(error).__name__)

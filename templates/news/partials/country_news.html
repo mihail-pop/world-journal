@@ -15,7 +15,9 @@
             </div>
         </div>
         {% if news_page.google.warning %}<p class="country-news-message is-warning" role="status">{{ news_page.google.warning }}</p>{% endif %}
-        {% if news_page.google.error %}
+        {% if not news_page.google.source.enabled_by_default %}
+            <p class="country-news-message">Google News is switched off. <a href="{% url 'news:settings' %}" hx-boost="true" hx-target="#app-content" hx-push-url="true">Manage news sources</a></p>
+        {% elif news_page.google.error %}
             <div class="country-news-message is-error" role="alert">
                 <p>{{ news_page.google.error }}</p>
                 <button type="button" class="news-retry" data-news-retry>Retry unavailable feeds</button>
@@ -82,6 +84,8 @@
             </ol>
         {% elif news_page.regional_warning %}
             <p class="country-news-message">No matched regional articles are available; some providers could not be checked.</p>
+        {% elif not news_page.regional_sources %}
+            <p class="country-news-message">No regional feeds are enabled. <a href="{% url 'news:settings' %}" hx-boost="true" hx-target="#app-content" hx-push-url="true">Manage news sources</a></p>
         {% else %}
             <p class="country-news-message">No country references were found in the current regional feed snapshot.</p>
         {% endif %}

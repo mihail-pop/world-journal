@@ -1,0 +1,30 @@
+<section class="page page-standard source-settings-page" data-page="settings" hx-boost="true" hx-target="#app-content" hx-push-url="true" aria-labelledby="sources-title">
+    <a class="journal-back-link" href="{% url 'core:settings' %}">← Settings</a>
+    <div class="page-copy"><p class="eyebrow">Shared preferences</p><h1 id="sources-title">News sources</h1><p>Choose the sources used for articles and videos. These choices are shared across browsers.</p></div>
+    {% for message in messages %}<p class="source-settings-message {% if message.tags == 'warning' %}is-warning{% endif %}" role="status">{{ message }}</p>{% endfor %}
+    <form id="news-preferences" class="source-preferences-form" method="post" action="{% url 'news:settings' %}" hx-disabled-elt="find button">
+        {% csrf_token %}<input type="hidden" name="country" value="{{ country.pk }}">
+        {{ form.non_field_errors }}
+        <div class="settings-field"><label for="{{ form.freshness_minutes.id_for_label }}">{{ form.freshness_minutes.label }}</label>{{ form.freshness_minutes }}{{ form.freshness_minutes.errors }}<p class="field-note">{{ form.freshness_minutes.help_text }} Choose 5–120 minutes; the default is 15.</p></div>
+        <button type="submit" class="journal-button is-primary">Save source preferences</button>
+    </form>
+    <p class="field-note">Tick the sources below, then save. Switching off a provider pauses all its feeds while retaining their individual choices. Already displayed results remain until the next request.</p>
+    <p class="field-note">Health reflects the retained cache, not a live check. Refresh due means the next request can update it. Refresh now checks one saved, enabled endpoint and preserves cached results if it fails. Save edits before refreshing.</p>
+
+    <section class="source-settings-section" aria-labelledby="google-source-title"><h2 id="google-source-title">Google News</h2>
+        <form class="source-country-form" method="get" action="{% url 'news:settings' %}"><div class="settings-field"><label for="source-check-country">Country for Google News health and refresh</label><select id="source-check-country" name="country">{% for option in countries %}<option value="{{ option.pk }}"{% if option.pk == country.pk %} selected{% endif %}>{{ option.name }}</option>{% endfor %}</select></div><button type="submit" class="journal-button">Show country cache</button></form>
+        {% for row in google_sources %}<article class="source-settings-card"><h3><a href="{{ row.homepage }}" target="_blank" rel="noopener noreferrer">{{ row.name }}</a></h3><p class="field-note">English country searches · US edition. The health below is for {{ country.name }}.</p>{% include "news/partials/source_control.html" %}</article>{% endfor %}
+    </section>
+    <section class="source-settings-section" aria-labelledby="regional-sources-title"><h2 id="regional-sources-title">Regional publishers</h2><p class="field-note">Every enabled publisher can contribute to every country. Its region affects priority, not eligibility.</p>
+        {% for provider in providers %}<article class="source-settings-card">
+            <h3><a href="{{ provider.homepage }}" target="_blank" rel="noopener noreferrer">{{ provider.name }}</a></h3><p class="field-note">{{ provider.region }} · {{ provider.enabled_feed_count }} of {{ provider.feeds|length }} feeds active</p>
+            <label class="source-choice" for="{{ provider.toggle.id_for_label }}">{{ provider.toggle }} Include this publisher</label>{{ provider.toggle.errors }}
+            {% if provider.disabled_reason %}<p class="field-note">{{ provider.disabled_reason }}</p>{% endif %}
+            {% for row in provider.feeds %}<div class="source-feed-row"><h4>{{ row.name }}</h4>{% include "news/partials/source_control.html" %}</div>{% endfor %}
+        </article>{% endfor %}
+    </section>
+    <section class="source-settings-section" aria-labelledby="video-sources-title"><h2 id="video-sources-title">YouTube news channels</h2><p class="field-note">Videos are still loaded only when you open the Videos tab. Curated channels with failed identity checks or unavailable feeds remain locked.</p>
+        {% for row in youtube_sources %}<article class="source-settings-card"><h3><a href="{{ row.homepage }}" target="_blank" rel="noopener noreferrer">{{ row.name }}</a></h3><p class="field-note">{{ row.region }}</p>{% include "news/partials/source_control.html" %}</article>{% endfor %}
+    </section>
+    <button class="journal-button is-primary" type="submit" form="news-preferences">Save source preferences</button>
+</section>

@@ -13,7 +13,7 @@ from django.core.cache import cache
 from news.adapters.rss import FeedParseError, normalize_feed
 from news.types import FeedResult, NewsFeed, NewsItem, NewsProvider, RegionalProviderResult
 
-from .cache import age, cache_lock, deserialize_items, parse_datetime
+from .cache import age, cache_lock, deserialize_items, fixed_feed_cache_key, parse_datetime
 from .country_matcher import MatchClass, match_country_text
 from .fetch import FeedFetchError, FeedResponse, fetch_feed
 from .region_routing import has_regional_affinity
@@ -28,7 +28,7 @@ _MATCH_RANK = {
 
 
 def _cache_key(feed: NewsFeed) -> str:
-    return f"news:v{settings.NEWS_CACHE_SCHEMA_VERSION}:rss:{feed.id}:{feed.language}"
+    return fixed_feed_cache_key(feed)
 
 
 def _feed_result(feed: NewsFeed, snapshot: dict, *, stale: bool = False, failed: bool = False) -> FeedResult:
@@ -51,6 +51,8 @@ def get_fixed_feed(
     fetcher: Callable[..., FeedResponse] = fetch_feed,
     now: datetime | None = None,
     retry_failed: bool = False,
+    force_refresh: bool = False,
+    fresh_seconds: int | None = None,
 ) -> FeedResult:
     if not provider.enabled_by_default or not feed.enabled_by_default:
         return FeedResult(feed, (), None, error="Feed is disabled.")
@@ -58,6 +60,7 @@ def get_fixed_feed(
         return FeedResult(feed, (), None, error="Feed configuration is unavailable.")
     backend = cache_backend or cache
     current_time = now or datetime.now(UTC)
+    fresh_seconds = settings.NEWS_REFRESH_SECONDS if fresh_seconds is None else fresh_seconds
     key = _cache_key(feed)
     with cache_lock(key):
         snapshot = backend.get(key)
@@ -66,15 +69,15 @@ def get_fixed_feed(
         retrying_failure = retry_failed and bool(snapshot.get("last_error"))
         success_age = age(current_time, snapshot.get("fetched_at"))
         if (
-            not retrying_failure
+            not force_refresh and not retrying_failure
             and snapshot.get("last_success_at")
             and success_age is not None
-            and success_age.total_seconds() < settings.NEWS_REFRESH_SECONDS
+            and success_age.total_seconds() < fresh_seconds
         ):
             return _feed_result(feed, snapshot)
         failure_age = age(current_time, snapshot.get("last_attempt_at"))
         if (
-            not retrying_failure
+            not force_refresh and not retrying_failure
             and snapshot.get("last_error")
             and failure_age is not None
             and failure_age.total_seconds() < settings.NEWS_FAILURE_BACKOFF_SECONDS
@@ -255,6 +258,7 @@ def get_regional_news(
     fetcher: Callable[..., FeedResponse] = fetch_feed,
     now: datetime | None = None,
     retry_failed: bool = False,
+    fresh_seconds: int | None = None,
 ) -> tuple[tuple[NewsItem, ...], tuple[RegionalProviderResult, ...], str]:
     provider_map = {
         provider.id: provider
@@ -278,6 +282,7 @@ def get_regional_news(
                 fetcher=fetcher,
                 now=now,
                 retry_failed=retry_failed,
+                fresh_seconds=fresh_seconds,
             )
         except Exception as error:
             logger.warning("Regional feed %s failed with %s", feed.id, type(error).__name__)

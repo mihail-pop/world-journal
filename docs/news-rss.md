@@ -12,7 +12,9 @@ Phase 3C combines broad English-language country searches from Google News RSS, 
 
 One provider can own one or more feeds. Feed IDs, provider IDs, and dynamic source IDs are globally unique. Every feed must reference a provider, every provider must own a feed, enabled providers must own at least one enabled feed, enabled feeds cannot belong to disabled providers, and active feed URLs cannot collide. All configured URLs must use HTTPS. An enabled feed requires complete audit metadata; a disabled feed requires an exact reason.
 
-Views and browser code never construct or receive remote feed URLs. Google URL construction remains in `news/adapters/google_news.py` with the fixed global English edition `hl=en-US`, `gl=US`, and `ceid=US:en`. Those parameters select the Google edition; they do not establish an article's origin.
+Views and browser code never construct remote feed URLs. Source settings can display curated feed links, but refresh actions submit only registry IDs. Google URL construction remains in `news/adapters/google_news.py` with the fixed global English edition `hl=en-US`, `gl=US`, and `ceid=US:en`. Those parameters select the Google edition; they do not establish an article's origin.
+
+Shared source choices, bounded freshness, retained-cache health, and manual refresh are documented in [News-source settings](news-settings.md).
 
 YouTube feed URLs are derived from trusted registry channel IDs as `https://www.youtube.com/feeds/videos.xml?channel_id=<CHANNEL_ID>`. Channel IDs are unique and match `UC[A-Za-z0-9_-]{22}`. Enabled records require complete audit metadata, the exact `www.youtube.com/channel/<CHANNEL_ID>` homepage, and only `www.youtube.com` in the feed-host allowlist. Disabled records remain visible in configuration but are never fetched.
 

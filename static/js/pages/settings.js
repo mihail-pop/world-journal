@@ -26,7 +26,7 @@ function setStatus(controller, message, isError = false) {
 
 async function initializeSettingsPage() {
     const page = document.querySelector('[data-page="settings"]');
-    if (!page || activeController?.page === page) {
+    if (!page || !page.querySelector("[data-home-country-select]") || activeController?.page === page) {
         return;
     }
     cleanupSettingsPage();
