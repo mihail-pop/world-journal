@@ -1,3 +1,4 @@
+import { countryFillExpression } from "./country_paint.js";
 import { factsSelectionChanged, initializeCountryFacts, loadCountryOverview } from "./map_facts.js";
 import { applyPersonalLayers, initializePersonalMap, loadCountryNotes, loadPersonalData, personalSelectionChanged } from "./map_personal.js";
 import { initializePresetMap, selectPresetCountry, syncPresetEditor } from "./preset_map_editor.js";
@@ -23,12 +24,7 @@ const LAYERS = {
     simpleBackground: "world-journal-simple-background",
     fill: "world-journal-country-fill",
     outline: "world-journal-country-outline",
-    presetFill: "world-journal-country-presets",
     favoriteMarkers: "world-journal-country-favorites",
-    hoverFill: "world-journal-country-hover-fill",
-    hoverLine: "world-journal-country-hover-line",
-    selectedFill: "world-journal-country-selected-fill",
-    selectedLine: "world-journal-country-selected-line",
     smallMarker: "world-journal-country-small-marker",
     hitTarget: "world-journal-country-hit-target",
     countryNames: "world-journal-country-names",
@@ -82,14 +78,18 @@ function updateLayerTheme(controller) {
     const countryOutline = getThemeColor("--text-primary");
     const hover = getThemeColor("--special-color");
     const selected = getThemeColor("--text-secondary");
+    const theme = {fill: countryFill, accent: hover, opacity: controller.preferences.terrain ? .22 : .72};
+    const key = JSON.stringify([theme, background, countryOutline, selected, getThemeColor("--bg-tertiary")]);
+    if (controller.paintThemeKey === key) return;
+    controller.paintThemeKey = key;
+    controller.countryPaintTheme = theme;
+    const hovered = ["boolean", ["feature-state", "hover"], false];
+    const selectedState = ["boolean", ["feature-state", "selected"], false];
     map.setPaintProperty(LAYERS.simpleBackground, "background-color", getThemeColor("--bg-tertiary"));
-    map.setPaintProperty(LAYERS.fill, "fill-color", countryFill);
-    map.setPaintProperty(LAYERS.outline, "line-color", countryOutline);
-    map.setPaintProperty(LAYERS.hoverFill, "fill-color", hover);
-    map.setPaintProperty(LAYERS.hoverLine, "line-color", hover);
-    map.setPaintProperty(LAYERS.selectedFill, "fill-color", hover);
-    map.setPaintProperty(LAYERS.selectedLine, "line-color", selected);
-    map.setPaintProperty(LAYERS.smallMarker, "circle-color", hover);
+    map.setPaintProperty(LAYERS.outline, "line-color", ["case", selectedState, selected, hovered, hover, countryOutline]);
+    map.setPaintProperty(LAYERS.outline, "line-width", ["case", selectedState, 3.5, hovered, 2, .8]);
+    map.setPaintProperty(LAYERS.outline, "line-opacity", ["case", ["any", selectedState, hovered], 1, .62]);
+    map.setPaintProperty(LAYERS.smallMarker, "circle-color", ["coalesce", ["feature-state", "presetColor"], hover]);
     map.setPaintProperty(LAYERS.smallMarker, "circle-stroke-color", selected);
     map.setPaintProperty(LAYERS.countryNames, "text-color", selected);
     map.setPaintProperty(LAYERS.countryNames, "text-halo-color", background);
@@ -204,6 +204,7 @@ function scheduleHoverUpdate(controller) {
 function drawerPadding() {
     const drawer = document.querySelector("[data-country-drawer]");
     const workspace = document.querySelector(".map-workspace");
+    if (!drawer || drawer.hidden) return {top: 56, right: 56, bottom: 56, left: 56};
     if (window.matchMedia("(max-width: 46rem)").matches) {
         const drawerHeight = drawer && !drawer.hidden ? drawer.offsetHeight : 240;
         const playerOffset = Number.parseFloat(document.documentElement.style.getPropertyValue("--persistent-player-map-offset")) || 0;
@@ -218,6 +219,7 @@ function focusCountry(controller, country, animate = true) {
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     controller.map.fitBounds(country.bounds, {
         padding: drawerPadding(),
+        retainPadding: false,
         maxZoom: country.small ? 7 : 5.5,
         duration: animate && !reducedMotion ? 650 : 0,
     });
@@ -569,26 +571,24 @@ function originalVisibility(controller, layer) {
 }
 
 function applyBasemapPreferences(controller) {
-    for (const layer of controller.map.getStyle().layers ?? []) {
-        if (isApplicationLayer(layer)) {
-            continue;
-        }
+    for (const layer of controller.basemapLayers) {
         const visibility = originalVisibility(controller, layer);
         const hidden = !controller.preferences.terrain
             || isBasemapCountryLabel(layer)
             || isBasemapCapitalLabel(layer)
             || (!controller.preferences.allOtherText && layer.type === "symbol");
-        controller.map.setLayoutProperty(
-            layer.id,
-            "visibility",
-            hidden ? "none" : visibility,
-        );
+        // Hidden terrain must stop drawing and requesting tiles. Changing every
+        // opacity left all its geometry active, including while invisible.
+        setLayerVisibility(controller.map, layer.id, !hidden && visibility !== "none");
     }
 }
 
 function setLayerVisibility(map, layerId, visible) {
     if (map.getLayer(layerId)) {
-        map.setLayoutProperty(layerId, "visibility", visible ? "visible" : "none");
+        const visibility = visible ? "visible" : "none";
+        if ((map.getLayoutProperty(layerId, "visibility") ?? "visible") !== visibility) {
+            map.setLayoutProperty(layerId, "visibility", visibility);
+        }
     }
 }
 
@@ -614,13 +614,8 @@ function applyPreferences(controller) {
     const showCapitals = controller.preferences.capitalNames;
     setLayerVisibility(controller.map, LAYERS.capitalMarkers, showCapitals);
     setLayerVisibility(controller.map, LAYERS.capitalNames, showCapitals);
-    controller.map.setPaintProperty(
-        LAYERS.fill,
-        "fill-opacity",
-        controller.preferences.terrain ? 0.22 : 0.72,
-    );
     updateLayerTheme(controller);
-    const styleLayers = controller.map.getStyle().layers ?? [];
+    const styleLayers = controller.basemapLayers;
     const isVisible = (layerId) => controller.map.getLayoutProperty(layerId, "visibility") !== "none";
     const basemapCountryLabels = styleLayers.filter((layer) => (
         !isApplicationLayer(layer) && isBasemapCountryLabel(layer)
@@ -629,7 +624,7 @@ function applyPreferences(controller) {
         !isApplicationLayer(layer) && isBasemapCapitalLabel(layer)
     ));
     const visibleBasemapLayers = styleLayers.filter((layer) => (
-        !isApplicationLayer(layer) && isVisible(layer.id)
+        isVisible(layer.id)
     ));
     controller.page.dataset.appliedCountryNames = String(isVisible(LAYERS.countryNames));
     controller.page.dataset.appliedCapitalNames = String(
@@ -648,11 +643,14 @@ function applyPreferences(controller) {
         basemapCapitalLabels.filter((layer) => isVisible(layer.id)).length,
     );
     controller.page.dataset.applicationLayerCount = String(
-        styleLayers.filter(isApplicationLayer).length,
+        Object.values(LAYERS).filter(id => controller.map.getLayer(id)).length,
     );
 }
 
 function addLayer(controller, definition, beforeId) {
+    for (const property of Object.keys(definition.paint ?? {})) {
+        if (property.endsWith("-color") || property.endsWith("-opacity")) definition.paint[`${property}-transition`] = {duration: 0, delay: 0};
+    }
     if (!controller.map.getLayer(definition.id)) {
         controller.map.addLayer(definition, beforeId);
     }
@@ -660,12 +658,19 @@ function addLayer(controller, definition, beforeId) {
 
 function installCountryLayers(controller) {
     const { map } = controller;
-    const firstBasemapLayer = map.getStyle().layers?.find((layer) => !isApplicationLayer(layer))?.id;
+    // A style can recreate layers while retaining the GeoJSON source itself.
+    controller.appliedFavorites = null;
+    // Capture provider definitions once per style, before adding our GeoJSON.
+    // Preference toggles only need these IDs/label rules, not whole style copies.
+    controller.basemapLayers = (map.getStyle().layers ?? []).filter(layer => !isApplicationLayer(layer));
+    const firstBasemapLayer = controller.basemapLayers[0]?.id;
     if (!map.getSource(SOURCE_ID)) {
+        // Restore MapLibre's previous subpixel tolerance. Keep the source's
+        // normal zoom range and detailed geometry, not a coarse world tile.
         map.addSource(SOURCE_ID, { type: "geojson", data: controller.geometry, promoteId: "iso_a2" });
     }
     if (!map.getSource(CENTROID_SOURCE_ID)) {
-        map.addSource(CENTROID_SOURCE_ID, { type: "geojson", data: controller.centroids });
+        map.addSource(CENTROID_SOURCE_ID, { type: "geojson", data: controller.centroids, promoteId: "iso_a2" });
     }
     if (!map.getSource(CAPITAL_SOURCE_ID)) {
         map.addSource(CAPITAL_SOURCE_ID, { type: "geojson", data: controller.capitals });
@@ -676,43 +681,8 @@ function installCountryLayers(controller) {
         layout: { visibility: "none" },
         paint: { "background-color": "#151f2e" },
     }, firstBasemapLayer);
-    addLayer(controller, { id: LAYERS.fill, type: "fill", source: SOURCE_ID, paint: { "fill-color": "#32445b", "fill-opacity": 0.22 } });
-    addLayer(controller, { id: LAYERS.presetFill, type: "fill", source: SOURCE_ID, paint: { "fill-color": "rgba(0,0,0,0)", "fill-color-transition": {duration: 0, delay: 0}, "fill-opacity": 0.65 } });
-    addLayer(controller, { id: LAYERS.outline, type: "line", source: SOURCE_ID, paint: { "line-color": "#8596a5", "line-opacity": 0.62, "line-width": 0.8 } });
-    const isHovered = ["boolean", ["feature-state", "hover"], false];
-    addLayer(controller, {
-        id: LAYERS.hoverFill, type: "fill", source: SOURCE_ID,
-        paint: {
-            "fill-color": "#00bfff", "fill-opacity": ["case", isHovered, 0.32, 0],
-            "fill-color-transition": { duration: 0, delay: 0 },
-            "fill-opacity-transition": { duration: 0, delay: 0 },
-        },
-    });
-    addLayer(controller, {
-        id: LAYERS.hoverLine, type: "line", source: SOURCE_ID,
-        paint: {
-            "line-color": "#00bfff", "line-width": 2, "line-opacity": ["case", isHovered, 1, 0],
-            "line-color-transition": { duration: 0, delay: 0 },
-            "line-opacity-transition": { duration: 0, delay: 0 },
-        },
-    });
-    const isSelected = ["boolean", ["feature-state", "selected"], false];
-    addLayer(controller, {
-        id: LAYERS.selectedFill, type: "fill", source: SOURCE_ID,
-        paint: {
-            "fill-color": "#00bfff", "fill-opacity": ["case", isSelected, 0.26, 0],
-            "fill-color-transition": { duration: 0, delay: 0 },
-            "fill-opacity-transition": { duration: 0, delay: 0 },
-        },
-    });
-    addLayer(controller, {
-        id: LAYERS.selectedLine, type: "line", source: SOURCE_ID,
-        paint: {
-            "line-color": "#a8b5c4", "line-width": 3.5, "line-opacity": ["case", isSelected, 1, 0],
-            "line-color-transition": { duration: 0, delay: 0 },
-            "line-opacity-transition": { duration: 0, delay: 0 },
-        },
-    });
+    addLayer(controller, { id: LAYERS.fill, type: "fill", source: SOURCE_ID, paint: { "fill-color": countryFillExpression(), "fill-opacity": 1 } });
+    addLayer(controller, { id: LAYERS.outline, type: "line", source: SOURCE_ID, paint: { "line-color": "#8596a5", "line-opacity": .62, "line-width": .8, "line-width-transition": {duration: 0, delay: 0} } });
     if (controller.favoriteIcon) {
         if (!map.hasImage(FAVORITE_ICON_ID)) map.addImage(FAVORITE_ICON_ID, controller.favoriteIcon, {pixelRatio: 2});
         addLayer(controller, {
@@ -787,10 +757,6 @@ function installCountryLayers(controller) {
     setSelectedCountry(controller, controller.selectedCode);
     controller.status.hidden = true;
     scheduleHoverUpdate(controller);
-    if (controller.initialFocusCode) {
-        focusCountry(controller, controller.countriesByCode.get(controller.initialFocusCode), false);
-        controller.initialFocusCode = null;
-    }
 }
 
 function createCentroids(countries) {
@@ -844,7 +810,6 @@ function createMap(controller, styleUrl) {
         ? controller.countriesByCode.get(controller.preferences.homeCountry)
         : null;
     const savedViewport = readViewport();
-    controller.initialFocusCode = requested.code ?? controller.preferences.homeCountry;
     controller.page.dataset.initialCameraSource = selectedCountry
         ? "country-query"
         : homeCountry
@@ -859,6 +824,8 @@ function createMap(controller, styleUrl) {
         center: camera.center,
         zoom: camera.zoom,
         renderWorldCopies: true,
+        fadeDuration: 300,
+        maxTileCacheZoomLevels: 7,
         attributionControl: false,
     });
     controller.map = map;
@@ -889,6 +856,7 @@ function createMap(controller, styleUrl) {
         window.clearTimeout(controller.fallbackTimer);
         controller.layersInstalled = false;
         controller.basemapVisibility.clear();
+        controller.paintThemeKey = null;
         installCountryLayers(controller);
         requestAnimationFrame(collapseAttribution);
     });
@@ -924,6 +892,11 @@ function createMap(controller, styleUrl) {
     if (requested.code) {
         renderSelection(controller, requested.code, { fit: false });
     }
+    // Fit synchronously before the asynchronous style/source load. Otherwise
+    // startup requests tiles for the provisional camera, then a second set for
+    // the fitted home country as soon as country layers are installed.
+    const openingCountry = selectedCountry ?? homeCountry;
+    if (openingCountry) focusCountry(controller, openingCountry, false);
 }
 
 function closeControlsPanel(controller, { restoreFocus = false } = {}) {
@@ -986,7 +959,7 @@ function initializeControls(controller) {
         closeCountry(controller, { focusMap: false });
         clearSavedMapViewport();
         const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-        controller.map?.easeTo({ ...WORLD_CAMERA, duration: reducedMotion ? 0 : 650 });
+        controller.map?.easeTo({ ...WORLD_CAMERA, padding: 0, duration: reducedMotion ? 0 : 650 });
     }, { signal: controller.abortController.signal });
     document.addEventListener("pointerdown", (event) => {
         if (controller.suspended) return;
@@ -1073,7 +1046,6 @@ async function initializeMapPage() {
         usingFallbackStyle: false,
         basemapVisibility: new Map(),
         fallbackTimer: null,
-        initialFocusCode: null,
         glyphsUrl: page.dataset.mapGlyphsUrl,
         status: page.querySelector("[data-map-status]"),
         notice: page.querySelector("[data-map-notice]"),

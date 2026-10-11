@@ -119,7 +119,8 @@ details[open] > summary { margin-bottom: .9rem; color: var(--ui-text); }
 .settings-card { min-width: 0; padding: 1.3rem; border: 1px solid var(--ui-border); border-radius: 7px; background: var(--ui-surface); overflow-wrap: anywhere; }
 .settings-card h2 { display: flex; gap: .55rem; align-items: center; margin: 0 0 1.1rem; font-size: 1rem; }
 .settings-card > p { font-size: .95rem; }
-.settings-card-wide { grid-column: span 2; }
+.settings-card-medium, .settings-card-wide { grid-column: span 2; }
+.settings-card-large { grid-column: 1 / -1; }
 .settings-card-full { grid-column: 1 / -1; }
 .settings-field { margin-bottom: .9rem; }
 .settings-field label { display: block; margin-bottom: .4rem; }
@@ -191,11 +192,25 @@ details[open] > summary { margin-bottom: .9rem; color: var(--ui-text); }
 .journal-filter-panel { border: 0; background: transparent; padding: .8rem 0; margin: 0; }
 .journal-filter-form { padding: 1rem; background: var(--ui-surface); border: 1px solid var(--ui-border); border-radius: 6px; }
 .journal-results-count { margin: .4rem 0 .75rem; font-size: .9rem; color: var(--ui-muted); }
-.journal-entry-card { background: transparent; border: 0; border-bottom: 1px solid var(--ui-border); padding: 1.15rem 0; border-radius: 0; }
+.journal-entry-card { background: transparent; border: 0; border-bottom: 1px solid var(--ui-border); padding: 1.15rem .85rem; border-radius: 6px; cursor: pointer; transition: background-color .15s ease; }
+.journal-entry-card:hover, .journal-entry-card:focus-within { background: var(--ui-hover); }
+.journal-entry-card:focus-visible { outline: 2px solid var(--special-color); outline-offset: 2px; }
 .journal-entry-card h2 { margin: .4rem 0; font-size: 1.2rem; font-weight: 600; }
 .journal-entry-card h2 a { color: var(--ui-text); }
 .journal-entry-meta { color: var(--ui-muted); font-size: .9rem; gap: .7rem; }
-.journal-badge { background: var(--ui-hover); border: 0; color: var(--ui-muted); font-weight: 400; }
+.journal-badge { background: var(--ui-hover); border: 0; color: var(--ui-muted); font-weight: 400; border-radius: 999px; padding: .2rem .65rem; font-size: .9rem; }
+.journal-country-tags { align-items: center; }
+.journal-save-status { display: inline-flex; align-items: center; gap: .5rem; color: var(--ui-muted); font-size: .95rem; max-width: 100%; overflow-wrap: anywhere; }
+.journal-save-status::before { content: ""; width: .45rem; height: .45rem; border-radius: 50%; background: currentColor; flex: 0 0 auto; }
+.journal-save-status[data-save-state=saved] { color: var(--special-color); }
+.journal-save-status[data-save-state=saving]::before { width: .8rem; height: .8rem; border: 2px solid currentColor; border-right-color: transparent; background: transparent; animation: journal-saving .8s linear infinite; }
+.journal-save-status[data-save-state=error] { color: var(--color-danger, #d55b65); }
+@keyframes journal-saving { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .journal-save-status[data-save-state=saving]::before { animation: none; } }
+.journal-inline-video { display: flex; flex-direction: column; gap: .7rem; padding: 1rem 1.15rem; margin: .75rem 0; border: 1px solid var(--ui-border); border-radius: 8px; background: var(--ui-surface); max-width: 100%; overflow-wrap: anywhere; }
+.journal-inline-video-heading { font-weight: 600; }
+.journal-inline-video-actions { display: flex; flex-wrap: wrap; align-items: center; gap: .8rem; }
+.journal-inline-video-actions a { font-size: .95rem; }
 .journal-excerpt { color: var(--ui-muted); font-size: 1rem; margin: .55rem 0 .75rem; line-height: 1.6; }
 .journal-country-tags a { border: 0; background: var(--ui-surface); color: var(--ui-muted); font-size: .9rem; padding: .2rem .5rem; }
 .journal-country-tags:empty { display: none; }
@@ -362,7 +377,7 @@ details[open] > summary { margin-bottom: .9rem; color: var(--ui-text); }
     .settings-tabs a { gap: .3rem; padding: .5rem .15rem .7rem; font-size: .9rem; }
     .settings-tabs .icon { width: 1rem; height: 1rem; }
     .settings-grid, .source-card-grid { grid-template-columns: minmax(0, 1fr); }
-    .settings-card-wide { grid-column: auto; }
+    .settings-card-medium, .settings-card-wide { grid-column: auto; }
     .settings-card { padding: 1.1rem; }
     .journal-layout { grid-template-columns: minmax(0, 1fr); gap: .75rem; }
     .journal-sidebar { padding: 0; border: 0; }

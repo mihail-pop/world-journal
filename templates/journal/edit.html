@@ -1,7 +1,9 @@
 <section class="page page-standard journal-page journal-writer" data-page="journal" aria-labelledby="journal-edit-title" hx-boost="true" hx-target="#app-content" hx-push-url="true">
     <div class="journal-page-heading"><a class="journal-back-link" href="{% url 'core:journal' %}">{% include 'core/partials/icon.html' with name='arrow-left' %} Journal</a><h1 id="journal-edit-title">{% if is_new %}New entry{% else %}Edit entry{% endif %}</h1></div>
-    <form method="post" action="{% if is_new %}{% url 'journal:new' %}{% else %}{% url 'journal:edit' entry.pk %}{% endif %}" class="journal-editor" data-journal-editor data-preview-url="{% url 'journal:preview' %}">
+    <form method="post" action="{% if is_new %}{% url 'journal:new' %}{% else %}{% url 'journal:edit' entry.pk %}{% endif %}" class="journal-editor" data-journal-editor data-preview-url="{% url 'journal:preview' %}" data-autosave-url="{% url 'journal:autosave' entry.pk %}" data-edit-url="{% url 'journal:edit' entry.pk %}">
         {% csrf_token %}{{ form.non_field_errors }}
+        <input type="hidden" name="entry_id" value="{{ entry.pk }}">
+        {% if form.is_bound %}<input type="hidden" data-autosave-retry value="true">{% endif %}
         {% include 'journal/_content_fields.html' with content_form=form %}
         <details class="journal-organize-panel" {% if form.collection.errors or form.event_date.errors or form.countries.errors or form.is_favorite.errors or form.is_pinned.errors %}open{% endif %}><summary>{% include 'core/partials/icon.html' with name='folder' %} Organization &amp; date</summary>
             <div class="journal-form-grid">{% include 'journal/_field.html' with field=form.collection %}{% include 'journal/_field.html' with field=form.event_date %}{% include 'journal/_field.html' with field=form.countries wide=True %}</div>
@@ -14,7 +16,6 @@
             <div data-journal-sections>{% for section_form in section_formset %}{% include 'journal/_section_form.html' %}{% endfor %}</div>
             <template data-journal-section-template>{% include 'journal/_section_form.html' with section_form=section_formset.empty_form %}</template>
         </section>
-        <details class="writing-guide"><summary>Writing help</summary><p>Markdown supports headings, bold, lists, links and tables. Write <code>[[Romania]]</code> to link and tag a country. Each section can have its own reference. Upload local images after saving.</p></details>
-        <div class="journal-save-bar"><button class="journal-button is-primary" type="submit">{% include 'core/partials/icon.html' with name='save' %} Save entry</button><a href="{% if is_new %}{% url 'core:journal' %}{% else %}{{ entry.get_absolute_url }}{% endif %}">Cancel</a></div>
+        <div class="journal-save-bar"><button class="journal-button is-primary" type="submit">{% include 'core/partials/icon.html' with name='save' %} Save entry</button><span class="journal-save-status" data-autosave-status role="status" aria-live="polite">Autosave on</span><a href="{% if is_new %}{% url 'core:journal' %}{% else %}{{ entry.get_absolute_url }}{% endif %}">Back</a></div>
     </form>
 </section>

@@ -77,3 +77,19 @@ Terrain is therefore unavailable by default. The interface reports this honestly
 - a self-hosting path that does not commit a massive elevation dataset.
 
 Simple mode temporarily suppresses terrain regardless of future provider configuration and restores the user's underlying terrain preference when the mode is left.
+
+## Country rendering, terrain and opening camera
+
+Country rendering uses one fill and one outline, replacing the previous four fill passes and three line passes over the same geometry. `static/js/pages/country_paint.js` composes the existing base/preset/hover/selection colors and alpha in the same order before drawing. Presets still use 65% opacity, hover 32% and selection 26%; selected outlines take priority over hover outlines. Four fill variants are stored per promoted ISO feature ID. Hover/selection flags choose a variant through a fixed paint expression, and palette/theme/terrain changes update feature state without replacing that expression or rebuilding country tile layouts. Country and centroid IDs, all country metadata, click hit targets, deep links, drawer behavior and persistent-map navigation remain unchanged.
+
+The bundled Natural Earth geometry is unchanged. MapLibre's prior default subpixel tolerance (0.375 pixel) is restored after the zero-tolerance experiment increased work at wide zooms. The source retains its normal zoom range and close-zoom detail; it is not forced into a coarse world tile or replaced by a lower-resolution dataset.
+
+Terrain-off restores provider layer visibility suppression. Invisible basemap geometry no longer remains active through opacity overrides; it stops requesting/drawing tiles until needed again. Only changed visibility values are applied. Provider raster and symbol loading retain their normal fades, while application fill/outline changes keep zero transitions. The bounded viewport-based tile-cache budget is seven viewport sets instead of the default five, helping return zooms and short pans retain recently loaded tiles at some additional browser memory cost.
+
+Home-country fitting uses symmetric padding with a closed drawer and does not retain drawer padding on the camera. Open drawers receive their normal camera space. Initial country fitting happens before asynchronous style/source loading, avoiding requests for both a provisional camera and a second fitted camera. World reset explicitly clears padding.
+
+The experimental canvas visibility gate and per-render source-readiness check have been removed. New remote basemap tiles and labels can still arrive progressively in unvisited areas; these changes reduce local geometry/rendering work and restore normal provider loading transitions without promising that external resources arrive together.
+
+Unchanged legend contents, favorite filters and theme paint settings are no longer rebuilt on ordinary selections or preference updates. Provider layer definitions are captured once per style; preference changes do not repeatedly serialize the whole map style.
+
+Manual review (tests and browser checks remain with the user): hard-refresh once, pan and zoom repeatedly in Europe and around large countries, then repeat with terrain off/on and presets off/on. Sweep hover, switch selected neighbors and close the drawer. Check microstate hit targets and close-zoom borders; try preset selection/editing, home refresh, World reset and Map → Journal → Map. The country data and click behavior should remain the same, with fewer redraw stalls.

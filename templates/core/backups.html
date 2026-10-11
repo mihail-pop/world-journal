@@ -5,14 +5,13 @@
 
     <div class="settings-grid"><section class="backup-section settings-card" aria-labelledby="export-title">
         <h2 id="export-title">{% include 'core/partials/icon.html' with name='download' %} Export</h2><p>Download your journal, images and shared preferences.</p>
-        <details class="backup-inclusions"><summary>What is included</summary><p>The ZIP includes entries, collections, subsections, country tags, local images, country favorites, map presets, overview notes, and news-source preferences. Original dates and video timestamps are retained.</p>
-        <p class="field-note">Feed caches and browser preferences such as theme, home country, and viewport are excluded. Save open editors before exporting. If an image is missing, export will report it instead of creating an incomplete backup.</p></details>
+
         <a class="journal-button is-primary" href="{% url 'core:export_backup' %}" hx-boost="false">Download backup ZIP</a>
     </section>
 
-    <section class="backup-section settings-card settings-card-wide" aria-labelledby="import-title">
+    <section class="backup-section settings-card" aria-labelledby="import-title">
         <h2 id="import-title">{% include 'core/partials/icon.html' with name='upload' %} Import</h2>
-        <p>Choose a World Journal backup ZIP, review the summary, then confirm. Preview does not change journal records or shared settings. Maximum archive and expanded size: {{ backup_limit_mb }} MB.</p>
+        <p>Review a backup before importing. Maximum size: {{ backup_limit_mb }} MB.</p>
         <form method="post" action="{% url 'core:backups' %}" enctype="multipart/form-data" hx-encoding="multipart/form-data" hx-disabled-elt="find button" hx-indicator="find .htmx-indicator" class="backup-form">
             {% csrf_token %}<input type="hidden" name="action" value="preview">
             {{ upload_form.as_p }}
@@ -37,9 +36,9 @@
         {% if not summary %}{{ confirmation_form.non_field_errors }}{% endif %}
     </section>
 
-    <details class="backup-section settings-card settings-card-full" aria-labelledby="manual-backup-title"><summary id="manual-backup-title">Full local copy</summary>
+    <section class="backup-section settings-card" aria-labelledby="manual-backup-title"><h2 id="manual-backup-title">Backup info</h2><p>ZIP backups include saved research, images, country favorites, color presets and source preferences.</p><details><summary>Details &amp; full local copy</summary><p>Feed caches and browser preferences (theme, home country and viewport) are excluded. Save open editors before exporting.</p>
 
         <p>For an exact snapshot, stop the server, copy <code>db.sqlite3</code> and the entire <code>media</code> folder together, then restart. Store the copy somewhere separate from this project.</p>
-        <p class="field-note">Archives contain your personal research. Keep them in a location you trust.</p>
-    </details></div>
+
+    </details></section></div>
 </section>

@@ -46,3 +46,9 @@ Additional manual review after saving drafts and pressing Ctrl+F5:
 5. Return Map → Journal → Settings → Map with a video playing and an unsaved entry. Position, draft country selections and playback should resume without duplicate selectors or menus. On phones, opening/searching a menu with the keyboard should keep the menu reachable.
 
 No automated tests or browser sessions were added or run for this refinement; manual verification remains with the user. No migrations or Python requirements changed.
+
+## Journal and layout follow-up
+
+Settings defaults to three small cards across, supports two-column medium cards and full-row large cards, and allows a two-card row with its third cell empty. Backup now uses Export, Import and Backup info as three small cards. Information starts with two small cards. Narrow screens and a visible player reduce columns as before.
+
+Journal list cards highlight on hover/focus and open from non-interactive areas or Enter/Space. Text selection, country links and video buttons retain their actions. The entry-type pill comes first in the country-tag row. Writing help has been removed. Autosave and Markdown video links are described in journal.md; active-header resets and top-of-page navigation are described in page-memory.md.

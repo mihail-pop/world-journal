@@ -185,6 +185,8 @@ def _decode_records(records):
                 values[field.attname] = field.to_python(raw)
                 if isinstance(field, models.DateTimeField) and values[field.attname] is not None and timezone.is_naive(values[field.attname]):
                     raise BackupError("Backup timestamps must include a timezone.")
+            if model in (Entry, EntrySection) and values.get("entry_type") == "mixed":
+                values["entry_type"] = "note"
             obj = model(**values)
             foreign_keys = [field.name for field in fields if isinstance(field, models.ForeignKey)]
             obj.clean_fields(exclude=foreign_keys)

@@ -14,6 +14,7 @@ urlpatterns = [
     path("collections/<uuid:pk>/delete/", views.collection_delete, name="collection_delete"),
     path("<uuid:pk>/", views.detail, name="detail"),
     path("<uuid:pk>/edit/", views.edit, name="edit"),
+    path("<uuid:pk>/autosave/", views.autosave, name="autosave"),
     path("<uuid:pk>/delete/", views.delete_entry, name="delete"),
     path("<uuid:pk>/images/", views.upload_attachment, name="upload_attachment"),
     path("<uuid:pk>/images/<uuid:attachment_pk>/delete/", views.delete_attachment, name="delete_attachment"),

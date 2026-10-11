@@ -26,6 +26,8 @@ def filtered_entries(params, *, for_display=True):
         except ValueError:
             entries = entries.none()
     entry_type = params.get("type", "")
+    if entry_type == "mixed":
+        entry_type = EntryType.NOTE
     if entry_type in EntryType.values:
         entries = entries.filter(entry_type=entry_type)
     if params.get("favorite") == "1":

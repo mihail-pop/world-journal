@@ -1,4 +1,5 @@
-const PRESET_LAYER = "world-journal-country-presets";
+import { countryFillColors } from "./country_paint.js";
+
 const FAVORITE_LAYER = "world-journal-country-favorites";
 const COLOR = /^#[0-9a-f]{6}$/i;
 let editorRegistered = false;
@@ -22,19 +23,23 @@ function updatePresetLegend(controller) {
     }
     legend.hidden = !state.activePreset || Boolean(controller.presetEditor?.active) || !rows.length;
     if (legend.hidden) return;
-    controller.page.querySelector("[data-map-preset-legend-title]").textContent = state.activePresetName || "Color preset";
     const list = legend.querySelector("[data-map-preset-legend-rows]");
-    list.replaceChildren();
-    for (const row of rows) {
-        const item = document.createElement("li");
-        const swatch = document.createElement("span");
-        swatch.className = "map-legend-swatch";
-        swatch.style.backgroundColor = row.color;
-        swatch.setAttribute("aria-hidden", "true");
-        const title = document.createElement("span");
-        title.textContent = row.title;
-        item.append(swatch, title);
-        list.append(item);
+    const signature = JSON.stringify([state.activePresetName, rows.map(row => [row.color, row.title])]);
+    if (state.legendSignature !== signature) {
+        state.legendSignature = signature;
+        controller.page.querySelector("[data-map-preset-legend-title]").textContent = state.activePresetName || "Color preset";
+        list.replaceChildren();
+        for (const row of rows) {
+            const item = document.createElement("li");
+            const swatch = document.createElement("span");
+            swatch.className = "map-legend-swatch";
+            swatch.style.backgroundColor = row.color;
+            swatch.setAttribute("aria-hidden", "true");
+            const title = document.createElement("span");
+            title.textContent = row.title;
+            item.append(swatch, title);
+            list.append(item);
+        }
     }
     positionPresetLegend(controller);
 }
@@ -63,21 +68,38 @@ function positionPresetLegend(controller) {
 export function applyPersonalLayers(controller) {
     const {map, personal} = controller;
     updatePresetLegend(controller);
-    if (!map || !personal || !controller.layersInstalled) return;
+    if (!map || !personal || !controller.layersInstalled || !controller.countryPaintTheme) return;
     const preview = controller.presetEditor?.active ? controller.presetEditor.preview : null;
     const palette = preview || personal;
-    const colors = Object.entries(palette.colors).flat();
-    const fallback = COLOR.test(palette.defaultColor) ? palette.defaultColor : "rgba(0,0,0,0)";
-    if (map.getLayer(PRESET_LAYER)) {
-        map.setPaintProperty(PRESET_LAYER, "fill-color", colors.length ? ["match", ["get", "iso_a2"], ...colors, fallback] : fallback);
+    const source = map.getSource("world-journal-countries");
+    if (controller.paletteSource !== source) {
+        controller.paletteSource = source;
+        controller.appliedColors = new Map();
+        controller.palettePaintKey = null;
+        controller.appliedFavorites = null;
     }
-    if (map.getLayer("world-journal-country-small-marker")) {
-        const accent = getComputedStyle(document.documentElement).getPropertyValue("--special-color").trim();
-        const markerFallback = COLOR.test(palette.defaultColor) ? palette.defaultColor : accent;
-        map.setPaintProperty("world-journal-country-small-marker", "circle-color", colors.length ? ["match", ["get", "iso_a2"], ...colors, markerFallback] : markerFallback);
+    const themeChanged = controller.palettePaintKey !== controller.paintThemeKey;
+    const fills = new Map();
+    for (const code of controller.countriesByCode.keys()) {
+        const color = palette.colors[code] || palette.defaultColor;
+        const validated = COLOR.test(color) ? color : null;
+        const previous = controller.appliedColors.get(code) ?? null;
+        if (previous === validated && !themeChanged) continue;
+        if (!fills.has(validated)) fills.set(validated, countryFillColors(controller.countryPaintTheme, validated));
+        map.setFeatureState({source: "world-journal-countries", id: code}, fills.get(validated));
+        if (previous !== validated && map.getSource("world-journal-country-centroids")) {
+            map.setFeatureState({source: "world-journal-country-centroids", id: code}, {presetColor: validated});
+        }
+        controller.appliedColors.set(code, validated);
     }
+    controller.palettePaintKey = controller.paintThemeKey;
     if (map.getLayer(FAVORITE_LAYER)) {
-        map.setFilter(FAVORITE_LAYER, ["in", ["get", "iso_a2"], ["literal", [...personal.favorites]]]);
+        const favorites = [...personal.favorites].sort();
+        const signature = favorites.join(",");
+        if (controller.appliedFavorites !== signature) {
+            controller.appliedFavorites = signature;
+            map.setFilter(FAVORITE_LAYER, ["in", ["get", "iso_a2"], ["literal", favorites]]);
+        }
     }
 }
 

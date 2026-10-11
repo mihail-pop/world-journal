@@ -6,7 +6,7 @@ from django.core.exceptions import ValidationError
 from django.core.paginator import Paginator
 from django.db import transaction
 from django.db.models import Count
-from django.http import HttpResponse, QueryDict
+from django.http import HttpResponse, JsonResponse, QueryDict
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse
 from django.utils.dateparse import parse_datetime
@@ -89,11 +89,109 @@ def initial_entry(request):
     return initial
 
 
+def section_submission(data, entry):
+    """Rebuild the formset's initial/extra boundary after in-place autosaves.
+
+    Existing IDs, rather than an outdated browser management count, determine
+    which forms update rows. Keep the original prefixes for the JSON response.
+    """
+    data = data.copy()
+    try:
+        total = int(data.get("sections-TOTAL_FORMS", "0"))
+    except ValueError:
+        return data, {}
+    if not 0 <= total <= 200:
+        return data, {}
+    ids = set(str(pk) for pk in entry.sections.values_list("pk", flat=True)) if not entry._state.adding else set()
+    indices = list(range(total))
+    initial = [index for index in indices if data.get(f"sections-{index}-id") in ids]
+    order = initial + [index for index in indices if index not in initial]
+    result = data.copy()
+    for key in list(result):
+        if key.startswith("sections-") and key.split("-", 2)[1].isdigit():
+            del result[key]
+    prefixes = {}
+    for index, old_index in enumerate(order):
+        old, new = f"sections-{old_index}-", f"sections-{index}-"
+        prefixes[f"sections-{index}"] = f"sections-{old_index}"
+        for key in data:
+            if key.startswith(old):
+                result.setlist(new + key[len(old):], data.getlist(key))
+        if old_index not in initial:
+            result[new + "id"] = ""
+    result["sections-INITIAL_FORMS"] = str(len(initial))
+    return result, prefixes
+
+
+def save_entry(form, sections):
+    with transaction.atomic():
+        entry = form.save()
+        sections.instance = entry
+        section_objects = sections.save(commit=False)
+        for section in sections.deleted_objects:
+            section.delete()
+        for section in section_objects:
+            section.entry = entry
+            section.save()
+        codes = referenced_countries(entry.body, entry.body_format)
+        for section in entry.sections.all():
+            codes.update(referenced_countries(section.body, section.body_format))
+        entry.countries.add(*Country.objects.filter(code__in=codes))
+    return entry
+
+
+@require_http_methods(["POST"])
+def autosave(request, pk):
+    # The editor gets its UUID before its first save. Retrying that first save
+    # updates the same entry instead of creating another draft.
+    entry = Entry.objects.filter(pk=pk).first() or Entry(pk=pk)
+    data = request.POST.copy()
+    if not data.get("title", "").strip():
+        data["title"] = "Untitled entry"
+    section_data, prefixes = section_submission(data, entry)
+    for prefix in prefixes:
+        if section_data.get(prefix + "-DELETE"):
+            continue
+        if not section_data.get(prefix + "-title", "").strip():
+            if any(section_data.get(prefix + "-" + field, "").strip() for field in ("body", "source_url", "youtube_reference", "source_name", "source_published_at", "youtube_start_seconds")):
+                section_data[prefix + "-title"] = "Untitled section"
+            elif not section_data.get(prefix + "-id"):
+                section_data[prefix + "-DELETE"] = "on"
+    form = EntryForm(data, instance=entry)
+    sections = SectionFormSet(section_data, instance=entry, prefix="sections")
+    form_valid, sections_valid = form.is_valid(), sections.is_valid()
+    if not form_valid or not sections_valid:
+        errors = []
+        for bound in (form, *sections.forms):
+            if getattr(bound, "cleaned_data", {}).get("DELETE"):
+                continue
+            for field, messages in bound.errors.items():
+                label = bound.fields[field].label or field.replace("_", " ").title() if field in bound.fields else "Entry"
+                errors.extend(f"{label}: {error}" for error in messages)
+        errors.extend(str(error) for error in sections.non_form_errors())
+        return JsonResponse({"message": "Not saved: " + (errors[0] if errors else "Complete the highlighted fields.")}, status=422)
+    entry = save_entry(form, sections)
+    section_ids = {prefixes.get(section.prefix, section.prefix): {"id": str(section.instance.pk), "title": section.instance.title} for section in sections.forms if not section.instance._state.adding and not section.cleaned_data.get("DELETE")}
+    return JsonResponse({"edit_url": reverse("journal:edit", args=[entry.pk]), "title": entry.title, "sections": section_ids, "countries": list(entry.countries.values_list("pk", flat=True))})
+
+
 @require_http_methods(["GET", "POST"])
 def edit(request, pk=None):
-    entry = get_object_or_404(Entry, pk=pk) if pk else Entry()
+    if pk:
+        entry = get_object_or_404(Entry, pk=pk)
+    elif request.method == "POST":
+        # Share the editor's UUID with ordinary submissions too. A lost
+        # autosave response followed by Save must not create a duplicate.
+        try:
+            draft_id = Entry._meta.pk.to_python(request.POST.get("entry_id"))
+        except (ValidationError, ValueError):
+            draft_id = None
+        entry = Entry.objects.filter(pk=draft_id).first() if draft_id else None
+        entry = entry or (Entry(pk=draft_id) if draft_id else Entry())
+    else:
+        entry = Entry()
     form = EntryForm(request.POST if request.method == "POST" else None, instance=entry, initial=initial_entry(request) if not pk else None)
-    section_data = request.POST.copy() if request.method == "POST" else None
+    section_data = section_submission(request.POST, entry)[0] if request.method == "POST" else None
     adding_section = request.method == "POST" and request.POST.get("action") == "add_section"
     if adding_section:
         try:
@@ -105,21 +203,9 @@ def edit(request, pk=None):
     if request.method == "POST" and not adding_section:
         form_valid, sections_valid = form.is_valid(), sections.is_valid()
         if form_valid and sections_valid:
-            with transaction.atomic():
-                entry = form.save()
-                sections.instance = entry
-                section_objects = sections.save(commit=False)
-                for section in sections.deleted_objects:
-                    section.delete()
-                for section in section_objects:
-                    section.entry = entry
-                    section.save()
-                codes = referenced_countries(entry.body, entry.body_format)
-                for section in entry.sections.all():
-                    codes.update(referenced_countries(section.body, section.body_format))
-                entry.countries.add(*Country.objects.filter(code__in=codes))
+            entry = save_entry(form, sections)
             return navigate(request, entry.get_absolute_url())
-    return page(request, "journal/edit.html", {"entry": entry, "form": form, "section_formset": sections, "is_new": pk is None})
+    return page(request, "journal/edit.html", {"entry": entry, "form": form, "section_formset": sections, "is_new": entry._state.adding})
 
 
 @require_http_methods(["GET"])

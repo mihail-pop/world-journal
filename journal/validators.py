@@ -31,7 +31,7 @@ def parse_youtube_reference(value):
     parts = parsed.path.strip("/").split("/")
     if host in {"youtu.be", "www.youtu.be"} and len(parts) == 1:
         video_id = parts[0]
-    elif host in {"youtube.com", "www.youtube.com", "m.youtube.com", "youtube-nocookie.com", "www.youtube-nocookie.com"}:
+    elif host in {"youtube.com", "www.youtube.com", "m.youtube.com", "music.youtube.com", "youtube-nocookie.com", "www.youtube-nocookie.com"}:
         if parsed.path == "/watch":
             video_id = query.get("v", [""])[0]
         elif len(parts) == 2 and parts[0] in {"shorts", "embed", "live"}:

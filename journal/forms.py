@@ -33,8 +33,6 @@ class ContentForm(forms.ModelForm):
         # Keep the legacy database/export field, but every editor uses Markdown.
         self.instance.body_format = "markdown"
         reference = cleaned.get("youtube_reference", "").strip()
-        if not reference and cleaned.get("entry_type") == EntryType.YOUTUBE:
-            reference = cleaned.get("source_url", "")
         video_id = ""
         if reference:
             try:
@@ -43,8 +41,17 @@ class ContentForm(forms.ModelForm):
                     cleaned["youtube_start_seconds"] = seconds
             except ValidationError as error:
                 self.add_error("youtube_reference", error)
+        elif cleaned.get("source_url"):
+            # A source may also be a video, regardless of its organizational
+            # tag. Ordinary article/playlist URLs remain ordinary sources.
+            try:
+                video_id, seconds = parse_youtube_reference(cleaned["source_url"])
+                if cleaned.get("youtube_start_seconds") is None and seconds is not None:
+                    cleaned["youtube_start_seconds"] = seconds
+            except ValidationError:
+                pass
         self.instance.youtube_video_id = video_id
-        if video_id and cleaned.get("entry_type") == EntryType.YOUTUBE:
+        if video_id and not cleaned.get("source_url"):
             cleaned["source_url"] = f"https://www.youtube.com/watch?v={video_id}"
         return cleaned
 

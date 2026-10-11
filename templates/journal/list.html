@@ -25,12 +25,12 @@
             <p class="journal-results-count">{{ entries_page.paginator.count }} entr{{ entries_page.paginator.count|pluralize:'y,ies' }}</p>
             <div class="journal-entry-list">
                 {% for entry in entries_page %}
-                    <article class="journal-entry-card">
-                        <div class="journal-entry-meta"><span class="journal-badge">{{ entry.get_entry_type_display }}</span>{% if entry.is_pinned %}<span>Pinned</span>{% endif %}{% if entry.is_favorite %}<span>Favorite</span>{% endif %}{% if entry.collection %}<span>{{ entry.collection.name }}</span>{% endif %}</div>
-                        <h2><a href="{{ entry.get_absolute_url }}">{{ entry.title }}</a></h2>
+                    <article class="journal-entry-card" data-journal-entry-card tabindex="0" role="link" aria-labelledby="entry-title-{{ entry.pk }}">
+                        <div class="journal-entry-meta">{% if entry.is_pinned %}<span>Pinned</span>{% endif %}{% if entry.is_favorite %}<span>Favorite</span>{% endif %}{% if entry.collection %}<span>{{ entry.collection.name }}</span>{% endif %}</div>
+                        <h2 id="entry-title-{{ entry.pk }}"><a data-entry-link href="{{ entry.get_absolute_url }}">{{ entry.title }}</a></h2>
                         {% if entry.excerpt %}<div class="journal-excerpt journal-rendered">{{ entry.excerpt|journal_markdown }}</div>{% endif %}
                         <div class="journal-entry-meta">{% if entry.event_date %}<span>Event: <time datetime="{{ entry.event_date|date:'Y-m-d' }}">{{ entry.event_date|date:'M j, Y' }}</time></span>{% endif %}<span>Saved {{ entry.created_at|date:'M j, Y' }}</span>{% if entry.source_name %}<span>{{ entry.source_name }}</span>{% endif %}</div>
-                        <div class="journal-country-tags">{% for country in entry.countries.all %}<a href="{% url 'core:journal' %}?country={{ country.pk }}">{{ country.name }}</a>{% endfor %}</div>
+                        <div class="journal-country-tags"><span class="journal-badge">{{ entry.get_entry_type_display }}</span>{% for country in entry.countries.all %}<a href="{% url 'core:journal' %}?country={{ country.pk }}">{{ country.name }}</a>{% endfor %}</div>
                     </article>
                 {% empty %}<div class="empty-state"><p>{% if total_entries %}No entries match these filters.{% else %}Your journal is empty. Create your first entry or save an article/video from the map.{% endif %}</p></div>{% endfor %}
             </div>

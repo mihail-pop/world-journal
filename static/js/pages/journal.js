@@ -1,3 +1,5 @@
+import { registerJournalAutosave } from "./journal_autosave.js";
+
 let registered = false;
 const pendingPreviews = new Set();
 
@@ -75,6 +77,21 @@ async function previewBody(button) {
 export function registerJournalPage() {
     if (registered) return;
     registered = true;
+    registerJournalAutosave();
+    function openCard(event) {
+        const card = event.target.closest("[data-journal-entry-card]");
+        if (!card || event.target.closest("a, button, input, textarea, select, summary, label")) return;
+        if (event.type === "click" && !window.getSelection()?.isCollapsed) return;
+        if (event.type === "keydown" && (event.target !== card || !["Enter", " "].includes(event.key))) return;
+        if (event.type === "click" && event.button !== 0) return;
+        const link = card.querySelector("[data-entry-link]");
+        event.preventDefault();
+        if (event.ctrlKey || event.metaKey) window.open(link.href, "_blank", "noopener,noreferrer");
+        else link.click();
+    }
+    document.addEventListener("keydown", openCard);
+    document.addEventListener("click", openCard);
+    document.addEventListener("world-journal:prepare-save", event => updatePositions(event.target));
     document.addEventListener("click", event => {
         const play = event.target.closest("[data-journal-play]");
         if (play) {
@@ -86,11 +103,13 @@ export function registerJournalPage() {
         if (event.target.closest("[data-journal-add-section]")) {
             event.preventDefault();
             addSection(editor);
+            editor.dispatchEvent(new Event("world-journal:editor-changed"));
         } else if (event.target.closest("[data-section-remove]")) {
             const card = event.target.closest("[data-journal-section]");
             const checkbox = card.querySelector('[name$="-DELETE"]');
             checkbox.checked = !checkbox.checked;
             updatePositions(editor);
+            editor.dispatchEvent(new Event("world-journal:editor-changed"));
         } else if (event.target.closest("[data-section-move]")) {
             const button = event.target.closest("[data-section-move]");
             const card = button.closest("[data-journal-section]");
@@ -99,6 +118,7 @@ export function registerJournalPage() {
                 if (button.dataset.sectionMove === "up") sibling.before(card);
                 else sibling.after(card);
                 updatePositions(editor);
+                editor.dispatchEvent(new Event("world-journal:editor-changed"));
             }
         } else if (event.target.closest("[data-journal-format]")) {
             formatBody(event.target.closest("[data-journal-format]"));

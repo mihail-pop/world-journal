@@ -14,7 +14,6 @@ class EntryType(models.TextChoices):
     ARTICLE = "article", "Article"
     BOOKMARK = "bookmark", "Bookmark"
     YOUTUBE = "youtube", "YouTube video"
-    MIXED = "mixed", "Mixed research"
 
 
 class BodyFormat(models.TextChoices):
@@ -56,10 +55,6 @@ class ResearchContent(models.Model):
     def clean(self):
         super().clean()
         errors = {}
-        if self.entry_type in {EntryType.ARTICLE, EntryType.BOOKMARK} and not self.source_url:
-            errors["source_url"] = "Add the article or bookmark URL."
-        if self.entry_type == EntryType.YOUTUBE and not self.youtube_video_id:
-            errors["__all__"] = "Add a YouTube video URL or ID."
         if self.youtube_start_seconds is not None and not self.youtube_video_id:
             errors["youtube_start_seconds"] = "A start time requires a YouTube video."
         if errors:
