@@ -4,8 +4,9 @@ from urllib.parse import urlencode
 
 from django.contrib import messages
 from django.core.cache import cache
-from django.http import Http404, HttpResponse
-from django.shortcuts import redirect
+from django.core.exceptions import ValidationError
+from django.http import Http404, HttpResponse, JsonResponse
+from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse
 from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_http_methods
@@ -13,13 +14,15 @@ from django.views.decorators.http import require_http_methods
 from core.views import render_page
 from countries.models import Country
 
-from .forms import NewsPreferencesForm
+from .forms import CustomSourceForm, NewsPreferencesForm
+from .models import CustomSource, NewsPreferences, SourcePreference
 from .preferences import effective_registry, freshness_seconds, source_choices
 from .registry import get_source_registry
 from .services.cache import fixed_feed_cache_key, google_cache_key, parse_datetime, youtube_cache_key
 from .services.country_news import get_country_news
 from .services.regional_news import get_fixed_feed
 from .services.youtube_news import get_youtube_feed
+from .services.custom_sources import check_custom_source, format_label, registry_items, with_custom_sources
 from .types import SourceKind
 
 
@@ -95,27 +98,46 @@ def _context(registry, choices, form, country, fresh_seconds):
             "verification_date": getattr(item, "verification_date", None),
             "disabled_reason": getattr(item, "disabled_reason", "") or ("Unavailable in the curated configuration." if not item.enabled_by_default else ""),
             "enabled": enabled[item.id],
+            "available": item.enabled_by_default,
             "health": _health(snapshots.get(keys.get(item.id)), enabled[item.id], fresh_seconds),
         }
 
     providers = []
-    for provider in sorted(registry.providers, key=lambda item: (item.display_priority, item.id)):
+    for provider in sorted((provider for provider in registry.providers if not provider.id.startswith("custom_")), key=lambda item: (item.display_priority, item.id)):
         provider_row = row(provider)
         provider_row["feeds"] = [row(feed) for feed in registry.feeds if feed.provider_id == provider.id]
         provider_row["enabled_feed_count"] = sum(feed["enabled"] for feed in provider_row["feeds"])
         providers.append(provider_row)
+    custom_rows = []
+    for record in CustomSource.objects.all():
+        item, feed = registry_items(record)
+        source_row = row(item)
+        source_row.update({"record": record, "format": format_label(record.feed_format), "feed_url": record.url})
+        if feed:
+            source_row["health"] = _health(snapshots.get(keys[feed.id]), enabled[feed.id], fresh_seconds)
+        health = source_row["health"]
+        check_error = record.last_error if record.last_error and (
+            not health["last_attempt"] or not record.last_checked_at or record.last_checked_at >= health["last_attempt"]
+        ) else ""
+        source_row["check_error"] = check_error
+        if check_error and source_row["enabled"]:
+            health.update(label="Last check failed · cached results retained", failed=True)
+        if not record.verified_at:
+            health.update(label="Check failed · paused", failed=True)
+        custom_rows.append(source_row)
     return {
         "form": form, "country": country, "countries": Country.objects.all(),
         "google_sources": [row(source) for source in registry.sources if source.kind is SourceKind.DYNAMIC_COUNTRY_RSS],
-        "youtube_sources": [row(source) for source in registry.sources if source.kind is SourceKind.YOUTUBE],
+        "youtube_sources": [row(source) for source in registry.sources if source.kind is SourceKind.YOUTUBE and not source.id.startswith("custom_")],
         "providers": providers,
+        "custom_sources": custom_rows, "custom_form": CustomSourceForm(),
     }
 
 
 @never_cache
 @require_http_methods(["GET", "POST"])
 def source_settings(request):
-    registry, choices, fresh_seconds = get_source_registry(), source_choices(), freshness_seconds()
+    registry, choices, fresh_seconds = with_custom_sources(get_source_registry()), source_choices(), freshness_seconds()
     country = _country(request)
     form = NewsPreferencesForm(
         request.POST if request.method == "POST" else None,
@@ -133,6 +155,88 @@ def source_settings(request):
 
 @never_cache
 @require_http_methods(["POST"])
+def save_preference(request):
+    """Persist one control, so quick changes never overwrite unrelated choices."""
+    registry = with_custom_sources(get_source_registry())
+    if request.POST.get("field") == "freshness_minutes":
+        try:
+            value = NewsPreferencesForm.base_fields["freshness_minutes"].clean(request.POST.get("value"))
+        except ValidationError:
+            return JsonResponse({"error": "Choose a refresh interval from 5 to 120 minutes."}, status=400)
+        NewsPreferences.objects.update_or_create(pk=1, defaults={"freshness_minutes": value})
+    else:
+        identity = request.POST.get("source_id")
+        item = next((item for item in (*registry.sources, *registry.providers, *registry.feeds) if item.id == identity), None)
+        if item is None or not item.enabled_by_default:
+            return JsonResponse({"error": "Check this source successfully before enabling it."}, status=400)
+        value = request.POST.get("value")
+        if value not in {"true", "false"}:
+            return JsonResponse({"error": "Invalid source choice."}, status=400)
+        SourcePreference.objects.update_or_create(source_id=identity, defaults={"enabled": value == "true"})
+    from .services.background import feed_warmer
+
+    feed_warmer.rescan()
+    choices, interval = source_choices(), freshness_seconds()
+    form = NewsPreferencesForm(registry=registry, choices=choices, freshness=interval)
+    context = _context(registry, choices, form, _country(request), interval)
+    rows = [*context["google_sources"], *context["youtube_sources"], *context["custom_sources"]]
+    for provider in context["providers"]:
+        rows.extend((provider, *provider["feeds"]))
+    return JsonResponse({"states": {row["id"]: {"enabled": row["enabled"], "label": row["health"]["label"], "failed": row["health"]["failed"]} for row in rows}})
+
+
+@never_cache
+@require_http_methods(["POST"])
+def add_custom_source(request):
+    form = CustomSourceForm(request.POST)
+    if not form.is_valid():
+        country = _country(request)
+        registry, choices, interval = with_custom_sources(get_source_registry()), source_choices(), freshness_seconds()
+        preferences_form = NewsPreferencesForm(registry=registry, choices=choices, freshness=interval)
+        context = _context(registry, choices, preferences_form, country, interval)
+        context["custom_form"] = form
+        return render_page(request, "settings", page_template="news/settings.html", context=context)
+    record = CustomSource(kind=form.cleaned_data["kind"], url=form.cleaned_data["location"], name=form.cleaned_data["name"])
+    success = check_custom_source(record)
+    record.save()
+    from .services.background import feed_warmer
+
+    feed_warmer.rescan()
+    if success:
+        messages.success(request, "Source added and checked. Matching items are now available on the map.")
+    else:
+        messages.warning(request, "Source saved, but its check failed. See the reason below; it stays paused until a successful check.")
+    return _navigate(request, _country(request))
+
+
+@never_cache
+@require_http_methods(["POST"])
+def custom_source_action(request, source_id, action):
+    record = get_object_or_404(CustomSource, pk=source_id)
+    from .services.background import feed_warmer
+
+    if action == "remove":
+        item, feed = registry_items(record)
+        identity = record.registry_id
+        SourcePreference.objects.filter(source_id__in=(identity, f"{identity}_feed")).delete()
+        record.delete()
+        cache.delete(fixed_feed_cache_key(feed) if feed else youtube_cache_key(item))
+        messages.success(request, "Custom source removed. Saved journal entries are kept.")
+    elif action == "check":
+        success = check_custom_source(record)
+        record.save()
+        if success:
+            messages.success(request, "Source checked; its cache is ready.")
+        else:
+            messages.warning(request, f"Source check failed: {record.last_error}")
+    else:
+        raise Http404("Unknown source action")
+    feed_warmer.rescan()
+    return _navigate(request, _country(request))
+
+
+@never_cache
+@require_http_methods(["POST"])
 def refresh_source(request, source_id):
     registry = effective_registry()
     country = _country(request)
@@ -142,7 +246,7 @@ def refresh_source(request, source_id):
     if item is None:
         raise Http404("Unknown source")
     if not item.enabled_by_default:
-        messages.warning(request, "This source is switched off or unavailable. Save an enabled choice before refreshing it.")
+        messages.warning(request, "This source is switched off or unavailable. Turn it on before refreshing it.")
         return _navigate(request, country)
     options = {"force_refresh": True, "fresh_seconds": freshness_seconds()}
     if source_id in feeds:

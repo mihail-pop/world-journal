@@ -154,7 +154,7 @@ YouTube routing is intentionally narrower: only enabled channels whose coverage 
 
 ## Country matching
 
-Feed entries are normalized to title, HTTPS link, item-level publisher, UTC publication time, and safe plain-text summary before matching. Script and style content is discarded. Unicode is normalized, combining marks are removed for comparison, apostrophes and dashes are standardized, punctuation becomes spacing, and complete words or phrases are required. Longer aliases claim overlapping text before shorter aliases, preserving Guinea, Congo, Korea, Oman/Romania, and Niger/Nigeria collision protections while allowing explicit multi-country matches.
+Feed entries are normalized to title, HTTP(S) link, item-level publisher, UTC publication time, and safe plain-text summary before matching. Feed downloads require HTTPS. Script and style content is discarded. Unicode is normalized, combining marks are removed for comparison, apostrophes and dashes are standardized, punctuation becomes spacing, and complete words or phrases are required. Longer aliases claim overlapping text before shorter aliases, preserving Guinea, Congo, Korea, Oman/Romania, and Niger/Nigeria collision protections while allowing explicit multi-country matches.
 
 Evidence has three ordered classes:
 

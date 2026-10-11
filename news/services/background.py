@@ -150,12 +150,12 @@ class FeedWarmer:
         kind, identity = job
         options = {"fresh_seconds": interval, "retry_failed": retry}
         if kind == "rss":
-            feed = registry.get_feed(identity)
-            if feed.enabled_by_default:
+            feed = next((feed for feed in registry.feeds if feed.id == identity), None)
+            if feed and feed.enabled_by_default:
                 get_fixed_feed(feed, registry.get_provider(feed.provider_id), **options)
         elif kind == "youtube":
-            source = registry.get(identity)
-            if source.enabled_by_default:
+            source = next((source for source in registry.sources if source.id == identity), None)
+            if source and source.enabled_by_default:
                 get_youtube_feed(source, **options)
         elif registry.get("google_news_country").enabled_by_default:
             # Smooth out the initial 238-country sweep instead of flooding Google.

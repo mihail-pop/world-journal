@@ -1,8 +1,8 @@
-<div class="source-control-row">
+<div class="source-control-row" data-source-row="{{ row.id }}">
     <div><label class="source-choice" for="{{ row.toggle.id_for_label }}">{{ row.toggle }} Include this source</label>{{ row.toggle.errors }}<p class="source-health {% if row.health.failed %}is-warning{% endif %}">{{ row.health.label }}</p></div>
-    {% if row.enabled %}<form method="post" action="{% url 'news:source_refresh' row.id %}" hx-disabled-elt="find button" hx-indicator="find .source-check-progress">{% csrf_token %}<input type="hidden" name="country" value="{{ country.pk }}"><button type="submit" class="journal-button">Refresh now</button><span class="source-check-progress htmx-indicator" role="status">Checking feed…</span></form>{% endif %}
+    {% if row.available %}<form {% if not row.enabled %}hidden{% endif %} data-source-refresh method="post" action="{% url 'news:source_refresh' row.id %}" hx-disabled-elt="find button" hx-indicator="find .source-check-progress">{% csrf_token %}<input type="hidden" name="country" value="{{ country.pk }}"><button type="submit" class="journal-button">Refresh now</button><span class="source-check-progress htmx-indicator" role="status">Checking feed…</span></form>{% endif %}
 </div>
-{% if row.disabled_reason %}<p class="field-note">{{ row.disabled_reason }}</p>{% elif not row.enabled %}<p class="field-note">Switched off, or paused because its publisher is off. Save an enabled choice before refreshing.</p>{% endif %}
+{% if row.disabled_reason %}<p class="field-note">{{ row.disabled_reason }}</p>{% endif %}
 <details class="source-details"><summary>Feed details</summary>
 <dl class="source-health-details">
     {% if row.health.error_detail %}<div><dt>Failure reason</dt><dd>{{ row.health.error_detail }}</dd></div>{% endif %}

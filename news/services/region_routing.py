@@ -72,7 +72,7 @@ def eligible_youtube_sources(country: dict, registry: SourceRegistry) -> tuple[N
             for source in registry.sources
             if source.kind is SourceKind.YOUTUBE
             and source.enabled_by_default
-            and routing_groups.intersection(source.coverage_regions)
+            and (source.id.startswith("custom_") or routing_groups.intersection(source.coverage_regions))
         ),
         key=lambda source: (source.display_priority, source.id),
     ))

@@ -102,11 +102,13 @@ def get_fixed_feed(
             )
 
         try:
+            redirect_options = {"allow_public_redirects": True} if feed.allow_public_redirects else {}
             response = fetcher(
                 feed.feed_url,
                 allowed_hosts=set(feed.allowed_hosts),
                 etag=snapshot.get("etag"),
                 last_modified=snapshot.get("last_modified"),
+                **redirect_options,
             )
             if response.not_modified:
                 if not snapshot.get("last_success_at"):
@@ -125,6 +127,7 @@ def get_fixed_feed(
                     provider,
                     settings.NEWS_FIXED_FEED_CACHE_ITEMS,
                     feed=feed,
+                    base_url=response.final_url,
                 )
                 snapshot = {
                     "items": [item.as_cache_value() for item in normalized.items],

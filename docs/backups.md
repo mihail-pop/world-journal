@@ -6,7 +6,7 @@ dependencies, accounts, or background service are needed.
 ## Portable export
 
 Download backup ZIP after saving open editors. The archive contains a UTF-8
-`manifest.json` identifying format `world-journal-backup`, version `2`, export
+`manifest.json` identifying format `world-journal-backup`, version `3`, export
 time, record datasets, and SHA-256 image checksums. Image files use generated
 archive paths under `media/`; original display filenames remain in metadata.
 
@@ -17,9 +17,9 @@ Included data:
 - Local image bytes, captions, subsection links, names, dimensions, and ordering.
 - Country favorites, map presets/colors, ordered group titles, the shared active preset, and country
   overview-to-journal links.
-- Shared source choices and cache freshness.
+- Shared source choices, refresh interval and custom RSS/YouTube sources.
 
-Country identities, map geometry, facts, and source definitions remain bundled
+Country identities, map geometry, facts, and built-in source definitions remain bundled
 application configuration. They are not overwritten by an archive. Feed cache,
 sessions, secrets, and browser preferences are excluded. Export explicitly fails
 when a referenced image is missing or has changed size rather than silently
@@ -68,7 +68,10 @@ Defaults: 512 MiB for the ZIP and its expanded content; 32 MiB for the manifest;
 `BACKUP_MAX_BYTES` if a legitimate archive grows past the default. Version 2 adds the `preset_groups` dataset without changing the version 1 fields.
 The importer accepts version 1 archives, which have no titled group metadata;
 the preset editor and legend derive untitled groups from their country colors.
-Older app versions cannot read the new version 2 exports.
+Version 3 adds custom sources, including detected format, channel identity and
+check metadata. Version 1 and 2 archives remain readable. Sources already present
+at the same URL are reused without replacing their configuration or choices.
+Older app versions cannot read version 3 exports.
 
 ## Exact manual backup
 

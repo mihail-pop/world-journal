@@ -16,7 +16,10 @@ def freshness_seconds():
 
 
 def effective_registry(registry=None, choices=None):
-    registry = registry or get_source_registry()
+    if registry is None:
+        from .services.custom_sources import with_custom_sources
+
+        registry = with_custom_sources(get_source_registry())
     choices = source_choices() if choices is None else choices
 
     def enabled(item):

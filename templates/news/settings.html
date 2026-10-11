@@ -1,20 +1,48 @@
-<section class="page page-standard source-settings-page settings-page" data-page="settings" hx-boost="true" hx-target="#app-content" hx-push-url="true" aria-labelledby="sources-title">
+<section class="page page-standard source-settings-page settings-page" data-page="settings" data-source-settings data-save-url="{% url 'news:save_preference' %}" hx-boost="true" hx-target="#app-content" hx-push-url="true" aria-labelledby="sources-title">
     {% include 'core/partials/settings_nav.html' with section='sources' heading_id='sources-title' %}
     {% for message in messages %}<p class="source-settings-message {% if message.tags == 'warning' %}is-warning{% endif %}" role="status">{{ message }}</p>{% endfor %}
-    <form id="news-preferences" class="source-preferences-form settings-card" method="post" action="{% url 'news:settings' %}" hx-disabled-elt="find button">
-        {% csrf_token %}<input type="hidden" name="country" value="{{ country.pk }}">
-        {{ form.non_field_errors }}
-        <div class="settings-field"><label for="{{ form.freshness_minutes.id_for_label }}">{{ form.freshness_minutes.label }}</label>{{ form.freshness_minutes }}{{ form.freshness_minutes.errors }}<p class="field-note">Refresh interval: 5–120 minutes.</p></div>
-        <button type="submit" class="journal-button is-primary">Save source preferences</button>
-    </form>
-    <details class="settings-help"><summary>How source preferences work</summary><p>{{ form.freshness_minutes.help_text }}</p><p>Tick sources, then save. Switching off a publisher pauses its feeds while retaining individual choices. Refresh checks one enabled endpoint and preserves cached results if it fails. Save edits before refreshing. Every enabled regional publisher can contribute to every country; its region affects priority.</p><p>Article and video feeds are prepared in the background. Video thumbnails load when displayed; playback starts only when you press Play.</p></details>
-    <section class="source-settings-section" aria-labelledby="google-source-title"><h2 id="google-source-title">Google News</h2>
-        <form class="source-country-form" method="get" action="{% url 'news:settings' %}"><div class="settings-field"><label for="source-check-country">Country for Google News health and refresh</label><select id="source-check-country" name="country" data-country-select>{% for option in countries %}<option value="{{ option.pk }}"{% if option.pk == country.pk %} selected{% endif %}>{{ option.name }}</option>{% endfor %}</select></div><button type="submit" class="journal-button">Show country cache</button></form>
-        {% for row in google_sources %}<article class="source-settings-card settings-card"><h3><a href="{{ row.homepage }}" target="_blank" rel="noopener noreferrer">{{ row.name }}</a></h3><p class="field-note">English country searches · US edition. The health below is for {{ country.name }}.</p>{% include "news/partials/source_control.html" %}</article>{% endfor %}
+    <div class="settings-grid source-overview-grid">
+        <form id="news-preferences" class="settings-card source-preferences-form" method="post" action="{% url 'news:settings' %}">
+            {% csrf_token %}<input type="hidden" name="country" value="{{ country.pk }}">
+            <h2>Background refresh</h2>{{ form.non_field_errors }}
+            <div class="settings-field"><label for="{{ form.freshness_minutes.id_for_label }}">Interval in minutes</label>{{ form.freshness_minutes }}{{ form.freshness_minutes.errors }}</div>
+            <p class="field-note">5–120 minutes. Cached results stay available during refreshes.</p>
+            <p class="source-save-status" data-source-save-status role="status" aria-live="polite"></p>
+            <noscript><button type="submit" class="journal-button is-primary">Save source preferences</button></noscript>
+        </form>
+        {% for row in google_sources %}<article class="source-settings-card settings-card">
+            <h2>Google News</h2><p class="field-note">English country searches · US edition.</p>
+            <form class="source-country-form" method="get" action="{% url 'news:settings' %}"><div class="settings-field"><label for="source-check-country">Country cache</label><select id="source-check-country" name="country" data-country-select data-source-health-country>{% for option in countries %}<option value="{{ option.pk }}"{% if option.pk == country.pk %} selected{% endif %}>{{ option.name }}</option>{% endfor %}</select></div><noscript><button type="submit" class="journal-button">Show country cache</button></noscript></form>
+            {% include "news/partials/source_control.html" %}
+        </article>{% endfor %}
+    </div>
+    <details class="settings-help"><summary>How sources work</summary><p>Choices save as you change them. Turning off a publisher pauses its feeds and retains their individual choices. Feeds refresh while Django runs, even with the browser closed.</p><p>Article feeds match country references in headlines and summaries. Videos match country references in titles. Custom sources can contribute to any country; adding a feed does not assign every item to every country. Playback starts only after Play.</p></details>
+    <section class="source-settings-section" aria-labelledby="custom-sources-title">
+        <h2 id="custom-sources-title">Your sources</h2>
+        <details class="settings-card custom-source-add" {% if custom_form.errors %}open{% endif %}><summary>Add a source</summary>
+            <form method="post" action="{% url 'news:custom_add' %}" hx-disabled-elt="find button" hx-indicator="find .source-check-progress">
+                {% csrf_token %}<input type="hidden" name="country" value="{{ country.pk }}">{{ custom_form.non_field_errors }}
+                <div class="custom-source-fields"><div class="settings-field"><label for="{{ custom_form.kind.id_for_label }}">{{ custom_form.kind.label }}</label>{{ custom_form.kind }}{{ custom_form.kind.errors }}</div><div class="settings-field"><label for="{{ custom_form.name.id_for_label }}">{{ custom_form.name.label }}</label>{{ custom_form.name }}{{ custom_form.name.errors }}</div><div class="settings-field custom-source-location"><label for="{{ custom_form.location.id_for_label }}">{{ custom_form.location.label }}</label>{{ custom_form.location }}{{ custom_form.location.errors }}</div></div>
+                <p class="field-note" data-custom-source-help>Paste an HTTPS article feed. RSS and Atom formats are detected automatically.</p>
+                <div class="custom-source-actions"><button class="journal-button is-primary" type="submit">Add and check</button><span class="source-check-progress htmx-indicator" role="status">Checking source…</span></div>
+            </form>
+        </details>
+        <div class="source-card-grid custom-source-grid">{% for row in custom_sources %}<article class="settings-card source-settings-card" data-source-row="{{ row.id }}">
+            <h3><a href="{{ row.record.url }}" target="_blank" rel="noopener noreferrer">{{ row.name }}</a></h3>
+            <p class="field-note">{{ row.record.get_kind_display }}{% if row.record.feed_format %} · {{ row.format }}{% endif %}</p>
+            <label class="source-choice" for="{{ row.toggle.id_for_label }}">{{ row.toggle }} Include this source</label>{{ row.toggle.errors }}
+            {% if row.record.verified_at %}<p class="source-health {% if row.health.failed %}is-warning{% endif %}">{{ row.health.label }}</p>{% else %}<p class="source-health is-warning">Check failed · paused</p>{% endif %}
+            {% if row.check_error %}<p class="custom-source-error">{{ row.check_error }}</p>{% elif row.health.error_detail %}<p class="custom-source-error">{{ row.health.error_detail }}</p>{% endif %}
+            <div class="custom-source-actions">
+                <form method="post" action="{% url 'news:custom_action' row.record.pk 'check' %}" hx-disabled-elt="find button" hx-indicator="find .source-check-progress">{% csrf_token %}<input type="hidden" name="country" value="{{ country.pk }}"><button class="journal-button" type="submit">{% if row.record.verified_at %}Check now{% else %}Check again{% endif %}</button><span class="source-check-progress htmx-indicator" role="status">Checking…</span></form>
+                <form method="post" action="{% url 'news:custom_action' row.record.pk 'remove' %}" hx-disabled-elt="find button">{% csrf_token %}<input type="hidden" name="country" value="{{ country.pk }}"><button class="journal-button" type="submit">Remove</button></form>
+            </div>
+            <details class="source-details"><summary>Feed details</summary><a href="{{ row.feed_url }}" target="_blank" rel="noopener noreferrer">Open feed ↗</a><dl class="source-health-details"><div><dt>Last check</dt><dd>{% if row.record.last_checked_at %}{{ row.record.last_checked_at|date:'M j, Y, H:i T' }}{% else %}Not checked{% endif %}</dd></div><div><dt>Cached entries</dt><dd>{{ row.health.item_count|default_if_none:'None' }}</dd></div></dl></details>
+        </article>{% empty %}<p class="field-note">Add an article feed or YouTube channel above.</p>{% endfor %}</div>
     </section>
     <section class="source-settings-section" aria-labelledby="regional-sources-title"><h2 id="regional-sources-title">Regional publishers</h2>
         <div class="source-card-grid">{% for provider in providers %}<article class="source-settings-card settings-card">
-            <h3><a href="{{ provider.homepage }}" target="_blank" rel="noopener noreferrer">{{ provider.name }}</a></h3><p class="field-note">{{ provider.region }} · {{ provider.enabled_feed_count }} of {{ provider.feeds|length }} feeds active</p>
+            <h3><a href="{{ provider.homepage }}" target="_blank" rel="noopener noreferrer">{{ provider.name }}</a></h3><p class="field-note">{{ provider.region }} · <span data-provider-count="{{ provider.id }}">{{ provider.enabled_feed_count }}</span> of {{ provider.feeds|length }} feeds active</p>
             <label class="source-choice" for="{{ provider.toggle.id_for_label }}">{{ provider.toggle }} Include this publisher</label>{{ provider.toggle.errors }}
             {% if provider.disabled_reason %}<p class="field-note">{{ provider.disabled_reason }}</p>{% endif %}
             <details class="source-provider-feeds" {% if provider.toggle.errors %}open{% endif %}><summary>Feeds ({{ provider.feeds|length }})</summary>{% for row in provider.feeds %}<div class="source-feed-row"><h4>{{ row.name }}</h4>{% include "news/partials/source_control.html" %}</div>{% endfor %}</details>
@@ -23,5 +51,5 @@
     <section class="source-settings-section" aria-labelledby="video-sources-title"><h2 id="video-sources-title">YouTube news channels</h2>
         <div class="source-card-grid">{% for row in youtube_sources %}<article class="source-settings-card settings-card"><h3><a href="{{ row.homepage }}" target="_blank" rel="noopener noreferrer">{{ row.name }}</a></h3><p class="field-note">{{ row.region }}</p>{% include "news/partials/source_control.html" %}</article>{% endfor %}</div>
     </section>
-    <button class="journal-button is-primary" type="submit" form="news-preferences">Save source preferences</button>
+    <noscript><button class="journal-button is-primary" type="submit" form="news-preferences">Save source preferences</button></noscript>
 </section>

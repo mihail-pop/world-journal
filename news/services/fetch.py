@@ -21,6 +21,7 @@ class FeedResponse:
     etag: str | None
     last_modified: str | None
     not_modified: bool = False
+    final_url: str = ""
 
 
 AddressResolver = Callable[[str], Iterable[str]]
@@ -34,16 +35,20 @@ def _resolve_addresses(hostname: str) -> tuple[str, ...]:
     return tuple({result[4][0] for result in results})
 
 
-def _validate_url(url: str, allowed_hosts: frozenset[str], resolver: AddressResolver) -> None:
-    parsed = urlsplit(url)
+def _validate_url(url: str, allowed_hosts: frozenset[str], resolver: AddressResolver, *, allow_public_redirects=False) -> None:
+    try:
+        parsed = urlsplit(url)
+        port = parsed.port
+    except ValueError as error:
+        raise FeedFetchError("The feed URL or redirected address is invalid") from error
     hostname = parsed.hostname.lower() if parsed.hostname else None
     if (
         parsed.scheme != "https"
         or not hostname
-        or hostname not in allowed_hosts
+        or (not allow_public_redirects and hostname not in allowed_hosts)
         or parsed.username
         or parsed.password
-        or parsed.port not in (None, 443)
+        or port not in (None, 443)
     ):
         raise FeedFetchError("The feed URL is not an allowed HTTPS source")
     addresses = tuple(resolver(hostname))
@@ -64,6 +69,7 @@ def fetch_feed(
     last_modified: str | None = None,
     client: httpx.Client | None = None,
     resolver: AddressResolver = _resolve_addresses,
+    allow_public_redirects: bool = False,
 ) -> FeedResponse:
     normalized_hosts = frozenset(host.lower() for host in allowed_hosts)
     headers = {
@@ -93,7 +99,7 @@ def fetch_feed(
     current_url = url
     try:
         for redirect_count in range(settings.NEWS_HTTP_MAX_REDIRECTS + 1):
-            _validate_url(current_url, normalized_hosts, resolver)
+            _validate_url(current_url, normalized_hosts, resolver, allow_public_redirects=allow_public_redirects)
             try:
                 with request_client.stream("GET", current_url, headers=headers, timeout=timeout) as response:
                     if response.status_code in {301, 302, 303, 307, 308}:
@@ -108,6 +114,7 @@ def fetch_feed(
                             etag=response.headers.get("ETag") or etag,
                             last_modified=response.headers.get("Last-Modified") or last_modified,
                             not_modified=True,
+                            final_url=current_url,
                         )
                     response.raise_for_status()
                     content_length = response.headers.get("Content-Length")
@@ -126,6 +133,7 @@ def fetch_feed(
                         body=b"".join(chunks),
                         etag=response.headers.get("ETag"),
                         last_modified=response.headers.get("Last-Modified"),
+                        final_url=current_url,
                     )
             except httpx.HTTPStatusError as error:
                 status = error.response.status_code

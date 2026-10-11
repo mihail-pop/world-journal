@@ -6,6 +6,7 @@ import json
 import logging
 import re
 import tempfile
+import uuid
 import zipfile
 from collections import Counter
 from datetime import date, datetime
@@ -21,11 +22,11 @@ from PIL import Image
 
 from countries.models import Country, CountryFavorite, CountryProfile, MapPersonalState, MapPreset, PresetColorGroup, PresetCountry
 from journal.models import Attachment, Collection, Entry, EntrySection
-from news.models import NewsPreferences, SourcePreference
+from news.models import CustomSource, NewsPreferences, SourcePreference
 
 
 FORMAT = "world-journal-backup"
-VERSION = 2
+VERSION = 3
 MANIFEST_LIMIT = 32 * 1024 * 1024
 RECORD_LIMIT = 100_000
 IMAGE_TYPES = {"image/jpeg": (".jpg", "JPEG"), "image/png": (".png", "PNG"), "image/webp": (".webp", "WEBP"), "image/gif": (".gif", "GIF")}
@@ -37,7 +38,7 @@ DATASETS = {
     "collections": Collection, "presets": MapPreset, "entries": Entry,
     "sections": EntrySection, "attachments": Attachment,
     "favorites": CountryFavorite, "preset_groups": PresetColorGroup, "preset_colors": PresetCountry,
-    "country_profiles": CountryProfile, "source_preferences": SourcePreference,
+    "country_profiles": CountryProfile, "custom_sources": CustomSource, "source_preferences": SourcePreference,
     "news_preferences": NewsPreferences, "map_state": MapPersonalState,
 }
 LABELS = {
@@ -47,10 +48,12 @@ LABELS = {
     "preset_groups": "Preset color groups",
     "source_preferences": "Source choices", "news_preferences": "News preferences",
     "map_state": "Active map preset",
+    "custom_sources": "Custom news sources",
 }
 
 # Freeze archive fields independently of future optional model fields.
 # Version 2 adds preset_groups; all version 1 datasets remain unchanged.
+# Version 3 adds custom_sources; older archives import with no custom sources.
 # New backup versions must retain a reader for older archive versions.
 CONTENT_FIELDS = "title body body_format entry_type source_url source_name source_published_at youtube_video_id youtube_start_seconds"
 SCHEMA_FIELDS = {
@@ -66,6 +69,7 @@ SCHEMA_FIELDS = {
     SourcePreference: "source_id enabled updated_at",
     NewsPreferences: "id freshness_minutes updated_at",
     MapPersonalState: "id active_preset_id",
+    CustomSource: "id kind name url feed_format channel_id verified_at last_checked_at last_error created_at updated_at",
 }
 
 
@@ -146,14 +150,16 @@ def _read_archive(archive):
     if total > settings.BACKUP_MAX_BYTES:
         raise BackupError("The expanded backup exceeds the configured size limit.")
     manifest = json.loads(archive.read("manifest.json"))
-    if not isinstance(manifest, dict) or manifest.get("format") != FORMAT or type(manifest.get("version")) is not int or manifest["version"] not in {1, VERSION}:
-        raise BackupError("Unsupported backup format or version. Use a World Journal version 1 or 2 archive.")
+    if not isinstance(manifest, dict) or manifest.get("format") != FORMAT or type(manifest.get("version")) is not int or manifest["version"] not in {1, 2, VERSION}:
+        raise BackupError("Unsupported backup format or version. Use a World Journal version 1, 2 or 3 archive.")
     records, media = manifest.get("records"), manifest.get("media")
-    expected_datasets = set(DATASETS) - ({"preset_groups"} if manifest["version"] == 1 else set())
+    expected_datasets = set(DATASETS) - ({"preset_groups"} if manifest["version"] == 1 else set()) - ({"custom_sources"} if manifest["version"] < 3 else set())
     if not isinstance(records, dict) or set(records) != expected_datasets or not isinstance(media, dict):
         raise BackupError("The backup manifest has missing or unrecognized datasets.")
     if manifest["version"] == 1:
         records["preset_groups"] = []
+    if manifest["version"] < 3:
+        records["custom_sources"] = []
     if set(names) != {"manifest.json", *media}:
         raise BackupError("The attachment list does not match the files in the archive.")
     if any(not isinstance(items, list) for items in records.values()) or sum(map(len, records.values())) > RECORD_LIMIT:
@@ -243,6 +249,9 @@ def _validate_relationships(data, tags):
     profile_entries = [obj.entry_id for obj in data["country_profiles"] if obj.entry_id]
     if len(profile_entries) != len(set(profile_entries)):
         raise BackupError("One journal entry cannot be the overview for multiple countries.")
+    source_urls = [obj.url for obj in data["custom_sources"]]
+    if len(source_urls) != len(set(source_urls)):
+        raise BackupError("Custom sources contain duplicate feed URLs.")
 
 
 def _validate_media(archive, data, media):
@@ -288,13 +297,25 @@ def import_plan(data):
     for name, model in DATASETS.items():
         existing = set(model.objects.values_list("pk", flat=True))
         by_name = dict(model.objects.values_list("name", "pk")) if model in (Collection, MapPreset) else {}
+        by_url = dict(model.objects.values_list("url", "pk")) if model is CustomSource else {}
         colors = set(PresetCountry.objects.values_list("preset_id", "country_id")) if model is PresetCountry else set()
         claimed_profiles = set(CountryProfile.objects.exclude(entry_id=None).values_list("entry_id", flat=True)) if model is CountryProfile else set()
         plan[name] = []
         for obj in data[name]:
             action = "add"
+            if model is SourcePreference and obj.source_id.startswith("custom_"):
+                identity = obj.source_id.removeprefix("custom_").removesuffix("_feed")
+                if re.fullmatch(r"[0-9a-f]{32}", identity):
+                    target = remap.get(CustomSource, {}).get(uuid.UUID(hex=identity))
+                    if target:
+                        obj.source_id = f"custom_{target.hex}" + ("_feed" if obj.source_id.endswith("_feed") else "")
             if model in (Collection, MapPreset):
                 target = obj.pk if obj.pk in existing else by_name.get(obj.name, obj.pk)
+                remap.setdefault(model, {})[obj.pk] = target
+                if target in existing:
+                    action = "reuse"
+            elif model is CustomSource:
+                target = obj.pk if obj.pk in existing else by_url.get(obj.url, obj.pk)
                 remap.setdefault(model, {})[obj.pk] = target
                 if target in existing:
                     action = "reuse"

@@ -54,7 +54,7 @@ def _safe_link(value: object, *, https_hosts: tuple[str, ...] = ()) -> str | Non
     if parsed.scheme == "http" and parsed.hostname in https_hosts and port in (None, 80):
         parsed = parsed._replace(scheme="https", netloc=parsed.hostname)
         value = urlunsplit(parsed)
-    if parsed.scheme != "https" or not parsed.hostname or parsed.username or parsed.password:
+    if parsed.scheme not in {"http", "https"} or not parsed.hostname or parsed.username or parsed.password:
         return None
     without_fragment, _fragment = urldefrag(value.strip())
     parsed = urlsplit(without_fragment)
@@ -103,8 +103,10 @@ def normalize_feed(
     max_items: int,
     *,
     feed: NewsFeed | None = None,
+    base_url: str | None = None,
 ) -> NormalizedFeed:
-    parsed = feedparser.parse(payload)
+    location = base_url or (feed.feed_url if feed else "")
+    parsed = feedparser.parse(payload, response_headers={"content-location": location} if location else None)
     if not parsed.version:
         raise FeedParseError("The response is not a recognized RSS or Atom feed")
     warnings = ()
@@ -141,5 +143,6 @@ def normalize_feed(
         if len(items) >= max_items * 2:
             break
     if parsed.entries and not items:
-        raise FeedParseError("The feed contains entries, but none have a usable title and HTTPS link")
-    return NormalizedFeed(items=_deduplicate(items)[:max_items], parser_warnings=warnings)
+        raise FeedParseError("The feed contains entries, but none have a usable title and HTTP(S) link")
+    return NormalizedFeed(items=_deduplicate(items)[:max_items], parser_warnings=warnings,
+                          feed_format=parsed.version, title=_plain_text(parsed.feed.get("title")))

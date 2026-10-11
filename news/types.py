@@ -73,6 +73,7 @@ class NewsFeed:
     verification_date: date
     disabled_reason: str = ""
     operational_notes: str = ""
+    allow_public_redirects: bool = False
 
     @property
     def feed_host(self) -> str:
@@ -148,6 +149,8 @@ class VideoItem:
 class NormalizedFeed:
     items: tuple[NewsItem, ...]
     parser_warnings: tuple[str, ...] = ()
+    feed_format: str = ""
+    title: str = ""
 
 
 @dataclass(frozen=True, slots=True)
