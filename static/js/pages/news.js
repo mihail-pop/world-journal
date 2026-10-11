@@ -30,7 +30,8 @@ async function update(state) {
                 const noticesOpen = Boolean(container.querySelector(".news-board-status[open]"));
                 const focused = container.contains(document.activeElement) ? document.activeElement : null;
                 const focusedItem = focused?.closest("[data-news-item]")?.dataset.newsItem;
-                const focusSelector = focused?.matches("[data-video-play]") ? "[data-video-play]"
+                const focusSelector = focused?.matches(".news-board-thumbnail") ? ".news-board-thumbnail"
+                    : focused?.matches("[data-video-play]") ? ".video-play-button"
                     : focused?.matches("summary") ? "summary" : focused?.matches("a") ? `a[href="${CSS.escape(focused.getAttribute("href"))}"]` : null;
                 container.replaceChildren(template.content);
                 for (const card of container.querySelectorAll("[data-news-item]")) {

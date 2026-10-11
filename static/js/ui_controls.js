@@ -31,6 +31,7 @@ class SelectControl {
         select.before(this.wrapper);
         this.wrapper.append(select);
         select.classList.add("select-native");
+        select.hidden = true;
         select.style.setProperty("display", "none", "important");
         select.tabIndex = -1;
         select.setAttribute("aria-hidden", "true");
@@ -121,6 +122,9 @@ class SelectControl {
     }
 
     sync() {
+        // Retained pages and restored snapshots keep the form field, but only
+        // its custom control should be visible or reachable with the keyboard.
+        this.select.hidden = true;
         this.trigger.disabled = this.select.matches(":disabled");
         this.trigger.setAttribute("aria-required", String(this.select.required));
         const selected = [...this.select.selectedOptions].filter(option => !this.select.multiple || option.value);
@@ -258,7 +262,8 @@ class SelectControl {
 
 function enhance(root) {
     for (const select of root.querySelectorAll("select")) {
-        if (select.hidden || select.id === "theme-selector" || select.hasAttribute("data-native-select")) continue;
+        if ((select.hidden && !select.classList.contains("select-native"))
+            || select.id === "theme-selector" || select.hasAttribute("data-native-select")) continue;
         if (!controls.has(select)) controls.set(select, new SelectControl(select));
         else controls.get(select).sync();
     }

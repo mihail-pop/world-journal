@@ -7,7 +7,7 @@
         {% for card in cards %}{% with item=card.item %}
             <li class="news-board-card" data-news-item="{% if tab == 'videos' %}{{ item.video_id }}{% else %}{{ item.link }}{% endif %}">
             {% if tab == 'videos' %}
-                <div class="news-board-thumbnail"><img src="{{ item.thumbnail_url }}" alt="" width="480" height="360" loading="lazy" decoding="async" referrerpolicy="no-referrer"></div>
+                <button class="news-board-thumbnail" type="button" data-video-play data-video-id="{{ item.video_id }}" data-video-title="{{ item.title }}" data-video-channel="{{ item.channel_name }}" aria-label="Play {{ item.title }}"><img src="{{ item.thumbnail_url }}" alt="" width="480" height="360" loading="lazy" decoding="async" referrerpolicy="no-referrer"><span class="news-board-thumbnail-play" aria-hidden="true">{% include 'core/partials/icon.html' with name='play' %}</span></button>
                 <div class="news-board-card-body"><div class="news-board-attribution"><span>{{ item.channel_name }}</span>{% if item.is_stale %}<span class="news-board-cache-label">Cached</span>{% endif %}</div>
                     <h2><a href="{{ item.watch_url }}" target="_blank" rel="noopener noreferrer">{{ item.title }}</a></h2>
                     <p class="news-board-byline">{% if item.published_at %}<time datetime="{{ item.published_at|date:'c' }}">{{ item.published_at|date:'M j, H:i' }}</time>{% endif %}{% if item.view_count != None %}<span>{{ item.view_count|floatformat:'0g' }} views</span>{% endif %}</p>

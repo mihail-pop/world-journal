@@ -394,7 +394,7 @@ details[open] > summary { margin-bottom: .9rem; color: var(--ui-text); }
 .statistics-heading { margin-bottom: 1.25rem; }
 .statistics-totals strong { color: var(--ui-text); }
 @media (min-width: 70rem) {
-    body:has(.page-map) .persistent-player { left: 1rem; right: auto; }
+    .persistent-player { left: 1rem; right: auto; }
     body:has(.page-map):has(.persistent-player[data-player-state=playing]) .country-drawer { bottom: auto; max-height: calc(100% - 2rem); }
 }
 @media (max-width: 64rem) {
@@ -460,10 +460,7 @@ details[open] > summary { margin-bottom: .9rem; color: var(--ui-text); }
 .journal-collections:not([open]) > summary { margin-bottom: 0; }
 body:has(.persistent-player[data-player-state=playing]) .journal-save-bar { bottom: calc(var(--persistent-player-height, 0px) + .5rem); }
 @media (min-width: 70rem) {
-    body:has(.persistent-player[data-player-state=playing]) #app-content:not(:has(.page-map)) { width: calc(100% - 31.5rem); margin-inline: 0 31.5rem; }
     body:has(.persistent-player[data-player-state=playing]) .journal-save-bar { bottom: 0; }
-    body:has(.persistent-player[data-player-state=playing]) .settings-grid,
-    body:has(.persistent-player[data-player-state=playing]) .source-card-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 .journal-collections > a { display: flex; justify-content: space-between; gap: .65rem; padding: .65rem; text-decoration: none; overflow-wrap: anywhere; }
@@ -552,8 +549,7 @@ html { overflow-y: scroll; scrollbar-gutter: stable; }
 .backup-form .toggle-choice { text-align: left; justify-content: flex-start; }
 /* Enhanced selectors use the original select's options and form value. */
 .select-control { position: relative; width: 100%; min-width: 0; }
-.select-control > select.select-native { display: none !important; }
-.page-standard select.select-native, select.select-native { position: absolute; width: 1px; min-width: 0; min-height: 0; height: 1px; padding: 0; border: 0; opacity: 0; clip-path: inset(50%); overflow: hidden; }
+select.select-native { display: none !important; }
 .select-trigger { display: flex; align-items: center; justify-content: space-between; gap: .75rem; width: 100%; min-height: 2.9rem; padding: .65rem .85rem; border: 1px solid var(--ui-border); border-radius: 6px; background: var(--ui-paper); color: var(--ui-text); font: inherit; font-size: 1rem; text-align: left; }
 .select-trigger:hover:not(:disabled), .select-trigger[aria-expanded=true] { border-color: var(--ui-accent); }
 .select-trigger > .icon { color: var(--ui-muted); width: 1rem; height: 1rem; }
@@ -604,19 +600,30 @@ html { overflow-y: scroll; scrollbar-gutter: stable; }
 .news-board-card h2 a:hover { text-decoration: underline; }
 .news-board-byline { display: flex; flex-wrap: wrap; column-gap: 1rem; row-gap: .3rem; margin: 0; color: var(--ui-muted); font-size: .9rem; }
 .news-board-summary-text p { margin: .5rem 0 0; font-size: .98rem; line-height: 1.65; color: var(--ui-muted); overflow-wrap: anywhere; }
-.news-board-card-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 1rem; margin-top: auto; padding-top: .3rem; }
+.news-board-card-actions { display: flex; align-items: center; flex-wrap: wrap; gap: .65rem; margin-top: auto; padding-top: .6rem; }
 .news-board-card-actions a { display: inline-flex; align-items: center; gap: .35rem; color: var(--ui-muted); font-size: .95rem; text-decoration: none; }
 .news-board-card-actions a:hover { color: var(--ui-text); }
+.news-board-card-actions .video-play-button,
+.news-board-card-actions .news-save-journal { display: inline-flex; align-items: center; justify-content: center; gap: .45rem; min-height: 2.65rem; padding: .5rem 1rem; border: 1px solid var(--ui-border); border-radius: 999px; background: var(--ui-paper); color: var(--ui-text); font: inherit; font-size: .95rem; font-weight: 500; line-height: 1.3; text-decoration: none; cursor: pointer; }
+.news-board-card-actions .video-play-button { background: var(--ui-accent); border-color: var(--ui-accent); color: var(--ui-accent-ink); }
+.news-board-card-actions .video-play-button:hover { background: color-mix(in srgb, var(--ui-accent) 85%, var(--ui-text)); }
+.news-board-card-actions .news-save-journal:hover { background: var(--ui-hover); border-color: var(--ui-accent); }
+.news-board-card-actions .icon { width: 1.1rem; height: 1.1rem; }
 .news-board-open { margin-left: auto; }
 .news-board-videos { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .news-board-videos .news-board-card { display: flex; flex-direction: column; }
 .news-board-videos .news-board-card-body { height: auto; flex: 1; }
-.news-board-thumbnail { aspect-ratio: 16 / 9; background: var(--ui-hover); overflow: hidden; }
+.news-board-thumbnail { position: relative; display: block; flex: 0 0 auto; width: 100%; padding: 0; border: 0; border-radius: 0; aspect-ratio: 16 / 9; background: var(--ui-hover); overflow: hidden; cursor: pointer; }
 .news-board-thumbnail img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.news-board-thumbnail::after { content: ""; position: absolute; inset: 0; background: #0002; pointer-events: none; }
+.news-board-thumbnail-play { position: absolute; z-index: 1; left: 50%; top: 50%; transform: translate(-50%, -50%); display: grid; place-items: center; width: 3.5rem; height: 3.5rem; border: 1px solid #fff8; border-radius: 50%; background: #000b; color: #fff; box-shadow: 0 2px 12px #0004; pointer-events: none; }
+.news-board-thumbnail-play .icon { width: 1.6rem; height: 1.6rem; }
+.news-board-thumbnail:hover::after { background: #0004; }
+.news-board-thumbnail:hover .news-board-thumbnail-play { background: #000e; border-color: #fff; }
+.news-board-thumbnail:focus-visible { outline: 3px solid var(--ui-accent); outline-offset: -3px; }
 .news-board-pagination { display: flex; justify-content: center; align-items: center; gap: 1rem; margin-top: 1.5rem; color: var(--ui-muted); }
 .news-board-empty { padding: 2rem 1rem; border: 1px dashed var(--ui-border); border-radius: 6px; text-align: center; color: var(--ui-muted); line-height: 1.7; }
 @media (max-width: 65rem) { .news-board-videos { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (min-width: 70rem) { body:has(.persistent-player[data-player-state=playing]) .news-board-videos { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 46rem) {
     .news-board-grid, .news-board-videos { grid-template-columns: minmax(0, 1fr); }
     .news-board-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }

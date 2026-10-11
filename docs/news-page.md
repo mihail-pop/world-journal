@@ -44,9 +44,14 @@ when Videos is first opened. A failed upgrade respects ordinary retry backoff.
 
 The Al Jazeera feed supplied the view-count field during the metadata inspection.
 Parsing still validates channel identity and video IDs and derives all video URLs.
-Thumbnails load only on the visible Videos page. An iframe is created only by
-Play, using the existing persistent youtube-nocookie player. Save opens the same
+Thumbnails load only on the visible Videos page. Clicking a thumbnail or Play
+starts the existing persistent youtube-nocookie player. Save opens the same
 Journal entry form as country news; general items have no automatic country tag.
+The Videos period selector displays Past 3 days for the longer date option,
+while retaining the seven-day cutoff requested for available feed uploads.
+Feed depth still determines which recent uploads are available. Articles retain
+their Past 7 days label. The Videos explanation panel and News Sources shortcut
+are removed; source management remains in Settings.
 
 ## Cache, navigation and failures
 
@@ -69,6 +74,9 @@ JavaScript, Apply and normal navigation still work. News keeps its current nodes
 filters and scroll when navigating to another main page, like Journal. Clicking
 News in the header while already on News returns to the main Articles screen.
 Playback and the retained Map remain outside these results updates.
+The same shell player floats over every page, at the bottom left on wide screens
+and across the bottom on phones. Opening it does not narrow the page or change
+the number of cards in its grid. The header order is Map, Journal, News.
 
 ## Manual checks
 
@@ -89,7 +97,9 @@ Restart the local server, then reload with Ctrl+F5:
    only to the recent uploads supplied by enabled channels.
 4. Play, minimize, restore and close a video. Navigate News → Journal → Settings
    → Map. The player should retain its iframe until closed or another video is
-   played. Returning to Map should retain one map and its previous selection.
+   played. Try both the thumbnail and Play button. The player should stay in the
+   same position without shifting the News grid. Returning to Map should retain
+   one map and its previous selection.
 5. Scroll News, navigate away and return using the header: state should survive.
    Clicking News while already on News should return to default Articles at top.
 6. Save an article/video to Journal. Check source, URL/video and publication date.
