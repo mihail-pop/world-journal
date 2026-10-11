@@ -1,0 +1,4 @@
+# Optional maintainer tooling for regenerating the bundled country geometry.
+# These packages are NOT required to install or run World Journal.
+numpy==2.3.4
+shapely==2.1.2

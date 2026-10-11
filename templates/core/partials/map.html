@@ -42,7 +42,7 @@
                     <label><input type="checkbox" data-map-preference="terrain"> Terrain</label>
                     <label><input type="checkbox" data-map-preference="countryNames"> Country names</label>
                     <label><input type="checkbox" data-map-preference="capitalNames"> Capital names</label>
-                    <label><input type="checkbox" data-map-preference="allOtherText"> All other text</label>
+                    <a class="map-settings-link" href="{% url 'core:settings' %}" hx-boost="true" hx-target="#app-content" hx-push-url="true">More map options {% include 'core/partials/icon.html' with name='settings' %}</a>
                 </fieldset>
                 <fieldset class="map-personal-controls">
                     <legend>Your map</legend>

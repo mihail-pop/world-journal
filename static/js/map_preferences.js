@@ -5,19 +5,38 @@ export const MAP_VIEWPORT_STORAGE_KEY = "world-journal:map-viewport";
 
 export const DEFAULT_MAP_PREFERENCES = Object.freeze({
     version: MAP_PREFERENCES_VERSION,
+    detailDefaultsVersion: 1,
     homeCountry: null,
     countryNames: true,
     capitalNames: false,
     terrain: true,
     allOtherText: true,
+    protectedAreas: false,
+    vegetation: true,
+    relief: true,
+    water: true,
+    transport: true,
+    buildings: false,
+    landUse: false,
+    administrativeBorders: true,
+    pointsOfInterest: false,
 });
 
-const BOOLEAN_PREFERENCES = [
+export const MAP_BOOLEAN_PREFERENCES = Object.freeze([
     "countryNames",
     "capitalNames",
     "terrain",
     "allOtherText",
-];
+    "protectedAreas",
+    "vegetation",
+    "relief",
+    "water",
+    "transport",
+    "buildings",
+    "landUse",
+    "administrativeBorders",
+    "pointsOfInterest",
+]);
 
 function normalizePreferences(value, validCountryCodes) {
     const normalized = { ...DEFAULT_MAP_PREFERENCES };
@@ -27,7 +46,11 @@ function normalizePreferences(value, validCountryCodes) {
     if (value.version === 1) {
         normalized.terrain = value.simpleMode !== true;
     }
-    for (const key of BOOLEAN_PREFERENCES) {
+    for (const key of MAP_BOOLEAN_PREFERENCES) {
+        // Apply the quieter detail defaults once to preferences saved before
+        // this revision. Subsequent explicit choices remain fully persistent.
+        if (value.detailDefaultsVersion !== DEFAULT_MAP_PREFERENCES.detailDefaultsVersion
+            && ["protectedAreas", "buildings", "landUse", "pointsOfInterest"].includes(key)) continue;
         if (value.version === MAP_PREFERENCES_VERSION && typeof value[key] === "boolean") {
             normalized[key] = value[key];
         } else if (["countryNames", "capitalNames"].includes(key) && typeof value[key] === "boolean") {
@@ -63,6 +86,9 @@ export function writeMapPreferences(value, validCountryCodes) {
     } catch (error) {
         // Preferences remain active for the current page when storage is unavailable.
     }
+    document.dispatchEvent(new CustomEvent("world-journal:map-preferences-change", {
+        detail: normalized,
+    }));
     return normalized;
 }
 

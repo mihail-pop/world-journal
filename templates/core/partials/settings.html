@@ -11,7 +11,42 @@
         </section>
         <section class="settings-card"><h2>{% include 'core/partials/icon.html' with name='home' %}Home country</h2><div class="settings-field"><label class="visually-hidden" for="home-country">Home country</label><select id="home-country" data-home-country-select data-country-select disabled><option value="">World view</option></select><p class="field-note">Starting view for a fresh map.</p><p class="settings-status" data-settings-status role="status" aria-live="polite">Loading countries…</p></div></section>
         <section class="settings-card"><h2>{% include 'core/partials/icon.html' with name='layers' %}Color presets</h2><p class="field-note">Group countries with your own colors.</p><a class="journal-button" href="{% url 'countries:preset_list' %}" hx-boost="true" hx-target="#app-content" hx-push-url="true">Manage presets{% include 'core/partials/icon.html' with name='edit' %}</a></section>
-        <section class="settings-card settings-card-full"><h2>Map labels</h2><div class="settings-toggle-list"><label><span>Country names</span><input type="checkbox" disabled data-settings-map-preference="countryNames"></label><label><span>Capitals</span><input type="checkbox" disabled data-settings-map-preference="capitalNames"></label><label><span>Other labels</span><input type="checkbox" disabled data-settings-map-preference="allOtherText"></label></div></section>
+        <section class="settings-card settings-card-full settings-map-labels">
+            <h2>General map labels</h2>
+            <p class="field-note">Shown on either map.</p>
+            <div class="settings-toggle-list">
+                <label><span>Country names</span><input type="checkbox" disabled data-settings-map-preference="countryNames"></label>
+                <label><span>Capital names</span><input type="checkbox" disabled data-settings-map-preference="capitalNames"></label>
+            </div>
+        </section>
+        <section class="settings-card settings-card-full settings-terrain-card" aria-labelledby="terrain-settings-title">
+            <h2 id="terrain-settings-title">Terrain map</h2>
+            <div class="settings-toggle-list settings-toggle-list-stack">
+                <label><span>Show terrain map</span><input type="checkbox" disabled data-settings-map-preference="terrain"></label>
+            </div>
+            <div class="settings-terrain-groups">
+                <fieldset>
+                    <legend>Landscape</legend>
+                    <div class="settings-toggle-list settings-toggle-list-stack">
+                        <label title="Park and nature-reserve shading and outlines"><span>Protected areas</span><input type="checkbox" disabled data-settings-map-preference="protectedAreas"></label>
+                        <label title="Mapped forests, grassland and wetlands; the relief image retains its own colors"><span>Vegetation &amp; wetlands</span><input type="checkbox" disabled data-settings-map-preference="vegetation"></label>
+                        <label><span>Relief shading</span><input type="checkbox" disabled data-settings-map-preference="relief"></label>
+                        <label title="Water shapes, rivers and water labels; the relief image retains its own colors"><span>Water features</span><input type="checkbox" disabled data-settings-map-preference="water"></label>
+                    </div>
+                </fieldset>
+                <fieldset>
+                    <legend>Map details</legend>
+                    <div class="settings-toggle-list settings-toggle-list-stack">
+                        <label><span>Roads, railways &amp; airports</span><input type="checkbox" disabled data-settings-map-preference="transport"></label>
+                        <label><span>Buildings</span><input type="checkbox" disabled data-settings-map-preference="buildings"></label>
+                        <label><span>Land-use shading</span><input type="checkbox" disabled data-settings-map-preference="landUse"></label>
+                        <label title="Borders from the terrain map; selectable country outlines remain visible"><span>Administrative borders</span><input type="checkbox" disabled data-settings-map-preference="administrativeBorders"></label>
+                        <label><span>Places of interest</span><input type="checkbox" disabled data-settings-map-preference="pointsOfInterest"></label>
+                        <label><span>Other labels</span><input type="checkbox" disabled data-settings-map-preference="allOtherText"></label>
+                    </div>
+                </fieldset>
+            </div>
+        </section>
 
     </div>
 </section>

@@ -41,7 +41,9 @@ EXPECTED_CAPITALS = 198
 EXPECTED_CAPITAL_COUNTRIES = 194
 EXPECTED_MULTIPLE_CAPITALS = {"BO": 2, "CI": 2, "ZA": 3}
 EXPECTED_CAPITAL_EXCLUSIONS = {"1159149757", "1159151189"}
-SIMPLIFY_TOLERANCE = 0.015
+# Coverage simplification uses triangle area, not the old per-ring distance
+# tolerance. This value keeps the browser asset near its prior point budget.
+SIMPLIFY_TOLERANCE = 0.03
 COORDINATE_PRECISION = 4
 USER_AGENT = "world-journal-country-data-builder/1.0"
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -154,71 +156,6 @@ def signed_area(ring: list[tuple[float, float]]) -> float:
     ) / 2
 
 
-def squared_segment_distance(
-    point: tuple[float, float], start: tuple[float, float], end: tuple[float, float]
-) -> float:
-    x, y = start
-    delta_x = end[0] - x
-    delta_y = end[1] - y
-    if delta_x or delta_y:
-        projection = ((point[0] - x) * delta_x + (point[1] - y) * delta_y) / (
-            delta_x * delta_x + delta_y * delta_y
-        )
-        if projection > 1:
-            x, y = end
-        elif projection > 0:
-            x += delta_x * projection
-            y += delta_y * projection
-    return (point[0] - x) ** 2 + (point[1] - y) ** 2
-
-
-def simplify_open_line(
-    points: list[tuple[float, float]], tolerance_squared: float
-) -> list[tuple[float, float]]:
-    if len(points) <= 2:
-        return points
-    greatest_distance = 0.0
-    split_index = 0
-    for index, point in enumerate(points[1:-1], start=1):
-        distance = squared_segment_distance(point, points[0], points[-1])
-        if distance > greatest_distance:
-            split_index = index
-            greatest_distance = distance
-    if greatest_distance <= tolerance_squared:
-        return [points[0], points[-1]]
-    left = simplify_open_line(points[: split_index + 1], tolerance_squared)
-    right = simplify_open_line(points[split_index:], tolerance_squared)
-    return left[:-1] + right
-
-
-def simplify_ring(ring: list[tuple[float, float]]) -> list[list[float]]:
-    if ring[0] == ring[-1]:
-        ring = ring[:-1]
-    if len(ring) < 4:
-        simplified = ring
-    else:
-        anchor = ring[0]
-        split_index = max(
-            range(1, len(ring)),
-            key=lambda index: (ring[index][0] - anchor[0]) ** 2
-            + (ring[index][1] - anchor[1]) ** 2,
-        )
-        tolerance_squared = SIMPLIFY_TOLERANCE**2
-        first = simplify_open_line(ring[: split_index + 1], tolerance_squared)
-        second = simplify_open_line(
-            ring[split_index:] + [ring[0]], tolerance_squared
-        )
-        simplified = first[:-1] + second[:-1]
-        if len(simplified) < 3:
-            simplified = ring
-    rounded = [
-        [round(longitude, COORDINATE_PRECISION), round(latitude, COORDINATE_PRECISION)]
-        for longitude, latitude in simplified
-    ]
-    rounded.append(rounded[0])
-    return rounded
-
-
 def point_in_ring(point: list[float], ring: list[list[float]]) -> bool:
     inside = False
     previous = ring[-1]
@@ -236,7 +173,9 @@ def point_in_ring(point: list[float], ring: list[list[float]]) -> bool:
 def rings_to_polygons(
     rings: list[list[tuple[float, float]]],
 ) -> list[list[list[list[float]]]]:
-    prepared = [(signed_area(ring), simplify_ring(ring)) for ring in rings if len(ring) >= 4]
+    # Keep the source geometry intact here. Simplification happens once across
+    # the entire coverage, so both sides of every shared border stay identical.
+    prepared = [(signed_area(ring), [[x, y] for x, y in ring]) for ring in rings if len(ring) >= 4]
     outer_rings = [ring for area, ring in prepared if area < 0]
     holes = [ring for area, ring in prepared if area >= 0]
     if not outer_rings:
@@ -253,6 +192,68 @@ def rings_to_polygons(
         _, container_index = min(containers)
         polygons[container_index].append(hole)
     return polygons
+
+
+def simplify_country_coverage(geometry: dict) -> None:
+    try:
+        import shapely
+        from shapely.geometry import mapping, shape
+    except ImportError as error:
+        raise RuntimeError(
+            "Country regeneration requires optional maintainer dependencies: "
+            ".venv/Scripts/python.exe -m pip install -r tools/requirements-country-data.txt"
+        ) from error
+
+    if shapely.geos_version < (3, 12, 0):
+        raise RuntimeError("Country coverage simplification requires GEOS 3.12 or newer")
+    features = geometry["features"]
+    coverage = []
+    repaired = []
+    for feature in features:
+        country = shape(feature["geometry"])
+        if not country.is_valid:
+            # Natural Earth's source has a self-crossing ring in Egypt and
+            # touching/overlapping same-country parts in merged BR/KZ records.
+            # Repair polygon structure before building the shared coverage.
+            country = shapely.make_valid(country, method="structure", keep_collapsed=False)
+            repaired.append(feature["id"])
+        country = shapely.set_precision(country, grid_size=1e-8)
+        if country.is_empty or country.geom_type not in {"Polygon", "MultiPolygon"} or not country.is_valid:
+            raise ValueError(f"Source country {feature['id']} cannot form a valid polygon")
+        coverage.append(country)
+    if repaired:
+        print(f"Repaired source polygon structure: {', '.join(repaired)}")
+    if not shapely.coverage_is_valid(coverage):
+        edges = shapely.coverage_invalid_edges(coverage)
+        invalid = [feature["id"] for feature, edge in zip(features, edges) if not edge.is_empty]
+        raise ValueError(f"Source boundaries are not edge-matched: {', '.join(invalid)}")
+
+    simplified = shapely.coverage_simplify(coverage, tolerance=SIMPLIFY_TOLERANCE)
+    # Round the whole coverage on the same grid, not individual country rings.
+    # Valid-output precision retains usable rings and removes collapsed pieces.
+    rounded = shapely.set_precision(simplified, grid_size=10 ** -COORDINATE_PRECISION)
+    if not all(shapely.is_valid(rounded)) or not shapely.coverage_is_valid(rounded):
+        raise ValueError("Simplified country boundaries do not form a valid coverage")
+    for feature, original, result in zip(features, coverage, rounded):
+        if result.is_empty:
+            raise ValueError(f"Simplification removed country {feature['id']}")
+        if shapely.get_num_geometries(result) != shapely.get_num_geometries(original):
+            raise ValueError(f"Simplification removed an island of {feature['id']}")
+        if result.geom_type == "Polygon":
+            result = shapely.MultiPolygon([result])
+        mapped = mapping(result)
+        # GEOS's precision grid still uses binary floats. Avoid exporting long
+        # tails such as 12.300000000000002; equal shared coordinates round alike.
+        mapped["coordinates"] = [
+            [[[round(x, COORDINATE_PRECISION), round(y, COORDINATE_PRECISION)] for x, y in ring]
+             for ring in polygon]
+            for polygon in mapped["coordinates"]
+        ]
+        feature["geometry"] = mapped
+    exported = [shape(feature["geometry"]) for feature in features]
+    if not all(shapely.is_valid(exported)) or not shapely.coverage_is_valid(exported):
+        raise ValueError("Rounded GeoJSON would introduce invalid country boundaries")
+    print(f"Country coordinate points: {int(shapely.get_num_coordinates(exported).sum()):,}")
 
 
 def is_iso_backed(record: dict[str, str]) -> bool:
@@ -390,6 +391,7 @@ def build_outputs(
         "countries": countries,
     }
     geometry = {"type": "FeatureCollection", "features": features}
+    simplify_country_coverage(geometry)
     return metadata, geometry, exclusions
 
 

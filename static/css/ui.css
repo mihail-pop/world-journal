@@ -499,6 +499,15 @@ html { overflow-y: scroll; scrollbar-gutter: stable; }
 .toggle-choice:has(input:disabled) { opacity: .5; cursor: default; }
 .map-display-controls label.toggle-choice { width: 100%; min-height: 2.7rem; }
 .settings-toggle-list .toggle-choice { margin: 0; }
+.settings-toggle-list-stack { grid-template-columns: minmax(0, 1fr); gap: .55rem; }
+.settings-toggle-list-stack label { width: 100%; }
+.settings-terrain-groups { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.25rem; margin-top: 1.4rem; }
+.settings-terrain-groups fieldset { min-width: 0; padding: 0; margin: 0; border: 0; }
+.settings-terrain-groups legend { padding: 0; margin-bottom: .8rem; color: var(--ui-muted); font-size: .95rem; }
+.map-settings-link { display: flex; align-items: center; justify-content: space-between; gap: .6rem; margin: .65rem 0 .15rem; font-size: .95rem; }
+@media (max-width: 46rem) {
+    .settings-terrain-groups { grid-template-columns: minmax(0, 1fr); }
+}
 .source-choice.toggle-choice { font-size: .9rem !important; }
 .backup-form .toggle-choice { text-align: left; justify-content: flex-start; }
 /* Enhanced selectors use the original select's options and form value. */

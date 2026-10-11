@@ -1,4 +1,5 @@
 import { countryFillExpression } from "./country_paint.js";
+import { basemapFeaturePreferences } from "./basemap_features.js";
 import { factsSelectionChanged, initializeCountryFacts, loadCountryOverview } from "./map_facts.js";
 import { applyPersonalLayers, initializePersonalMap, loadCountryNotes, loadPersonalData, personalSelectionChanged } from "./map_personal.js";
 import { initializePresetMap, selectPresetCountry, syncPresetEditor } from "./preset_map_editor.js";
@@ -10,6 +11,7 @@ import {
 import {
     clearSavedMapViewport,
     MAP_VIEWPORT_STORAGE_KEY,
+    MAP_BOOLEAN_PREFERENCES,
     readMapPreferences,
     writeMapPreferences,
 } from "../map_preferences.js";
@@ -576,7 +578,7 @@ function applyBasemapPreferences(controller) {
         const hidden = !controller.preferences.terrain
             || isBasemapCountryLabel(layer)
             || isBasemapCapitalLabel(layer)
-            || (!controller.preferences.allOtherText && layer.type === "symbol");
+            || controller.basemapFeatureGroups.get(layer.id).some(key => !controller.preferences[key]);
         // Hidden terrain must stop drawing and requesting tiles. Changing every
         // opacity left all its geometry active, including while invisible.
         setLayerVisibility(controller.map, layer.id, !hidden && visibility !== "none");
@@ -663,6 +665,9 @@ function installCountryLayers(controller) {
     // Capture provider definitions once per style, before adding our GeoJSON.
     // Preference toggles only need these IDs/label rules, not whole style copies.
     controller.basemapLayers = (map.getStyle().layers ?? []).filter(layer => !isApplicationLayer(layer));
+    controller.basemapFeatureGroups = new Map(controller.basemapLayers.map(layer => (
+        [layer.id, basemapFeaturePreferences(layer)]
+    )));
     const firstBasemapLayer = controller.basemapLayers[0]?.id;
     if (!map.getSource(SOURCE_ID)) {
         // Restore MapLibre's previous subpixel tolerance. Keep the source's
@@ -941,11 +946,11 @@ function initializeControls(controller) {
             return;
         }
         const key = input.dataset.mapPreference;
+        if (!MAP_BOOLEAN_PREFERENCES.includes(key)) return;
         controller.preferences = writeMapPreferences(
             { ...controller.preferences, [key]: input.checked },
             controller.countryCodes,
         );
-        applyPreferences(controller);
     }, { signal: controller.abortController.signal });
     controller.homeButton.addEventListener("click", () => {
         const homeCountry = controller.countriesByCode.get(controller.preferences.homeCountry);
@@ -1133,6 +1138,13 @@ async function initializeMapPage() {
         }
     }, { signal: abortController.signal });
     document.addEventListener("world-journal:theme-change", () => updateLayerTheme(controller), { signal: abortController.signal });
+    document.addEventListener("world-journal:map-preferences-change", event => {
+        if (!controller.mapReady) return;
+        controller.preferences = { ...event.detail };
+        updateHomeControls(controller);
+        if (controller.suspended) updateControls(controller);
+        else applyPreferences(controller);
+    }, { signal: abortController.signal });
     window.addEventListener("popstate", () => {
         if (activeController !== controller || controller.suspended || location.pathname !== "/") {
             return;

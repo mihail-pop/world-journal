@@ -1,5 +1,6 @@
 import {
     clearSavedMapViewport,
+    MAP_BOOLEAN_PREFERENCES,
     readMapPreferences,
     writeMapPreferences,
 } from "../map_preferences.js";
@@ -59,17 +60,22 @@ async function initializeSettingsPage() {
         controller.select.value = preferences.homeCountry ?? "";
         controller.select.disabled = false;
         const labelChoices = page.querySelectorAll("[data-settings-map-preference]");
-        const labelKeys = new Set(["countryNames", "capitalNames", "allOtherText"]);
+        const preferenceKeys = new Set(MAP_BOOLEAN_PREFERENCES);
         for (const input of labelChoices) {
             input.checked = preferences[input.dataset.settingsMapPreference];
             input.disabled = false;
             input.addEventListener("change", () => {
                 const key = input.dataset.settingsMapPreference;
-                if (!labelKeys.has(key)) return;
+                if (!preferenceKeys.has(key)) return;
                 writeMapPreferences({ ...readMapPreferences(validCountryCodes), [key]: input.checked }, validCountryCodes);
-                setStatus(controller, "Map labels saved.");
+                setStatus(controller, "Map preferences saved.");
             }, { signal: controller.abortController.signal });
         }
+        document.addEventListener("world-journal:map-preferences-change", event => {
+            for (const input of labelChoices) {
+                input.checked = Boolean(event.detail[input.dataset.settingsMapPreference]);
+            }
+        }, { signal: controller.abortController.signal });
         setStatus(controller, "");
 
         controller.select.addEventListener("change", () => {

@@ -18,15 +18,18 @@ Source files and expected SHA-256 hashes are pinned in `tools/build_country_data
 Run:
 
 ```powershell
+.\.venv\Scripts\python.exe -m pip install -r tools\requirements-country-data.txt
 .\.venv\Scripts\python.exe tools\build_country_data.py
 ```
 
-The script uses only the Python standard library. It downloads the tagged SHP, DBF, and version files; verifies their hashes; parses the aligned 258 source records; simplifies polygon rings with a 0.015-degree tolerance; rounds coordinates to four decimal places; and writes:
+The script uses optional, pinned Shapely/NumPy maintainer dependencies for geometry generation. They are not app dependencies: running the server only needs the already bundled GeoJSON. Downloads and shapefile/metadata parsing still use the Python standard library. The generator downloads the tagged SHP, DBF, and version files, verifies their hashes, and parses the aligned 258 source records. It assembles the unsimplified country polygons before simplifying the entire polygon coverage using Shapely/GEOS's coverage-preserving Visvalingam–Whyatt algorithm. Its 0.03 tolerance is based on triangle area and is not equivalent to the old 0.015-degree distance tolerance. This setting keeps the browser asset near its previous point budget. Shared borders are simplified together, rather than independently for each country. Source coordinates are aligned on a 1e-8-degree grid and the simplified result is rounded on a common four-decimal grid. It writes:
 
 - `data/countries.json`
 - `static/data/countries.geojson`
 
-Generation fails unless it produces exactly 238 unique ISO-backed metadata and geometry records with an exact join.
+Generation fails unless it produces exactly 238 unique ISO-backed metadata and geometry records with an exact join. Before simplification, GEOS repairs invalid polygon structure already present in the pinned source: a self-crossing ring in Egypt and touching/overlapping same-country parts after merging Brazil/Kazakhstan records. It refuses to export source polygons still invalid after repair, mismatched source edges, invalid simplified/rounded coverage, missing countries, or removed island components. Country names, ISO identities, bounds, centroids, microstate hit targets and the source's territorial policy remain unchanged. This addresses gaps/overlaps introduced by independent simplification; it does not align the geometry to the separate external basemap or fill deliberately excluded territories.
+
+The regenerated browser asset contains 141,626 coordinate points and is 2,683,598 bytes, versus 148,304 points and 2,807,966 bytes previously (about 4.5% fewer points and 4.4% smaller). No simplification runs in the browser. Browser performance and visual acceptance remain manual checks, not measured results. After Ctrl+F5, inspect shared borders at several zoom levels (especially the locations where seams were visible), enclaves such as Lesotho, islands/microstates, hover/selection and presets. A separate provider's coastlines/boundaries can still differ, and deliberately excluded territories remain unfilled.
 
 ## ISO policy and exceptions
 
