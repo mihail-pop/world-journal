@@ -1,4 +1,5 @@
 import { countryFillExpression } from "./country_paint.js";
+import { adventurePalette, prepareAdventure, updateAdventure } from "./adventure_map.js";
 import { getCountryFeed, prioritizeCountryFeed, rememberCountryFeed } from "../news_cache.js";
 import { basemapFeaturePreferences } from "./basemap_features.js";
 import { factsSelectionChanged, initializeCountryFacts, loadCountryOverview } from "./map_facts.js";
@@ -76,26 +77,34 @@ function updateLayerTheme(controller) {
     if (!map || !controller.layersInstalled) {
         return;
     }
-    const background = getThemeColor("--bg-primary");
-    const countryFill = getThemeColor("--bg-quaternary");
-    const countryOutline = getThemeColor("--text-primary");
-    const hover = getThemeColor("--special-color");
-    const selected = getThemeColor("--text-secondary");
-    const theme = {fill: countryFill, accent: hover, opacity: controller.preferences.terrain ? .22 : .72};
+    const adventure = controller.preferences.mapType === "adventure";
+    if (adventure && !map.getLayer("world-journal-adventure-paper")) prepareAdventure(controller, addLayer);
+    const art = adventure ? adventurePalette() : null;
+    const background = art?.halo || getThemeColor("--bg-primary");
+    const countryFill = art?.land[0] || getThemeColor("--bg-quaternary");
+    const countryOutline = art?.border || getThemeColor("--text-primary");
+    const hover = art?.accent || getThemeColor("--special-color");
+    const selected = art?.label || getThemeColor("--text-secondary");
+    const theme = {fill: countryFill, accent: hover, opacity: adventure ? 1 : controller.preferences.terrain ? .22 : .72, adventure: art};
+    updateAdventure(controller, adventure, art || undefined);
     const key = JSON.stringify([theme, background, countryOutline, selected, getThemeColor("--bg-tertiary")]);
     if (controller.paintThemeKey === key) return;
     controller.paintThemeKey = key;
     controller.countryPaintTheme = theme;
     const hovered = ["boolean", ["feature-state", "hover"], false];
     const selectedState = ["boolean", ["feature-state", "selected"], false];
-    map.setPaintProperty(LAYERS.simpleBackground, "background-color", getThemeColor("--bg-tertiary"));
+    map.setPaintProperty(LAYERS.simpleBackground, "background-color", art?.sea || getThemeColor("--bg-tertiary"));
     map.setPaintProperty(LAYERS.outline, "line-color", ["case", selectedState, selected, hovered, hover, countryOutline]);
-    map.setPaintProperty(LAYERS.outline, "line-width", ["case", selectedState, 3.5, hovered, 2, .8]);
+    map.setPaintProperty(LAYERS.outline, "line-width", ["case", selectedState, 3.5, hovered, 2, adventure ? 1 : .8]);
     map.setPaintProperty(LAYERS.outline, "line-opacity", ["case", ["any", selectedState, hovered], 1, .62]);
     map.setPaintProperty(LAYERS.smallMarker, "circle-color", ["coalesce", ["feature-state", "presetColor"], hover]);
     map.setPaintProperty(LAYERS.smallMarker, "circle-stroke-color", selected);
     map.setPaintProperty(LAYERS.countryNames, "text-color", selected);
     map.setPaintProperty(LAYERS.countryNames, "text-halo-color", background);
+    map.setLayoutProperty(LAYERS.countryNames, "text-font", [adventure ? "Noto Sans Regular" : "Noto Sans Bold"]);
+    map.setLayoutProperty(LAYERS.countryNames, "text-transform", adventure ? "uppercase" : "none");
+    map.setLayoutProperty(LAYERS.countryNames, "text-letter-spacing", adventure ? .07 : 0);
+    map.setLayoutProperty(LAYERS.countryNames, "text-size", ["interpolate", ["linear"], ["zoom"], 1, adventure ? 10 : 9, 5, adventure ? 16 : 14]);
     map.setPaintProperty(LAYERS.capitalMarkers, "circle-color", selected);
     map.setPaintProperty(LAYERS.capitalMarkers, "circle-stroke-color", background);
     map.setPaintProperty(LAYERS.capitalNames, "text-color", selected);
@@ -628,6 +637,11 @@ function setLayerVisibility(map, layerId, visible) {
 }
 
 function updateControls(controller) {
+    const type = controller.page.querySelector("[data-map-type]");
+    type.disabled = false;
+    type.value = controller.preferences.mapType;
+    type.dispatchEvent(new Event("change"));
+    controller.page.dataset.mapType = controller.preferences.mapType;
     for (const input of controller.page.querySelectorAll("[data-map-preference]")) {
         const key = input.dataset.mapPreference;
         input.checked = Boolean(controller.preferences[key]);
@@ -667,7 +681,7 @@ function applyPreferences(controller) {
         isVisible(LAYERS.capitalMarkers) && isVisible(LAYERS.capitalNames),
     );
     controller.page.dataset.appliedSimpleMode = String(
-        !controller.preferences.terrain
+        controller.preferences.mapType === "plain"
             && isVisible(LAYERS.simpleBackground)
             && visibleBasemapLayers.length === 0,
     );
@@ -915,6 +929,9 @@ function createMap(controller, styleUrl) {
         saveViewport(map);
         scheduleHoverUpdate(controller);
     });
+    map.on("rotate", () => {
+        if (controller.layersInstalled && controller.preferences.mapType === "adventure") updateAdventure(controller, true);
+    });
     // Recheck a stationary pointer once newly loaded tiles have been rendered.
     map.on("idle", () => scheduleHoverUpdate(controller));
     map.on("mousemove", (event) => {
@@ -972,10 +989,15 @@ function initializeControls(controller) {
         controller.controlsPanel.hidden = !willOpen;
         controller.controlsToggle.setAttribute("aria-expanded", String(willOpen));
         if (willOpen) {
-            controller.controlsPanel.querySelector("input:not(:disabled)")?.focus();
+            controller.controlsPanel.querySelector(".select-trigger:not(:disabled), input:not(:disabled)")?.focus();
         }
     }, { signal: controller.abortController.signal });
     controller.toolbar.addEventListener("change", (event) => {
+        const type = event.target.closest("[data-map-type]");
+        if (type) {
+            if (["terrain", "plain", "adventure"].includes(type.value)) controller.preferences = writeMapPreferences({...controller.preferences, mapType: type.value}, controller.countryCodes);
+            return;
+        }
         const input = event.target.closest("[data-map-preference]");
         if (!input || input.disabled) {
             return;

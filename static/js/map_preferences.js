@@ -11,6 +11,7 @@ export const DEFAULT_MAP_PREFERENCES = Object.freeze({
     capitalNames: false,
     smallCountryMarkers: false,
     terrain: true,
+    mapType: "terrain",
     allOtherText: true,
     protectedAreas: false,
     vegetation: true,
@@ -59,6 +60,10 @@ function normalizePreferences(value, validCountryCodes) {
             normalized[key] = value[key];
         }
     }
+    normalized.mapType = ["terrain", "plain", "adventure"].includes(value.mapType)
+        ? value.mapType : normalized.terrain ? "terrain" : "plain";
+    // Keep the old terrain flag readable by the existing provider adapter.
+    normalized.terrain = normalized.mapType === "terrain";
     const homeCountry = typeof value.homeCountry === "string"
         ? value.homeCountry.trim().toUpperCase()
         : null;

@@ -9,11 +9,10 @@
                 <button class="theme-choice" type="button" data-theme-choice="brown" aria-pressed="false"><span class="theme-swatch theme-swatch-brown"><i></i><i></i><i></i></span>Brown</button>
             </div>
         </section>
-        <section class="settings-card"><h2>{% include 'core/partials/icon.html' with name='home' %}Home country</h2><div class="settings-field"><label class="visually-hidden" for="home-country">Home country</label><select id="home-country" data-home-country-select data-country-select disabled><option value="">World view</option></select><p class="field-note">Starting view for a fresh map.</p><p class="settings-status" data-settings-status role="status" aria-live="polite">Loading countries…</p></div></section>
+        <section class="settings-card"><h2>{% include 'core/partials/icon.html' with name='globe' %}Map</h2><div class="settings-field"><label for="settings-map-type">Map type</label><select id="settings-map-type" data-settings-map-type disabled><option value="terrain">Terrain</option><option value="plain">No terrain</option><option value="adventure">Adventure Mode</option></select></div><div class="settings-field"><label for="home-country">Home country</label><select id="home-country" data-home-country-select data-country-select disabled><option value="">World view</option></select><p class="settings-status" data-settings-status role="status" aria-live="polite">Loading countries…</p></div></section>
         <section class="settings-card"><h2>{% include 'core/partials/icon.html' with name='layers' %}Color presets</h2><p class="field-note">Group countries with your own colors.</p><a class="journal-button" href="{% url 'countries:preset_list' %}" hx-boost="true" hx-target="#app-content" hx-push-url="true">Manage presets{% include 'core/partials/icon.html' with name='edit' %}</a></section>
         <section class="settings-card settings-card-full settings-map-labels">
             <h2>General map labels</h2>
-            <p class="field-note">Shown on either map.</p>
             <div class="settings-toggle-list">
                 <label><span>Country names</span><input type="checkbox" disabled data-settings-map-preference="countryNames"></label>
                 <label><span>Capital names</span><input type="checkbox" disabled data-settings-map-preference="capitalNames"></label>
@@ -22,9 +21,6 @@
         </section>
         <section class="settings-card settings-card-full settings-terrain-card" aria-labelledby="terrain-settings-title">
             <h2 id="terrain-settings-title">Terrain map</h2>
-            <div class="settings-toggle-list settings-toggle-list-stack">
-                <label><span>Show terrain map</span><input type="checkbox" disabled data-settings-map-preference="terrain"></label>
-            </div>
             <div class="settings-terrain-groups">
                 <fieldset>
                     <legend>Landscape</legend>

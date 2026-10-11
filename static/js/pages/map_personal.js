@@ -85,8 +85,11 @@ export function applyPersonalLayers(controller) {
         const validated = COLOR.test(color) ? color : null;
         const previous = controller.appliedColors.get(code) ?? null;
         if (previous === validated && !themeChanged) continue;
-        if (!fills.has(validated)) fills.set(validated, countryFillColors(controller.countryPaintTheme, validated));
-        map.setFeatureState({source: "world-journal-countries", id: code}, fills.get(validated));
+        const theme = controller.countryPaintTheme;
+        const base = theme.adventure?.land[controller.adventureTopology.colors.get(code) ?? 0] || theme.fill;
+        const fillKey = `${base}:${validated}`;
+        if (!fills.has(fillKey)) fills.set(fillKey, countryFillColors({...theme, fill: base}, validated));
+        map.setFeatureState({source: "world-journal-countries", id: code}, fills.get(fillKey));
         if (previous !== validated && map.getSource("world-journal-country-centroids")) {
             map.setFeatureState({source: "world-journal-country-centroids", id: code}, {presetColor: validated});
         }

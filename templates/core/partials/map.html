@@ -24,6 +24,8 @@
     <h1 id="map-title" class="visually-hidden">Map</h1>
     <div class="map-workspace">
         <div id="world-map" class="world-map" role="application" aria-label="Interactive world map" tabindex="0"></div>
+        <div class="adventure-map-frame" aria-hidden="true"></div>
+        <canvas class="adventure-map-compass" data-adventure-compass width="256" height="256" aria-hidden="true"></canvas>
         <div class="map-toolbar" aria-label="Map controls">
             <div class="map-toolbar-actions">
                 <button type="button" class="map-command" data-home-view disabled>{% include 'core/partials/icon.html' with name='home' %} Home</button>
@@ -39,7 +41,7 @@
             <div id="map-display-controls" class="map-display-controls" data-map-controls-panel hidden>
                 <fieldset>
                     <legend>Map display</legend>
-                    <label><input type="checkbox" data-map-preference="terrain"> Terrain</label>
+                    <label for="map-type">Map type</label><select id="map-type" data-map-type disabled><option value="terrain">Terrain</option><option value="plain">No terrain</option><option value="adventure">Adventure Mode</option></select>
                     <label><input type="checkbox" data-map-preference="countryNames"> Country names</label>
                     <label><input type="checkbox" data-map-preference="capitalNames"> Capital names</label>
                     <a class="map-settings-link" href="{% url 'core:settings' %}" hx-boost="true" hx-target="#app-content" hx-push-url="true">More map options {% include 'core/partials/icon.html' with name='settings' %}</a>

@@ -57,8 +57,18 @@ async function initializeSettingsPage() {
         }
         controller.select.append(fragment);
         const preferences = readMapPreferences(validCountryCodes);
+        controller.preferences = preferences;
         controller.select.value = preferences.homeCountry ?? "";
         controller.select.disabled = false;
+        const mapType = page.querySelector("[data-settings-map-type]");
+        mapType.value = preferences.mapType;
+        mapType.disabled = false;
+        mapType.dispatchEvent(new Event("change", {bubbles: true}));
+        mapType.addEventListener("change", () => {
+            if (mapType.value === controller.preferences.mapType) return;
+            writeMapPreferences({...controller.preferences, mapType: mapType.value}, validCountryCodes);
+            setStatus(controller, "Map type saved.");
+        }, {signal: controller.abortController.signal});
         const labelChoices = page.querySelectorAll("[data-settings-map-preference]");
         const preferenceKeys = new Set(MAP_BOOLEAN_PREFERENCES);
         for (const input of labelChoices) {
@@ -72,6 +82,9 @@ async function initializeSettingsPage() {
             }, { signal: controller.abortController.signal });
         }
         document.addEventListener("world-journal:map-preferences-change", event => {
+            controller.preferences = event.detail;
+            mapType.value = event.detail.mapType;
+            mapType.dispatchEvent(new Event("change"));
             for (const input of labelChoices) {
                 input.checked = Boolean(event.detail[input.dataset.settingsMapPreference]);
             }
