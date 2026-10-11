@@ -10,6 +10,8 @@
     data-country-notes-url-template="{% url 'countries:notes' iso2='COUNTRY_CODE' %}"
     data-preset-activate-url-template="{% url 'countries:preset_activate' pk='00000000-0000-0000-0000-000000000000' %}"
     data-preset-clear-url="{% url 'countries:preset_clear' %}"
+    data-preset-data-url-template="{% url 'countries:preset_data' pk='00000000-0000-0000-0000-000000000000' %}"
+    data-preset-data-new-url="{% url 'countries:preset_data_new' %}"
     data-country-metadata-url="{% url 'countries:metadata' %}"
     data-country-news-url-template="{% url 'news:country_news' iso2='COUNTRY_CODE' %}"
     data-country-videos-url-template="{% url 'news:country_videos' iso2='COUNTRY_CODE' %}"
@@ -47,6 +49,7 @@
                     <label for="map-favorites">Favorite country</label><select id="map-favorites" data-favorite-jump data-country-select disabled><option value="">No favorites yet</option></select>
                     <label for="map-active-preset">Color preset</label><select id="map-active-preset" data-active-preset disabled><option value="">No preset</option></select>
                     <a href="{% url 'countries:preset_list' %}" hx-boost="true" hx-target="#app-content" hx-push-url="true">Manage color presets</a>
+                    <a href="{% url 'core:map' %}?edit_preset=new" hx-boost="true" hx-target="#app-content" hx-push-url="true">Create preset on map</a>
                     <p class="field-note" data-personal-map-status role="status">Loading saved map data…</p>
                     <button class="map-command" type="button" data-personal-map-retry hidden>Retry saved map data</button>
                 </fieldset>
@@ -65,13 +68,12 @@
                     <img data-country-flag alt="" referrerpolicy="no-referrer" hidden>
                     <span data-country-flag-fallback></span>
                 </span>
-                <h2 id="country-name" data-country-name></h2>
+                <h2 id="country-name"><a data-country-name data-country-journal-link href="{% url 'core:journal' %}" hx-boost="true" hx-target="#app-content" hx-push-url="true" title="View saved entries for this country"></a></h2>
             </div>
             <div class="country-personal-actions"><button class="country-favorite-button" type="button" data-country-favorite aria-pressed="false" aria-label="Add country to favorites" title="Add to favorites" disabled>{% include 'core/partials/icon.html' with name='heart' %}</button></div><p class="field-note country-personal-status" data-country-favorite-status role="status"></p>
             <div class="country-identity"><span data-country-region></span><span data-country-subregion></span></div>
             <section class="country-news" aria-labelledby="country-news-title">
                 <h3 id="country-news-title" class="visually-hidden">Country details</h3>
-                <p class="country-journal-link"><a data-country-journal-link href="{% url 'core:journal' %}" hx-boost="true" hx-target="#app-content" hx-push-url="true">{% include 'core/partials/icon.html' with name='book' %} Saved entries</a></p>
                 <div class="country-content-tabs" role="tablist" aria-label="Country details">
                     <button type="button" role="tab" id="country-overview-tab" aria-controls="country-overview-panel" aria-selected="false" tabindex="-1" data-country-section="overview">Overview</button>
                     <button type="button" role="tab" id="country-articles-tab" aria-controls="country-articles-panel" aria-selected="true" tabindex="0" data-country-section="articles">Articles</button>
@@ -89,6 +91,24 @@
                 </div>
                 <div id="country-notes-panel" role="tabpanel" aria-labelledby="country-notes-tab" data-country-section-panel="notes" hidden><div data-country-notes-content aria-live="polite" aria-busy="false"></div></div>
             </section>
+        </aside>
+
+        <aside class="country-drawer preset-map-drawer" data-preset-map-drawer aria-labelledby="preset-map-title" tabindex="-1" hidden>
+            <button class="country-drawer-close" type="button" data-preset-map-exit aria-label="Return to ordinary map">{% include 'core/partials/icon.html' with name='close' %}</button>
+            <h2 id="preset-map-title">Color preset</h2>
+            <p class="field-note">Click countries to add them to the selected color. Click a colored country to switch to its group.</p>
+            <p data-preset-map-status role="status" aria-live="polite"></p>
+            <button type="button" class="journal-button" data-preset-map-retry hidden>Retry loading</button>
+            <form data-preset-map-form>
+                <fieldset data-preset-map-fields disabled>
+                    <div class="journal-field"><label for="preset-map-name">Name</label><input id="preset-map-name" name="name" maxlength="160" required></div>
+                    <details class="preset-map-options"><summary>Preset options</summary><div class="journal-field"><label for="preset-map-description">Description</label><textarea id="preset-map-description" name="description" rows="2"></textarea></div><div class="journal-field"><label for="preset-map-default">Color for other countries</label><input id="preset-map-default" name="default_color" placeholder="No default color" pattern="#[0-9a-fA-F]{6}" maxlength="7"></div></details>
+                    <div class="preset-map-groups" data-preset-map-groups></div>
+                    <button class="journal-button" type="button" data-preset-map-add>{% include 'core/partials/icon.html' with name='plus' %} Add color</button>
+                    <div class="journal-field preset-map-countries"><label for="preset-map-countries">Countries in selected color</label><select id="preset-map-countries" data-preset-map-countries data-country-select multiple></select><p class="field-note">Countries in other groups are disabled. Remove a country from its group before moving it.</p></div>
+                    <div class="journal-save-bar"><button type="submit" class="journal-button is-primary">Save &amp; use colors</button><button type="button" class="journal-button" data-preset-map-discard>Discard changes</button></div>
+                </fieldset>
+            </form>
         </aside>
 
         <noscript>

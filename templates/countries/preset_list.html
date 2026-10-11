@@ -6,6 +6,6 @@
         <h2>{{ preset.name }}{% if preset.pk == active_preset_id %} <span class="journal-badge">· Active</span>{% endif %}</h2>
         {% if preset.description %}<p>{{ preset.description|linebreaksbr }}</p>{% endif %}
         <div class="preset-swatches">{% if preset.default_color %}<span><i style="--preset-swatch: {{ preset.default_color }}"></i>Default</span>{% endif %}{% for row in preset.country_colors.all %}<span><i style="--preset-swatch: {{ row.color }}"></i>{{ row.country.name }}</span>{% endfor %}</div>
-        <div class="journal-actions"><form method="post" action="{% url 'countries:preset_activate' preset.pk %}">{% csrf_token %}<button class="journal-button" type="submit">Activate</button></form><a href="{% url 'countries:preset_edit' preset.pk %}">Edit</a><a href="{% url 'countries:preset_duplicate' preset.pk %}">Duplicate</a><a href="{% url 'countries:preset_delete' preset.pk %}">Delete</a></div>
+        <div class="journal-actions"><form method="post" action="{% url 'countries:preset_activate' preset.pk %}">{% csrf_token %}<button class="journal-button" type="submit">Activate</button></form><a href="{% url 'countries:preset_edit' preset.pk %}">Edit</a><a href="{% url 'core:map' %}?edit_preset={{ preset.pk }}">Select on map</a><a href="{% url 'countries:preset_duplicate' preset.pk %}">Duplicate</a><a href="{% url 'countries:preset_delete' preset.pk %}">Delete</a></div>
     </article>{% empty %}<p class="empty-state">No presets yet. Create one and assign colors to the countries you want to group.</p>{% endfor %}
 </section>

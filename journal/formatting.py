@@ -1,11 +1,9 @@
 import json
-import re
 import unicodedata
 from functools import lru_cache
 from urllib.parse import urlsplit
 
 from django.conf import settings
-from django.utils.html import escape, format_html
 from django.utils.safestring import mark_safe
 from markdown_it import MarkdownIt
 
@@ -73,24 +71,11 @@ def markdown_renderer():
 
 
 def render_body(body, body_format="markdown"):
-    if body_format == "plain":
-        parts = []
-        position = 0
-        for match in re.finditer(r"\[\[([^\]\n]+)\]\]", body):
-            parts.append(str(escape(body[position:match.start()])))
-            label = match.group(1)
-            code = country_aliases().get(normalize_name(label))
-            parts.append(str(format_html('<a href="/?country={}">{}</a>', code, label)) if code else str(escape(match.group(0))))
-            position = match.end()
-        parts.append(str(escape(body[position:])))
-        return format_html('<div class="journal-plain-text">{}</div>', mark_safe("".join(parts)))
     # Raw HTML and remote images are disabled; only parser-generated HTML is trusted.
     return mark_safe(markdown_renderer().render(body))
 
 
 def referenced_countries(body, body_format):
-    if body_format == "plain":
-        return {code for name in re.findall(r"\[\[([^\]\n]+)\]\]", body) if (code := country_aliases().get(normalize_name(name)))}
     env = {}
     markdown_renderer().parse(body, env)
     return env.get("country_codes", set())

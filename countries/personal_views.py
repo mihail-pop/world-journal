@@ -1,5 +1,7 @@
+import json
+
 from django.db import transaction
-from django.http import JsonResponse
+from django.http import JsonResponse, QueryDict
 from django.shortcuts import get_object_or_404, render
 from django.urls import reverse
 from django.views.decorators.cache import never_cache
@@ -7,10 +9,11 @@ from django.views.decorators.http import require_http_methods
 
 from core.views import render_page
 from journal.formatting import render_body
+from journal.forms import default_collection
 from journal.models import Entry
 from journal.views import ConfirmationForm, navigate
 
-from .forms import CountryProfileForm, DuplicatePresetForm, PresetForm, PresetFormSet
+from .forms import ColorGroups, CountryProfileForm, DuplicatePresetForm, PresetForm
 from .models import Country, CountryFavorite, CountryProfile, MapPersonalState, MapPreset, PresetCountry
 
 
@@ -57,27 +60,81 @@ def preset_list(request):
     return page(request, "countries/preset_list.html", {"presets": MapPreset.objects.prefetch_related("country_colors__country"), "active_preset_id": state.active_preset_id if state else None})
 
 
+def preset_groups(preset):
+    grouped = {}
+    if not preset._state.adding:
+        for code, color in preset.country_colors.values_list("country_id", "color"):
+            grouped.setdefault(color.lower(), []).append(code)
+    return [{"color": color, "countries": codes} for color, codes in grouped.items()]
+
+
+def save_preset(form, groups):
+    preset = form.save()
+    preset.country_colors.all().delete()
+    PresetCountry.objects.bulk_create([PresetCountry(preset=preset, country_id=code, color=color) for code, color in groups.assignments().items()])
+    return preset
+
+
 @require_http_methods(["GET", "POST"])
 def preset_edit(request, pk=None):
     preset = get_object_or_404(MapPreset, pk=pk) if pk else MapPreset()
     form = PresetForm(request.POST if request.method == "POST" else None, instance=preset)
     rows = request.POST.copy() if request.method == "POST" else None
-    adding = request.method == "POST" and request.POST.get("action") == "add_country"
+    adding = request.method == "POST" and request.POST.get("action") == "add_group"
     if adding:
         try:
             rows["colors-TOTAL_FORMS"] = str(min(238, max(0, int(rows.get("colors-TOTAL_FORMS", "0"))) + 1))
         except ValueError:
             pass
-    colors = PresetFormSet(rows, instance=preset, prefix="colors")
+    colors = ColorGroups(rows, initial=preset_groups(preset), prefix="colors")
     if request.method == "POST" and not adding:
         valid, colors_valid = form.is_valid(), colors.is_valid()
         if valid and colors_valid:
             with transaction.atomic():
-                preset = form.save()
-                colors.instance = preset
-                colors.save()
-            return navigate(request, reverse("countries:preset_list"))
+                preset = save_preset(form, colors)
+            url = reverse("core:map") + f"?edit_preset={preset.pk}" if request.POST.get("action") == "edit_map" else reverse("countries:preset_list")
+            return navigate(request, url)
     return page(request, "countries/preset_edit.html", {"form": form, "color_formset": colors, "preset": preset, "is_new": pk is None})
+
+
+@never_cache
+@require_http_methods(["GET", "POST"])
+def preset_data(request, pk=None):
+    preset = get_object_or_404(MapPreset, pk=pk) if pk else MapPreset()
+    if request.method == "POST":
+        try:
+            payload = json.loads(request.body)
+            if not isinstance(payload, dict) or not isinstance(payload.get("groups"), list) or len(payload["groups"]) > 238:
+                raise ValueError
+            if not all(isinstance(payload.get(key, ""), str) for key in ("name", "description", "default_color", "updated_at")):
+                raise ValueError
+            rows = QueryDict(mutable=True)
+            rows.update({"name": payload.get("name", ""), "description": payload.get("description", ""), "default_color": payload.get("default_color", ""), "colors-TOTAL_FORMS": str(len(payload["groups"])), "colors-INITIAL_FORMS": "0"})
+            for index, group in enumerate(payload["groups"]):
+                if not isinstance(group, dict) or not isinstance(group.get("countries"), list):
+                    raise ValueError
+                if not isinstance(group.get("color", ""), str) or len(group["countries"]) > 238 or not all(isinstance(code, str) for code in group["countries"]):
+                    raise ValueError
+                rows[f"colors-{index}-color"] = group.get("color", "")
+                rows.setlist(f"colors-{index}-countries", group["countries"])
+        except (ValueError, TypeError):
+            return JsonResponse({"error": "The color groups could not be read. Reload the editor and try again."}, status=400)
+        form = PresetForm(rows, instance=preset)
+        groups = ColorGroups(rows, prefix="colors")
+        valid, groups_valid = form.is_valid(), groups.is_valid()
+        if not valid or not groups_valid:
+            errors = [str(error) for values in form.errors.values() for error in values]
+            errors.extend(str(error) for error in groups.non_form_errors())
+            errors.extend(str(error) for fields in groups.errors for values in fields.values() for error in values)
+            return JsonResponse({"error": " ".join(errors)}, status=400)
+        with transaction.atomic():
+            # A second editor must not overwrite a newer saved version silently.
+            current_stamp = MapPreset.objects.filter(pk=pk).values_list("updated_at", flat=True).first() if pk else None
+            if pk and (not current_stamp or current_stamp.isoformat() != payload.get("updated_at")):
+                return JsonResponse({"error": "This preset changed since you opened it. Your draft is kept; reopen the preset to load the saved version."}, status=409)
+            preset = save_preset(form, groups)
+            MapPersonalState.objects.update_or_create(pk=1, defaults={"active_preset": preset})
+    return JsonResponse({"id": str(preset.pk) if not preset._state.adding else "new", "name": preset.name, "description": preset.description, "default_color": preset.default_color, "updated_at": preset.updated_at.isoformat() if preset.updated_at else "", "groups": preset_groups(preset)})
 
 
 @require_http_methods(["POST"])
@@ -148,7 +205,7 @@ def profile_create(request, iso2):
     with transaction.atomic():
         profile, _created = CountryProfile.objects.get_or_create(country=country)
         if not profile.entry_id:
-            entry = Entry.objects.create(title=f"{country.name}: overview")
+            entry = Entry.objects.create(title=f"{country.name}: overview", collection=default_collection("note"))
             entry.countries.add(country)
             profile.entry = entry
             profile.save(update_fields=["entry", "updated_at"])

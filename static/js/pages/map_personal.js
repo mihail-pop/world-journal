@@ -14,14 +14,16 @@ function validColors(snapshot) {
 export function applyPersonalLayers(controller) {
     const {map, personal} = controller;
     if (!map || !personal || !controller.layersInstalled) return;
-    const colors = Object.entries(personal.colors).flat();
-    const fallback = COLOR.test(personal.defaultColor) ? personal.defaultColor : "rgba(0,0,0,0)";
+    const preview = controller.presetEditor?.active ? controller.presetEditor.preview : null;
+    const palette = preview || personal;
+    const colors = Object.entries(palette.colors).flat();
+    const fallback = COLOR.test(palette.defaultColor) ? palette.defaultColor : "rgba(0,0,0,0)";
     if (map.getLayer(PRESET_LAYER)) {
         map.setPaintProperty(PRESET_LAYER, "fill-color", colors.length ? ["match", ["get", "iso_a2"], ...colors, fallback] : fallback);
     }
     if (map.getLayer("world-journal-country-small-marker")) {
         const accent = getComputedStyle(document.documentElement).getPropertyValue("--special-color").trim();
-        const markerFallback = COLOR.test(personal.defaultColor) ? personal.defaultColor : accent;
+        const markerFallback = COLOR.test(palette.defaultColor) ? palette.defaultColor : accent;
         map.setPaintProperty("world-journal-country-small-marker", "circle-color", colors.length ? ["match", ["get", "iso_a2"], ...colors, markerFallback] : markerFallback);
     }
     if (map.getLayer(FAVORITE_LAYER)) {
@@ -42,7 +44,7 @@ function updatePersonalControls(controller) {
     select.replaceChildren(new Option("No preset", ""));
     for (const preset of state.presets) select.add(new Option(preset.name, preset.id));
     select.value = state.activePreset || "";
-    select.disabled = !state.ready || state.activating;
+    select.disabled = !state.ready || state.activating || Boolean(controller.presetEditor?.active);
     const button = controller.page.querySelector("[data-country-favorite]");
     const favored = state.favorites.has(controller.selectedCode);
     button.setAttribute("aria-label", favored ? "Remove country from favorites" : "Add country to favorites");
@@ -205,7 +207,7 @@ export function registerPresetEditor() {
     if (editorRegistered) return;
     editorRegistered = true;
     document.addEventListener("click", event => {
-        const button = event.target.closest("[data-preset-add-country]");
+        const button = event.target.closest("[data-preset-add-color]");
         if (!button) return;
         event.preventDefault();
         const editor = button.closest("[data-preset-editor]");
@@ -215,6 +217,9 @@ export function registerPresetEditor() {
         const rows = editor.querySelector("[data-preset-rows]");
         rows.insertAdjacentHTML("beforeend", editor.querySelector("[data-preset-row-template]").innerHTML.replaceAll("__prefix__", String(index)));
         total.value = index + 1;
+        const used = new Set([...rows.querySelectorAll('input[type="color"]')].slice(0, -1).map(input => input.value));
+        const nextColor = ["#4a90e2", "#dd6858", "#4aab83", "#a57bd5", "#d5ac47", "#52abb8", "#cf78a3"].find(color => !used.has(color));
+        if (nextColor) rows.lastElementChild.querySelector('input[type="color"]').value = nextColor;
         rows.lastElementChild.querySelector("select")?.focus();
     });
 }

@@ -9,7 +9,7 @@ from .models import Attachment, Collection, Entry, EntrySection, EntryType
 from .validators import MAX_TIMESTAMP, parse_youtube_reference
 
 
-CONTENT_FIELDS = ("title", "entry_type", "body", "body_format", "source_url", "source_name", "source_published_at", "youtube_start_seconds")
+CONTENT_FIELDS = ("title", "entry_type", "body", "source_url", "source_name", "source_published_at", "youtube_start_seconds")
 
 
 class ContentForm(forms.ModelForm):
@@ -30,6 +30,8 @@ class ContentForm(forms.ModelForm):
 
     def clean(self):
         cleaned = super().clean()
+        # Keep the legacy database/export field, but every editor uses Markdown.
+        self.instance.body_format = "markdown"
         reference = cleaned.get("youtube_reference", "").strip()
         if not reference and cleaned.get("entry_type") == EntryType.YOUTUBE:
             reference = cleaned.get("source_url", "")
@@ -48,6 +50,11 @@ class ContentForm(forms.ModelForm):
 
 
 class EntryForm(ContentForm):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["collection"].empty_label = "Automatic collection"
+        self.fields["collection"].help_text = "Articles, Videos or Notes, unless you choose another collection."
+
     class Meta:
         model = Entry
         fields = (*CONTENT_FIELDS, "collection", "event_date", "countries", "is_favorite", "is_pinned")
@@ -55,6 +62,21 @@ class EntryForm(ContentForm):
             "event_date": forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
             "countries": forms.SelectMultiple(attrs={"size": 8, "data-country-select": ""}),
         }
+
+    def save(self, commit=True):
+        entry = super().save(commit=False)
+        if not entry.collection_id:
+            entry.collection = default_collection(entry.entry_type)
+        if commit:
+            entry.save()
+            self.save_m2m()
+        return entry
+
+
+def default_collection(entry_type):
+    name = "Videos" if entry_type == EntryType.YOUTUBE else "Articles" if entry_type in {EntryType.ARTICLE, EntryType.BOOKMARK} else "Notes"
+    collection, _created = Collection.objects.get_or_create(name=name)
+    return collection
 
 
 class SectionForm(ContentForm):

@@ -1,13 +1,6 @@
 let registered = false;
 const pendingPreviews = new Set();
 
-function updateWritingControls(scope) {
-    const format = scope.querySelector('select[name$="body_format"]');
-    for (const button of scope.querySelectorAll("[data-journal-format]")) {
-        button.hidden = format?.value !== "markdown";
-    }
-}
-
 function updatePositions(editor) {
     let position = 0;
     for (const card of editor.querySelectorAll("[data-journal-section]")) {
@@ -40,15 +33,12 @@ function addSection(editor) {
     container.insertAdjacentHTML("beforeend", template.innerHTML.replaceAll("__prefix__", String(index)));
     total.value = index + 1;
     updatePositions(editor);
-    updateWritingControls(container.lastElementChild);
     container.lastElementChild.querySelector('input[name$="-title"]')?.focus();
 }
 
 function formatBody(button) {
     const scope = button.closest("[data-content-fields]");
     const body = scope.querySelector("[data-journal-body]");
-    const format = scope.querySelector('select[name$="body_format"]');
-    if (format.value !== "markdown") return;
     const start = body.selectionStart;
     const end = body.selectionEnd;
     const selected = body.value.slice(start, end) || "text";
@@ -68,7 +58,7 @@ async function previewBody(button) {
     button.disabled = true;
     output.hidden = false;
     output.textContent = "Preparing preview…";
-    const params = new URLSearchParams({body: scope.querySelector("[data-journal-body]").value, body_format: scope.querySelector('select[name$="body_format"]').value});
+    const params = new URLSearchParams({body: scope.querySelector("[data-journal-body]").value, body_format: "markdown"});
     try {
         const response = await fetch(form.dataset.previewUrl, {method: "POST", headers: {"X-CSRFToken": form.querySelector('[name="csrfmiddlewaretoken"]').value}, body: params, signal: abort.signal});
         if (!response.ok) throw new Error("Preview unavailable");
@@ -129,10 +119,6 @@ export function registerJournalPage() {
         if (caption) caption.textContent = event.target.value.trim() || "Untitled section";
     });
     document.addEventListener("change", event => {
-        if (event.target.matches('select[name$="body_format"]')) {
-            const scope = event.target.closest("[data-content-fields]");
-            if (scope) updateWritingControls(scope);
-        }
         if (event.target.matches('[name$="-DELETE"]')) {
             const editor = event.target.closest("[data-journal-editor]");
             if (editor) updatePositions(editor);
@@ -145,7 +131,6 @@ export function registerJournalPage() {
         const editor = document.querySelector("[data-journal-editor]");
         if (editor) {
             updatePositions(editor);
-            for (const scope of editor.querySelectorAll("[data-content-fields]")) updateWritingControls(scope);
         }
         const collections = document.querySelector(".journal-collections");
         if (collections && !collections.dataset.initialized) {

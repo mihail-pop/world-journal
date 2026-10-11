@@ -16,6 +16,13 @@ function icon(name) {
 class SelectControl {
     constructor(select) {
         this.select = select;
+        // HTMX history snapshots can restore generated markup without its JS
+        // controller. Rebuild around the native field instead of nesting menus.
+        const restoredWrapper = select.closest(".select-control");
+        if (restoredWrapper) {
+            restoredWrapper.before(select);
+            restoredWrapper.remove();
+        }
         const hadFocus = document.activeElement === select;
         this.country = select.hasAttribute("data-country-select")
             || [...select.options].filter(option => /^[A-Z]{2}$/.test(option.value)).length > 5;
@@ -24,6 +31,7 @@ class SelectControl {
         select.before(this.wrapper);
         this.wrapper.append(select);
         select.classList.add("select-native");
+        select.style.setProperty("display", "none", "important");
         select.tabIndex = -1;
         select.setAttribute("aria-hidden", "true");
         const id = `custom-select-${++nextId}`;
@@ -279,6 +287,7 @@ export function registerUiControls() {
         }
         for (const root of added) if (root.isConnected) enhance(root);
         for (const select of changed) if (select.isConnected) controls.get(select).sync();
+        if (activeControl && !activeControl.wrapper.isConnected) activeControl.close();
     });
     observer.observe(content, {childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ["disabled", "selected", "label"]});
     document.addEventListener("world-journal:page-ready", () => enhance(content));

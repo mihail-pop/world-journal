@@ -6,7 +6,7 @@ from django.core.exceptions import ValidationError
 from django.core.paginator import Paginator
 from django.db import transaction
 from django.db.models import Count
-from django.http import HttpResponse
+from django.http import HttpResponse, QueryDict
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse
 from django.utils.dateparse import parse_datetime
@@ -19,7 +19,7 @@ from .formatting import referenced_countries, render_body
 from .forms import AttachmentForm, CollectionForm, EntryForm, SectionFormSet
 from .models import Attachment, Collection, Entry, EntryType
 from .query import filtered_entries
-from .statistics import filter_params, statistics_context
+from .statistics import statistics_context
 
 
 class ConfirmationForm(forms.Form):
@@ -54,18 +54,15 @@ def index(request):
         "selected_countries": [code.upper() for code in request.GET.getlist("country")],
         "pagination_query": params.urlencode(),
         "total_entries": Entry.objects.count(),
-        "statistics_query": filter_params(request.GET).urlencode(),
     })
 
 
 @require_http_methods(["GET"])
 def statistics(request):
-    context = statistics_context(request.GET)
-    context.update({
-        "collections": Collection.objects.all(), "countries": Country.objects.all(),
-        "entry_types": EntryType.choices, "filters": filter_params(request.GET),
-        "selected_countries": [code.upper() for code in request.GET.getlist("country")],
-    })
+    params = QueryDict(mutable=True)
+    params.update({"date_basis": "created", "period": "month", "stats_page": request.GET.get("stats_page", "1")})
+    context = statistics_context(params)
+    context["summary"][0]["label"] = "All entries"
     return page(request, "journal/statistics.html", context)
 
 

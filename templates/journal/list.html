@@ -1,7 +1,8 @@
+{% load journal_tags %}
 <section class="page page-standard journal-page" data-page="journal" aria-labelledby="journal-title" hx-boost="true" hx-target="#app-content" hx-push-url="true">
     <div class="journal-page-heading">
         <h1 id="journal-title">Journal</h1>
-        <div class="journal-actions"><a class="journal-button" href="{% url 'journal:statistics' %}{% if statistics_query %}?{{ statistics_query }}{% endif %}">{% include 'core/partials/icon.html' with name='chart' %} Statistics</a><a class="journal-button is-primary" href="{% url 'journal:new' %}{% if filters.collection and filters.collection != 'unfiled' %}?collection={{ filters.collection|urlencode }}{% endif %}">{% include 'core/partials/icon.html' with name='plus' %} New entry</a></div>
+        <div class="journal-actions"><a class="journal-button" href="{% url 'journal:statistics' %}">{% include 'core/partials/icon.html' with name='chart' %} Statistics</a><a class="journal-button is-primary" href="{% url 'journal:new' %}{% if filters.collection and filters.collection != 'unfiled' %}?collection={{ filters.collection|urlencode }}{% endif %}">{% include 'core/partials/icon.html' with name='plus' %} New entry</a></div>
     </div>
     <div class="journal-layout">
         <aside class="journal-sidebar" aria-label="Journal collections">
@@ -27,7 +28,7 @@
                     <article class="journal-entry-card">
                         <div class="journal-entry-meta"><span class="journal-badge">{{ entry.get_entry_type_display }}</span>{% if entry.is_pinned %}<span>Pinned</span>{% endif %}{% if entry.is_favorite %}<span>Favorite</span>{% endif %}{% if entry.collection %}<span>{{ entry.collection.name }}</span>{% endif %}</div>
                         <h2><a href="{{ entry.get_absolute_url }}">{{ entry.title }}</a></h2>
-                        {% if entry.excerpt %}<p class="journal-excerpt">{{ entry.excerpt|truncatechars:250 }}</p>{% endif %}
+                        {% if entry.excerpt %}<div class="journal-excerpt journal-rendered">{{ entry.excerpt|journal_markdown }}</div>{% endif %}
                         <div class="journal-entry-meta">{% if entry.event_date %}<span>Event: <time datetime="{{ entry.event_date|date:'Y-m-d' }}">{{ entry.event_date|date:'M j, Y' }}</time></span>{% endif %}<span>Saved {{ entry.created_at|date:'M j, Y' }}</span>{% if entry.source_name %}<span>{{ entry.source_name }}</span>{% endif %}</div>
                         <div class="journal-country-tags">{% for country in entry.countries.all %}<a href="{% url 'core:journal' %}?country={{ country.pk }}">{{ country.name }}</a>{% endfor %}</div>
                     </article>

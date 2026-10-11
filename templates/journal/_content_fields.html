@@ -7,7 +7,7 @@
         {% include 'journal/_field.html' with field=content_form.body %}
         <div class="journal-rendered journal-preview" data-journal-preview-output hidden></div>
     </div>
-    <details class="journal-writing-options" {% if content_form.entry_type.errors or content_form.body_format.errors %}open{% endif %}><summary>Writing options</summary><div class="journal-form-grid">{% include 'journal/_field.html' with field=content_form.entry_type %}{% include 'journal/_field.html' with field=content_form.body_format %}</div></details>
+    <details class="journal-writing-options" {% if content_form.entry_type.errors %}open{% endif %}><summary>Entry type</summary>{% include 'journal/_field.html' with field=content_form.entry_type %}</details>
     <details class="journal-reference-fields" {% if content_form.source_url.value or content_form.youtube_reference.value or content_form.source_name.value or content_form.source_published_at.value or content_form.youtube_start_seconds.value or content_form.source_url.errors or content_form.youtube_reference.errors or content_form.source_name.errors or content_form.source_published_at.errors or content_form.youtube_start_seconds.errors %}open{% endif %}>
         <summary>{% include 'core/partials/icon.html' with name='bookmark' %} Source &amp; video reference</summary>
         <div class="journal-form-grid">{% include 'journal/_field.html' with field=content_form.source_url wide=True %}{% include 'journal/_field.html' with field=content_form.source_name %}{% include 'journal/_field.html' with field=content_form.source_published_at %}{% include 'journal/_field.html' with field=content_form.youtube_reference %}{% include 'journal/_field.html' with field=content_form.youtube_start_seconds %}</div>

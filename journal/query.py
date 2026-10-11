@@ -10,7 +10,7 @@ from .models import Entry, EntryType
 def filtered_entries(params, *, for_display=True):
     entries = Entry.objects.all()
     if for_display:
-        entries = entries.select_related("collection").prefetch_related("countries").annotate(excerpt=Substr("body", 1, 251)).defer("body")
+        entries = entries.select_related("collection").prefetch_related("countries").annotate(excerpt=Substr("body", 1, 1600)).defer("body")
     query = params.get("q", "").strip()[:300]
     if query:
         entries = entries.filter(Q(title__icontains=query) | Q(body__icontains=query) | Q(source_name__icontains=query) | Q(source_url__icontains=query) | Q(sections__title__icontains=query) | Q(sections__body__icontains=query) | Q(sections__source_url__icontains=query)).distinct()

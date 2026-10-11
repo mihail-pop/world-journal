@@ -1,5 +1,6 @@
 import { factsSelectionChanged, initializeCountryFacts, loadCountryOverview } from "./map_facts.js";
 import { applyPersonalLayers, initializePersonalMap, loadCountryNotes, loadPersonalData, personalSelectionChanged } from "./map_personal.js";
+import { initializePresetMap, selectPresetCountry, syncPresetEditor } from "./preset_map_editor.js";
 import {
     AttributionControl,
     Map as MapLibreMap,
@@ -129,7 +130,9 @@ function setSelectedCountry(controller, code) {
     const { map, selectedCode } = controller;
     // Selection must use the same paint-only path as hover. These updates merge
     // only the selected flag, leaving any independent hover state intact.
-    if (map.getSource(SOURCE_ID)) {
+    // Preset mode clears selection before the renderer is created on a fresh
+    // page load. Keep the logical selection current even without a map yet.
+    if (map?.getSource(SOURCE_ID)) {
         if (selectedCode && selectedCode !== code) {
             map.setFeatureState({ source: SOURCE_ID, id: selectedCode }, { selected: false });
         }
@@ -505,6 +508,7 @@ function selectCountry(controller, code, options = {}) {
     if (!controller.countriesByCode.has(code)) {
         return;
     }
+    if (selectPresetCountry(controller, code)) return;
     if (options.pushHistory !== false && code !== controller.selectedCode) {
         updateHistory(code);
     }
@@ -512,6 +516,7 @@ function selectCountry(controller, code, options = {}) {
 }
 
 function closeCountry(controller, { pushHistory = true, focusMap = true } = {}) {
+    if (controller.presetEditor?.active && pushHistory) return;
     if (pushHistory && (controller.selectedCode || new URL(window.location.href).searchParams.has("country"))) {
         updateHistory(null);
     }
@@ -672,7 +677,7 @@ function installCountryLayers(controller) {
         paint: { "background-color": "#151f2e" },
     }, firstBasemapLayer);
     addLayer(controller, { id: LAYERS.fill, type: "fill", source: SOURCE_ID, paint: { "fill-color": "#32445b", "fill-opacity": 0.22 } });
-    addLayer(controller, { id: LAYERS.presetFill, type: "fill", source: SOURCE_ID, paint: { "fill-color": "rgba(0,0,0,0)", "fill-opacity": 0.65 } });
+    addLayer(controller, { id: LAYERS.presetFill, type: "fill", source: SOURCE_ID, paint: { "fill-color": "rgba(0,0,0,0)", "fill-color-transition": {duration: 0, delay: 0}, "fill-opacity": 0.65 } });
     addLayer(controller, { id: LAYERS.outline, type: "line", source: SOURCE_ID, paint: { "line-color": "#8596a5", "line-opacity": 0.62, "line-width": 0.8 } });
     const isHovered = ["boolean", ["feature-state", "hover"], false];
     addLayer(controller, {
@@ -829,7 +834,7 @@ function applyProviderFallback(controller) {
 }
 
 function createMap(controller, styleUrl) {
-    const requested = selectedCodeFromUrl(controller.countriesByCode);
+    const requested = controller.presetEditor?.active ? {code: null, unsupported: null} : selectedCodeFromUrl(controller.countriesByCode);
     controller.selectedCode = requested.code;
     if (requested.unsupported) {
         showNotice(controller, `Country code ${requested.unsupported} is not available in the bundled dataset.`);
@@ -1160,6 +1165,8 @@ async function initializeMapPage() {
         if (activeController !== controller || controller.suspended || location.pathname !== "/") {
             return;
         }
+        syncPresetEditor(controller);
+        if (controller.presetEditor?.active) return;
         const requested = selectedCodeFromUrl(controller.countriesByCode);
         showNotice(controller, requested.unsupported ? `Country code ${requested.unsupported} is not available in the bundled dataset.` : "");
         renderSelection(controller, requested.code, { fit: Boolean(requested.code) });
@@ -1198,6 +1205,15 @@ async function initializeMapPage() {
         controller.favoriteIcon = favoriteIcon;
         initializeCountryFacts(controller);
         initializePersonalMap(controller, selectCountry);
+        initializePresetMap(controller, {
+            closeCountry: () => closeCountry(controller, {pushHistory: false, focusMap: false}),
+            apply: () => applyPersonalLayers(controller),
+            refresh: () => loadPersonalData(controller),
+            restoreCountry: () => {
+                const requested = selectedCodeFromUrl(controller.countriesByCode);
+                renderSelection(controller, requested.code, {fit: false});
+            },
+        });
         initializeControls(controller);
         controller.status.textContent = "Loading map provider…";
         controller.mapReady = true;
@@ -1233,8 +1249,9 @@ function suspendMapPage() {
 }
 
 function resumeMapPage(controller) {
-    if (!controller.suspended) return;
+    if (!controller.suspended) { syncPresetEditor(controller); return; }
     controller.suspended = false;
+    syncPresetEditor(controller);
     if (controller.mapReady) controller.preferences = readMapPreferences(controller.countryCodes);
     if (!controller.map) {
         if (controller.mapReady) createMap(controller, controller.page.dataset.mapStyleUrl);
@@ -1243,7 +1260,7 @@ function resumeMapPage(controller) {
     updateHomeControls(controller);
     updateLayerTheme(controller);
     applyPreferences(controller);
-    const requested = selectedCodeFromUrl(controller.countriesByCode);
+    const requested = controller.presetEditor?.active ? {code: null, unsupported: null} : selectedCodeFromUrl(controller.countriesByCode);
     const camera = requested.code === controller.selectedCode ? controller.pausedCamera : null;
     controller.pausedCamera = null;
     showNotice(controller, requested.unsupported ? `Country code ${requested.unsupported} is not available in the bundled dataset.` : "");

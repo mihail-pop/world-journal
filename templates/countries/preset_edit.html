@@ -1,10 +1,10 @@
 <section class="page page-standard journal-page" data-page="settings" hx-boost="true" hx-target="#app-content" hx-push-url="true" aria-labelledby="preset-edit-title">
-    <a class="journal-back-link" href="{% url 'countries:preset_list' %}">← Color presets</a><div class="page-copy"><p class="eyebrow">Personal map</p><h1 id="preset-edit-title">{% if is_new %}New preset{% else %}Edit preset{% endif %}</h1></div>
+    <a class="journal-back-link" href="{% url 'countries:preset_list' %}">← Color presets</a><div class="page-copy"><h1 id="preset-edit-title">{% if is_new %}New preset{% else %}Edit preset{% endif %}</h1></div>
     <form method="post" class="journal-editor" data-preset-editor>{% csrf_token %}{{ form.non_field_errors }}{% for field in form %}{% include 'journal/_field.html' %}{% endfor %}
-        <h2>Country colors</h2><p class="field-note">Each country can appear once. Leave the spare row empty if you do not need it.</p>{{ color_formset.management_form }}{{ color_formset.non_form_errors }}
+        <h2>Color groups</h2><p class="field-note">Choose several countries for each color. Each country belongs to one group.</p>{{ color_formset.management_form }}{{ color_formset.non_form_errors }}
         <div data-preset-rows>{% for color_form in color_formset %}{% include 'countries/_color_row.html' %}{% endfor %}</div>
         <template data-preset-row-template>{% include 'countries/_color_row.html' with color_form=color_formset.empty_form %}</template>
-        <button class="journal-button" type="submit" name="action" value="add_country" data-preset-add-country>Add country</button>
-        <div class="journal-save-bar"><button class="journal-button is-primary" type="submit">Save preset</button><a href="{% url 'countries:preset_list' %}">Cancel</a></div>
+        <button class="journal-button" type="submit" name="action" value="add_group" data-preset-add-color>Add color</button>
+        <div class="journal-save-bar"><button class="journal-button is-primary" type="submit">Save preset</button><button class="journal-button" type="submit" name="action" value="edit_map">Save &amp; select on map</button><a href="{% url 'countries:preset_list' %}">Cancel</a></div>
     </form>
 </section>

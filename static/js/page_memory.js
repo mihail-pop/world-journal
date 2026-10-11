@@ -127,6 +127,17 @@ export function registerPageMemory() {
         if (saved?.page === activePage) saved.url = activeUrl;
         updateHeaderLinks();
     });
+    document.addEventListener("world-journal:map-preset-saved", event => {
+        // A map save can finish while Journal/Settings is visible. Keep the
+        // remembered URL pointed at the newly saved preset when returning.
+        const saved = remembered.get("map");
+        if (!saved) return;
+        const url = new URL(saved.url, location.origin);
+        if (url.searchParams.get("edit_preset") !== event.detail.previousId) return;
+        url.searchParams.set("edit_preset", event.detail.id);
+        saved.url = url.pathname + url.search + url.hash;
+        updateHeaderLinks();
+    });
     document.body.addEventListener("htmx:afterRequest", event => {
         const config = event.detail.requestConfig;
         if (event.detail.successful && config && config.verb.toLowerCase() !== "get") {

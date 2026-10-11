@@ -1,13 +1,13 @@
 <div class="country-overview" data-country-overview-result="{{ facts.country.iso_a2 }}" hx-boost="true" hx-target="#app-content" hx-push-url="true">
     {% if facts.population or facts.area %}<div class="country-stat-grid">
         {% if facts.population %}<div class="country-stat"><span>Population</span>{% for item in facts.population %}<strong>{{ item.display }}</strong>{% endfor %}{% if facts.population|length > 1 %}<small>Multiple source figures</small>{% endif %}</div>{% endif %}
-        {% if facts.area %}<div class="country-stat"><span>Surface area</span>{% for item in facts.area %}<strong>{{ item.display }} <small>km²</small></strong>{% if item.year %}<small>{{ item.year }}</small>{% endif %}{% endfor %}{% if facts.area|length > 1 %}<small>Multiple source definitions</small>{% endif %}</div>{% endif %}
+        {% if facts.area %}<div class="country-stat"><span>Surface area</span>{% for item in facts.area %}<strong>{{ item.display }} <small>km²</small></strong>{% endfor %}{% if facts.area|length > 1 %}<small>Multiple source definitions</small>{% endif %}</div>{% endif %}
     </div>{% endif %}
     <dl class="country-facts-list">
         {% if facts.capitals %}<div><dt>Capital{{ facts.capitals|pluralize }}</dt><dd>{% for item in facts.capitals %}{{ item.name }}{% if not forloop.last %}, {% endif %}{% endfor %}</dd></div>{% endif %}
         {% if facts.languages %}<div><dt>Official language{{ facts.languages|pluralize }}</dt><dd>{% for item in facts.languages %}{{ item.name }}{% if not forloop.last %}, {% endif %}{% endfor %}</dd></div>{% endif %}
         {% if facts.currencies %}<div><dt>Currenc{% if facts.currencies|length == 1 %}y{% else %}ies{% endif %}</dt><dd>{% for item in facts.currencies %}{{ item.name }}{% if not forloop.last %}, {% endif %}{% endfor %}</dd></div>{% endif %}
-        {% if facts.government %}<div><dt>Government</dt><dd>{% for item in facts.government %}{{ item.name }}{% if item.year %} <span class="country-fact-year">({{ item.year }})</span>{% elif item.start_year %} <span class="country-fact-year">(since {{ item.start_year }})</span>{% endif %}{% if not forloop.last %}<br>{% endif %}{% endfor %}</dd></div>{% endif %}
+        {% if facts.government %}<div><dt>Government</dt><dd>{% for item in facts.government %}{{ item.name }}{% if not forloop.last %}<br>{% endif %}{% endfor %}</dd></div>{% endif %}
         {% if facts.ethnic_groups %}<div class="country-fact-breakdown"><dt>Ethnic groups</dt><dd>{% include 'countries/partials/demographics.html' with groups=facts.ethnic_groups %}</dd></div>{% endif %}
         {% if facts.religions %}<div class="country-fact-breakdown"><dt>Religion</dt><dd>{% include 'countries/partials/demographics.html' with groups=facts.religions %}</dd></div>{% endif %}
     </dl>

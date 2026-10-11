@@ -1,9 +1,9 @@
 from django import forms
-from django.forms import BaseInlineFormSet, inlineformset_factory
+from django.forms import BaseFormSet, formset_factory
 
 from journal.models import Entry
 
-from .models import CountryProfile, MapPreset, PresetCountry
+from .models import Country, CountryProfile, MapPreset, validate_map_color
 
 
 class PresetForm(forms.ModelForm):
@@ -11,45 +11,39 @@ class PresetForm(forms.ModelForm):
         model = MapPreset
         fields = ("name", "description", "default_color")
         widgets = {"description": forms.Textarea(attrs={"rows": 3}), "default_color": forms.TextInput(attrs={"placeholder": "#4a90e2"})}
-        help_texts = {"default_color": "Optional: color for countries without their own row. Leave empty to keep the ordinary map color."}
+        help_texts = {"default_color": "Optional: color for countries outside your color groups. Leave empty to keep the ordinary map color."}
 
     def clean_default_color(self):
         return self.cleaned_data["default_color"].lower()
 
 
-class PresetCountryForm(forms.ModelForm):
-    class Meta:
-        model = PresetCountry
-        fields = ("country", "color")
-        widgets = {"color": forms.TextInput(attrs={"type": "color"})}
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.fields["country"].widget.attrs["data-country-select"] = ""
-        if not self.instance.pk:
-            self.initial["color"] = "#4a90e2"
+class ColorGroupForm(forms.Form):
+    color = forms.CharField(max_length=7, validators=[validate_map_color], widget=forms.TextInput(attrs={"type": "color"}), initial="#4a90e2")
+    countries = forms.ModelMultipleChoiceField(queryset=Country.objects.all(), required=False, widget=forms.SelectMultiple(attrs={"data-country-select": ""}))
 
     def clean_color(self):
         return self.cleaned_data["color"].lower()
 
 
-class PresetColorFormSet(BaseInlineFormSet):
+class ColorGroupFormSet(BaseFormSet):
     def clean(self):
-        super().clean()
         if any(self.errors):
             return
-        codes = set()
+        assigned = set()
         for form in self.forms:
             data = form.cleaned_data
-            if data.get("DELETE") or not data.get("country"):
+            if data.get("DELETE"):
                 continue
-            code = data["country"].pk
-            if code in codes:
-                raise forms.ValidationError("Choose each country only once in a preset.")
-            codes.add(code)
+            for country in data.get("countries", []):
+                if country.pk in assigned:
+                    raise forms.ValidationError(f"{country.name} is selected in more than one color group. Remove it from one group first.")
+                assigned.add(country.pk)
+
+    def assignments(self):
+        return {country.pk: form.cleaned_data["color"] for form in self.forms if not form.cleaned_data.get("DELETE") for country in form.cleaned_data.get("countries", [])}
 
 
-PresetFormSet = inlineformset_factory(MapPreset, PresetCountry, form=PresetCountryForm, formset=PresetColorFormSet, extra=1, can_delete=True, max_num=238, validate_max=True)
+ColorGroups = formset_factory(ColorGroupForm, formset=ColorGroupFormSet, extra=1, can_delete=True, max_num=238, validate_max=True, absolute_max=238)
 
 
 class DuplicatePresetForm(forms.ModelForm):
