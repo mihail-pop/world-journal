@@ -46,7 +46,7 @@ The earlier per-country World Bank requests and their runtime cache path have be
 
 ## Loading behaviour
 
-Opening Overview fetches only the application's local HTML partial. Returning to an already loaded Overview tab does not refetch it. Country changes, drawer closure and page cleanup abort pending requests and invalidate result identifiers. Responses carry the country code so another country's late result cannot replace the selected country's content. Facts remain accessible without internet when the local server is running; online basemaps, news, videos and external source links have their own network requirements.
+Opening Overview fetches only the application's local HTML partial. Returning to an already loaded Overview tab does not refetch it. Country changes, drawer closure and fully discarding a map instance abort pending requests and invalidate result identifiers. Section navigation now retains the Map workspace and its loaded Overview; see [Page memory](page-memory.md). Responses carry the country code so another country's late result cannot replace the selected country's content. Facts remain accessible without internet when the local server is running; online basemaps, news, videos and external source links have their own network requirements.
 
 ## Manual acceptance
 

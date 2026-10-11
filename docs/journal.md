@@ -24,7 +24,7 @@ Event date, source publication time, and creation time are independent. List fil
 
 Article/video cards open a prefilled Journal editor. Saving requires an explicit form submission; source pages are not scraped. A source link remains stored when its feed item disappears. Videos are structured IDs/timestamps and reuse the persistent shell player. No iframe is created when merely viewing a journal entry.
 
-Direct URL loads and normal form submissions work without HTMX. HTMX navigation swaps only app-content. Subsection movement and formatting toolbar require JavaScript; Add subsection also has a normal form fallback. There is no autosave yet: save before navigating away.
+Direct URL loads and normal form submissions work without HTMX. HTMX navigation swaps only app-content. Subsection movement and formatting toolbar require JavaScript; Add subsection also has a normal form fallback. The Journal header now resumes the last screen and preserves an unfinished editor across section switches in the current tab; see [Page memory](page-memory.md). There is no autosave or crash recovery yet: save before refresh, full navigation, closing the tab or opening another Journal screen.
 
 ## Local setup and manual checks
 

@@ -1,5 +1,5 @@
 import { factsSelectionChanged, initializeCountryFacts, loadCountryOverview } from "./map_facts.js";
-import { applyPersonalLayers, initializePersonalMap, loadCountryNotes, personalSelectionChanged } from "./map_personal.js";
+import { applyPersonalLayers, initializePersonalMap, loadCountryNotes, loadPersonalData, personalSelectionChanged } from "./map_personal.js";
 import {
     AttributionControl,
     Map as MapLibreMap,
@@ -121,6 +121,7 @@ function updateHistory(code) {
         url.searchParams.delete("country");
     }
     history.pushState({ worldJournalCountry: code }, "", url);
+    document.dispatchEvent(new CustomEvent("world-journal:location-change"));
 }
 
 function setSelectedCountry(controller, code) {
@@ -173,7 +174,7 @@ function clearHover(controller) {
 
 function scheduleHoverUpdate(controller) {
     if (
-        activeController !== controller || controller.abortController.signal.aborted
+        activeController !== controller || controller.abortController.signal.aborted || controller.suspended
         || controller.hoverFrame !== null || !controller.hoverPoint || !controller.layersInstalled
     ) {
         return;
@@ -181,7 +182,7 @@ function scheduleHoverUpdate(controller) {
     controller.hoverFrame = requestAnimationFrame(() => {
         controller.hoverFrame = null;
         if (
-            activeController !== controller || controller.abortController.signal.aborted
+            activeController !== controller || controller.abortController.signal.aborted || controller.suspended
             || !controller.hoverPoint || !controller.layersInstalled
         ) {
             return;
@@ -918,7 +919,7 @@ function closeControlsPanel(controller, { restoreFocus = false } = {}) {
     }
 }
 
-function initializeControls(controller) {
+function updateHomeControls(controller) {
     const homeCountry = controller.preferences.homeCountry
         ? controller.countriesByCode.get(controller.preferences.homeCountry)
         : null;
@@ -930,6 +931,10 @@ function initializeControls(controller) {
         ? `Home country: ${homeCountry.name}`
         : "Home country is not configured.";
     updateControls(controller);
+}
+
+function initializeControls(controller) {
+    updateHomeControls(controller);
 
     controller.controlsToggle.addEventListener("click", () => {
         const willOpen = controller.controlsPanel.hidden;
@@ -952,6 +957,7 @@ function initializeControls(controller) {
         applyPreferences(controller);
     }, { signal: controller.abortController.signal });
     controller.homeButton.addEventListener("click", () => {
+        const homeCountry = controller.countriesByCode.get(controller.preferences.homeCountry);
         if (!homeCountry) {
             return;
         }
@@ -965,6 +971,7 @@ function initializeControls(controller) {
         controller.map?.easeTo({ ...WORLD_CAMERA, duration: reducedMotion ? 0 : 650 });
     }, { signal: controller.abortController.signal });
     document.addEventListener("pointerdown", (event) => {
+        if (controller.suspended) return;
         if (!controller.toolbar.contains(event.target)) {
             closeControlsPanel(controller);
         }
@@ -981,7 +988,9 @@ async function loadJson(url, signal) {
 
 async function initializeMapPage() {
     const page = document.querySelector('[data-page="map"]');
-    if (!page || activeController?.page === page) {
+    if (!page) return;
+    if (activeController?.page === page) {
+        resumeMapPage(activeController);
         return;
     }
     cleanupMapPage();
@@ -993,6 +1002,11 @@ async function initializeMapPage() {
         container,
         abortController,
         map: null,
+        suspended: false,
+        mapReady: false,
+        notesDirty: false,
+        feedsDirty: false,
+        personalDirty: false,
         countriesByCode: new Map(),
         countryCodes: new Set(),
         preferences: null,
@@ -1085,7 +1099,7 @@ async function initializeMapPage() {
         }
     }, { capture: true, signal: abortController.signal });
     document.addEventListener("keydown", (event) => {
-        if (event.key !== "Escape") {
+        if (event.key !== "Escape" || controller.suspended || !controller.page.isConnected) {
             return;
         }
         if (!controller.controlsPanel.hidden) {
@@ -1096,13 +1110,20 @@ async function initializeMapPage() {
     }, { signal: abortController.signal });
     document.addEventListener("world-journal:theme-change", () => updateLayerTheme(controller), { signal: abortController.signal });
     window.addEventListener("popstate", () => {
-        if (activeController !== controller) {
+        if (activeController !== controller || controller.suspended || location.pathname !== "/") {
             return;
         }
         const requested = selectedCodeFromUrl(controller.countriesByCode);
         showNotice(controller, requested.unsupported ? `Country code ${requested.unsupported} is not available in the bundled dataset.` : "");
         renderSelection(controller, requested.code, { fit: Boolean(requested.code) });
+        document.dispatchEvent(new CustomEvent("world-journal:location-change"));
     }, { signal: abortController.signal });
+    document.addEventListener("world-journal:data-changed", event => {
+        const path = event.detail.path;
+        if (path.startsWith("/journal/") || path.startsWith("/countries/") || path.startsWith("/settings/backups/")) controller.notesDirty = true;
+        if (path.startsWith("/settings/news/") || path.startsWith("/settings/backups/")) controller.feedsDirty = true;
+        if (path.startsWith("/countries/") || path.startsWith("/map-presets/") || path.startsWith("/settings/backups/")) controller.personalDirty = true;
+    }, {signal: abortController.signal});
 
     try {
         const [metadata, geometry, capitals] = await Promise.all([
@@ -1130,7 +1151,8 @@ async function initializeMapPage() {
         initializePersonalMap(controller, selectCountry);
         initializeControls(controller);
         controller.status.textContent = "Loading map provider…";
-        createMap(controller, page.dataset.mapStyleUrl);
+        controller.mapReady = true;
+        if (!controller.suspended && page.isConnected) createMap(controller, page.dataset.mapStyleUrl);
     } catch (error) {
         if (error.name === "AbortError") {
             return;
@@ -1139,6 +1161,80 @@ async function initializeMapPage() {
         controller.status.classList.add("is-error");
         console.error("World Journal map initialization failed", error);
     }
+}
+
+function suspendMapPage() {
+    const controller = activeController;
+    if (!controller || controller.suspended) return;
+    controller.suspended = true;
+    if (controller.map) {
+        clearHover(controller);
+        controller.map.stop();
+        controller.pausedCamera = {
+            center: controller.map.getCenter().toArray(),
+            zoom: controller.map.getZoom(),
+            bearing: controller.map.getBearing(),
+            pitch: controller.map.getPitch(),
+            padding: controller.map.getPadding(),
+        };
+        saveViewport(controller.map);
+    }
+    // Keep the canvas, loaded layers and drawer nodes. Existing bounded loads
+    // may finish into the detached page; its DOM listeners remain installed once.
+}
+
+function resumeMapPage(controller) {
+    if (!controller.suspended) return;
+    controller.suspended = false;
+    if (controller.mapReady) controller.preferences = readMapPreferences(controller.countryCodes);
+    if (!controller.map) {
+        if (controller.mapReady) createMap(controller, controller.page.dataset.mapStyleUrl);
+        return;
+    }
+    updateHomeControls(controller);
+    updateLayerTheme(controller);
+    applyPreferences(controller);
+    const requested = selectedCodeFromUrl(controller.countriesByCode);
+    const camera = requested.code === controller.selectedCode ? controller.pausedCamera : null;
+    controller.pausedCamera = null;
+    showNotice(controller, requested.unsupported ? `Country code ${requested.unsupported} is not available in the bundled dataset.` : "");
+    if (requested.code !== controller.selectedCode) {
+        renderSelection(controller, requested.code, {fit: Boolean(requested.code)});
+    } else {
+        const section = new URL(location.href).searchParams.get("section");
+        if (["overview", "notes"].includes(section)) selectCountrySection(controller, section);
+    }
+    if (controller.personalDirty) {
+        controller.personalDirty = false;
+        loadPersonalData(controller);
+    }
+    if (controller.notesDirty && controller.personal) {
+        controller.notesDirty = false;
+        delete controller.personal.notesContent.dataset.loadedCountry;
+        if (controller.page.querySelector('[data-country-section="notes"]').getAttribute("aria-selected") === "true") {
+            loadCountryNotes(controller, {retry: true});
+        }
+    }
+    if (controller.feedsDirty && controller.selectedCode) {
+        controller.feedsDirty = false;
+        const country = controller.countriesByCode.get(controller.selectedCode);
+        loadCountryNews(controller, country.iso_a2, country.name);
+        cancelCountryVideos(controller);
+        controller.videoContent.replaceChildren();
+        controller.videoContent.setAttribute("aria-busy", "false");
+        delete controller.videoContent.dataset.loadedCountry;
+        if (controller.page.querySelector('[data-country-section="videos"]').getAttribute("aria-selected") === "true") {
+            selectCountrySection(controller, "videos");
+        }
+    }
+    // Resize only after the retained page is visible, including after a device
+    // rotation or player layout change while another page was active.
+    requestAnimationFrame(() => {
+        if (activeController === controller && !controller.suspended) {
+            controller.map.resize();
+            if (camera && controller.selectedCode === requested.code) controller.map.jumpTo(camera);
+        }
+    });
 }
 
 export function cleanupMapPage() {
@@ -1170,5 +1266,8 @@ export function registerMapPage() {
             initializeMapPage();
         }
     });
-    document.addEventListener("world-journal:page-cleanup", cleanupMapPage);
+    document.addEventListener("world-journal:page-cleanup", event => {
+        if (event.detail?.preserveMap) suspendMapPage();
+        else cleanupMapPage();
+    });
 }

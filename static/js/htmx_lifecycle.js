@@ -1,3 +1,5 @@
+import { registerPageMemory } from "./page_memory.js";
+
 const PAGE_LABELS = {
     map: "Map",
     journal: "Journal",
@@ -24,14 +26,8 @@ function initializePage(root = document) {
 }
 
 export function registerHtmxLifecycle() {
+    registerPageMemory();
     initializePage();
-
-    document.body.addEventListener("htmx:beforeSwap", (event) => {
-        const target = event.detail.target ?? event.target;
-        if (target?.id === "app-content") {
-            document.dispatchEvent(new CustomEvent("world-journal:page-cleanup"));
-        }
-    });
 
     document.body.addEventListener("htmx:afterSwap", (event) => {
         const target = event.detail.target ?? event.target;

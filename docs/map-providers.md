@@ -47,6 +47,8 @@ checks and automated tests are left to the user for this change.
 
 ## Country selection rendering
 
+Map now retains one detached canvas and its loaded country drawer across section navigation; returning through the header resumes its camera and content without reconstructing the map. See [Page memory](page-memory.md) for lifecycle details, limitations and manual checks. Older cleanup/navigation descriptions below and above describe the original phase implementation.
+
 The clicked-country fill and outline also use fixed geometry with a separate
 `selected` feature-state flag and zero-duration color/opacity transitions.
 Switching countries clears the previous flag and sets the new flag before the

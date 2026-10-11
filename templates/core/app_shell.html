@@ -21,7 +21,7 @@
     <script src="{% static 'vendor/htmx/htmx-2.0.8.min.js' %}" defer></script>
     <script type="module" src="{% static 'js/app.js' %}"></script>
 </head>
-<body>
+<body hx-ext="page-memory">
     <header class="app-header">
         <a class="app-name" href="{% url 'core:map' %}" aria-label="{{ app_display_name }} map">{{ app_display_name }}</a>
         <nav class="primary-nav" aria-label="Primary" hx-boost="true" hx-target="#app-content" hx-push-url="true" hx-swap="innerHTML show:top">
@@ -34,7 +34,7 @@
         </div>
     </header>
 
-    <main id="app-content" tabindex="-1" hx-history-elt>
+    <main id="app-content" tabindex="-1" hx-history-elt hx-history="false">
         {% include page_template %}
     </main>
 

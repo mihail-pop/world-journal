@@ -63,7 +63,7 @@ async function post(controller, url, params) {
     return response.json();
 }
 
-async function loadPersonalData(controller) {
+export async function loadPersonalData(controller) {
     const state = controller.personal;
     const id = ++state.loadId;
     state.status.textContent = "Loading saved map data…";
