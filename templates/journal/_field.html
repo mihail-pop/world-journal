@@ -1,0 +1,6 @@
+<div class="journal-field{% if wide %} journal-field-wide{% endif %}">
+    {{ field.label_tag }}
+    {{ field }}
+    {{ field.errors }}
+    {% if field.help_text %}<p class="field-note">{{ field.help_text }}</p>{% endif %}
+</div>

@@ -1,0 +1,22 @@
+<div class="journal-content-fields" data-content-fields>
+    <div class="journal-form-grid">
+        {% include 'journal/_field.html' with field=content_form.title wide=True %}
+        {% include 'journal/_field.html' with field=content_form.entry_type %}
+        {% include 'journal/_field.html' with field=content_form.body_format %}
+    </div>
+    <div class="journal-markdown-toolbar" role="toolbar" aria-label="Formatting">
+        <button type="button" data-journal-format="bold">Bold</button><button type="button" data-journal-format="italic">Italic</button><button type="button" data-journal-format="heading">Heading</button><button type="button" data-journal-format="list">List</button><button type="button" data-journal-format="quote">Quote</button><button type="button" data-journal-format="code">Code</button><button type="button" data-journal-preview>Preview</button>
+    </div>
+    {% include 'journal/_field.html' with field=content_form.body %}
+    <div class="journal-rendered journal-preview" data-journal-preview-output hidden></div>
+    <details class="journal-reference-fields" {% if content_form.source_url.value or content_form.youtube_reference.value or content_form.source_url.errors or content_form.youtube_reference.errors %}open{% endif %}>
+        <summary>Article, bookmark or video reference</summary>
+        <div class="journal-form-grid">
+            {% include 'journal/_field.html' with field=content_form.source_url wide=True %}
+            {% include 'journal/_field.html' with field=content_form.source_name %}
+            {% include 'journal/_field.html' with field=content_form.source_published_at %}
+            {% include 'journal/_field.html' with field=content_form.youtube_reference %}
+            {% include 'journal/_field.html' with field=content_form.youtube_start_seconds %}
+        </div>
+    </details>
+</div>

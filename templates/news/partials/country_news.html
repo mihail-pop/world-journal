@@ -31,6 +31,7 @@
                             {% if item.published_at %}<time datetime="{{ item.published_at|date:'c' }}">{{ item.published_at|date:'M j, H:i T' }}</time>{% endif %}
                         </p>
                         {% if item.summary %}<p class="country-news-summary">{{ item.summary }}</p>{% endif %}
+                        <a class="news-save-journal" href="{% url 'journal:new' %}?type=article&amp;title={{ item.title|urlencode }}&amp;url={{ item.link|urlencode }}&amp;source={{ item.publisher|urlencode }}&amp;country={{ news_page.country_code }}{% if item.published_at %}&amp;published={{ item.published_at|date:'c'|urlencode }}{% endif %}" hx-boost="true" hx-target="#app-content" hx-push-url="true">Save to Journal</a>
                     </li>
                 {% endfor %}
             </ol>
@@ -75,6 +76,7 @@
                             {% if item.published_at %}<time datetime="{{ item.published_at|date:'c' }}">{{ item.published_at|date:'M j, H:i T' }}</time>{% else %}<span>Publication time unavailable</span>{% endif %}
                         </p>
                         {% if item.match_class == "summary_country" and item.summary %}<p class="country-news-summary">{{ item.summary }}</p>{% endif %}
+                        <a class="news-save-journal" href="{% url 'journal:new' %}?type=article&amp;title={{ item.title|urlencode }}&amp;url={{ item.link|urlencode }}&amp;source={{ item.publisher|urlencode }}&amp;country={{ news_page.country_code }}{% if item.published_at %}&amp;published={{ item.published_at|date:'c'|urlencode }}{% endif %}" hx-boost="true" hx-target="#app-content" hx-push-url="true">Save to Journal</a>
                     </li>
                 {% endfor %}
             </ol>

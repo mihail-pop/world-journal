@@ -170,3 +170,8 @@ STATICFILES_DIRS = [BASE_DIR / 'static']
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Journal attachments stay on the host machine, alongside the SQLite database.
+MEDIA_URL = "/media/"
+MEDIA_ROOT = BASE_DIR / "media"
+JOURNAL_IMAGE_MAX_BYTES = 10 * 1024 * 1024

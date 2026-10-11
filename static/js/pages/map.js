@@ -207,6 +207,7 @@ async function loadCountryNews(controller, code, countryName, { retryFailed = fa
             return;
         }
         controller.newsContent.innerHTML = markup;
+        window.htmx?.process(controller.newsContent);
         controller.newsContent.setAttribute("aria-busy", "false");
         applyNewsFilter(controller, "all");
     } catch (error) {
@@ -271,6 +272,7 @@ async function loadCountryVideos(controller, code, countryName, { retryFailed = 
             return;
         }
         controller.videoContent.innerHTML = markup;
+        window.htmx?.process(controller.videoContent);
         controller.videoContent.dataset.loadedCountry = code;
         controller.videoContent.setAttribute("aria-busy", "false");
     } catch (error) {
@@ -345,6 +347,7 @@ function renderSelection(controller, code, { fit = true, focusDrawer = false } =
     };
     flagImage.src = `https://flagcdn.com/${country.iso_a2.toLowerCase()}.svg`;
     controller.page.querySelector("[data-country-name]").textContent = country.name;
+    controller.page.querySelector("[data-country-journal-link]").href = `/journal/?country=${encodeURIComponent(code)}`;
     controller.page.querySelector("[data-country-region]").textContent = country.region;
     controller.page.querySelector("[data-country-subregion]").textContent = country.subregion;
     drawer.hidden = false;
@@ -676,8 +679,17 @@ function createMap(controller, styleUrl) {
         const attribution = controller.container.querySelector(".maplibregl-ctrl-attrib");
         attribution?.removeAttribute("open");
         attribution?.classList.remove("maplibregl-compact-show");
+        // MapLibre rebuilds provider attribution links as sources change.
+        for (const link of attribution?.querySelectorAll('a[target="_blank"]') ?? []) {
+            link.relList.add("noopener", "noreferrer");
+        }
     };
     collapseAttribution();
+    const attribution = controller.container.querySelector(".maplibregl-ctrl-attrib");
+    if (attribution) {
+        controller.attributionObserver = new MutationObserver(collapseAttribution);
+        controller.attributionObserver.observe(attribution, { childList: true, subtree: true });
+    }
     map.on("resize", collapseAttribution);
     map.on("idle", collapseAttribution);
 
@@ -962,6 +974,7 @@ export function cleanupMapPage() {
     cancelCountryNews(controller);
     cancelCountryVideos(controller);
     controller.abortController.abort();
+    controller.attributionObserver?.disconnect();
     if (controller.map) {
         saveViewport(controller.map);
         controller.map.remove();

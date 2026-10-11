@@ -53,6 +53,7 @@
                                 data-video-channel="{{ item.channel_name }}"
                             >Play</button>
                             <a href="{{ item.watch_url }}" target="_blank" rel="noopener noreferrer">Watch on YouTube</a>
+                            <a href="{% url 'journal:new' %}?type=youtube&amp;title={{ item.title|urlencode }}&amp;video={{ item.video_id|urlencode }}&amp;source={{ item.channel_name|urlencode }}&amp;country={{ video_page.country_code }}{% if item.published_at %}&amp;published={{ item.published_at|date:'c'|urlencode }}{% endif %}" hx-boost="true" hx-target="#app-content" hx-push-url="true">Save to Journal</a>
                         </div>
                     </div>
                 </li>

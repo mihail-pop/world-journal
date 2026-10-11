@@ -54,10 +54,15 @@ function playVideo(player, detail) {
         console.error("World Journal rejected an invalid YouTube video ID");
         return;
     }
+    const startSeconds = detail.startSeconds ?? 0;
+    if (!Number.isSafeInteger(startSeconds) || startSeconds < 0 || startSeconds > 2147483647) {
+        console.error("World Journal rejected an invalid video start time");
+        return;
+    }
     const title = typeof detail.title === "string" && detail.title.trim() ? detail.title.trim() : "YouTube video";
     const channel = typeof detail.channel === "string" ? detail.channel.trim() : "";
     const iframe = document.createElement("iframe");
-    iframe.src = `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1`;
+    iframe.src = `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1${startSeconds ? `&start=${startSeconds}` : ""}`;
     iframe.title = `${title} on YouTube`;
     iframe.allow = "autoplay; encrypted-media; picture-in-picture";
     iframe.referrerPolicy = "strict-origin-when-cross-origin";

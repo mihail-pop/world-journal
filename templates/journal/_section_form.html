@@ -1,0 +1,9 @@
+<fieldset class="journal-section-card" data-journal-section>
+    <legend>Subsection</legend>
+    {% for hidden in section_form.hidden_fields %}{{ hidden }}{% endfor %}
+    {{ section_form.non_field_errors }}
+    <div class="journal-section-actions"><button type="button" data-section-move="up">Move up</button><button type="button" data-section-move="down">Move down</button><button type="button" data-section-remove>Remove / undo</button></div>
+    <p class="journal-section-deleted" hidden>Marked for removal. Save the entry to confirm, or undo.</p>
+    <div class="journal-section-fields">{% include 'journal/_content_fields.html' with content_form=section_form %}</div>
+    <label class="journal-delete-field">{{ section_form.DELETE }} Remove this subsection when saving</label>
+</fieldset>
