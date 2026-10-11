@@ -16,6 +16,7 @@ const WORLD_CAMERA = { center: [8, 18], zoom: 1.35 };
 const SOURCE_ID = "world-journal-countries";
 const CENTROID_SOURCE_ID = "world-journal-country-centroids";
 const CAPITAL_SOURCE_ID = "world-journal-capitals";
+const COUNTRY_NEWS_DELAY_MS = 300;
 const LAYERS = {
     simpleBackground: "world-journal-simple-background",
     fill: "world-journal-country-fill",
@@ -211,10 +212,17 @@ function focusCountry(controller, country, animate = true) {
     });
 }
 
-function cancelCountryNews(controller) {
+function cancelCountryNews(controller, { abort = false } = {}) {
     controller.newsRequestId += 1;
-    controller.newsAbortController?.abort();
-    controller.newsAbortController = null;
+    window.clearTimeout(controller.newsTimer);
+    controller.newsTimer = null;
+    controller.pendingNews = null;
+    // Disconnecting a browser request does not stop Django's feed work. Let a
+    // started request finish, but invalidate its result when selection changes.
+    if (abort) {
+        controller.newsAbortController?.abort();
+        controller.newsAbortController = null;
+    }
 }
 
 function cancelCountryVideos(controller) {
@@ -248,9 +256,39 @@ function applyNewsFilter(controller, filter) {
     }
 }
 
-async function loadCountryNews(controller, code, countryName, { retryFailed = false } = {}) {
+function loadCountryNews(controller, code, countryName, { retryFailed = false } = {}) {
     cancelCountryNews(controller);
-    const requestId = controller.newsRequestId;
+    controller.newsContent.setAttribute("aria-busy", "true");
+    showNewsMessage(controller, controller.newsAbortController
+        ? `Loading headlines for ${countryName}; waiting for the previous news request to finish…`
+        : `Loading current English-language headlines for ${countryName}…`);
+    controller.pendingNews = { code, countryName, retryFailed, requestId: controller.newsRequestId };
+    // Coalesce quick clicks before contacting the server. A pending selection
+    // replaces the previous one, so there is never a queue of country requests.
+    controller.newsTimer = window.setTimeout(() => {
+        controller.newsTimer = null;
+        startPendingCountryNews(controller);
+    }, COUNTRY_NEWS_DELAY_MS);
+}
+
+function startPendingCountryNews(controller) {
+    if (
+        activeController !== controller
+        || controller.abortController.signal.aborted
+        || controller.newsTimer !== null
+        || controller.newsAbortController
+        || !controller.pendingNews
+    ) {
+        return;
+    }
+    const request = controller.pendingNews;
+    controller.pendingNews = null;
+    if (controller.selectedCode === request.code && controller.newsRequestId === request.requestId) {
+        fetchCountryNews(controller, request);
+    }
+}
+
+async function fetchCountryNews(controller, { code, countryName, retryFailed, requestId }) {
     const abortController = new AbortController();
     controller.newsAbortController = abortController;
     controller.newsContent.setAttribute("aria-busy", "true");
@@ -279,7 +317,12 @@ async function loadCountryNews(controller, code, countryName, { retryFailed = fa
         ) {
             return;
         }
-        controller.newsContent.innerHTML = markup;
+        const template = document.createElement("template");
+        template.innerHTML = markup;
+        if (template.content.querySelector("[data-country-news-result]")?.dataset.newsCountry !== code) {
+            throw new Error("Incorrect country news response");
+        }
+        controller.newsContent.replaceChildren(template.content);
         window.htmx?.process(controller.newsContent);
         controller.newsContent.setAttribute("aria-busy", "false");
         applyNewsFilter(controller, "all");
@@ -291,9 +334,10 @@ async function loadCountryNews(controller, code, countryName, { retryFailed = fa
         showNewsMessage(controller, "Current news could not be loaded.", { retry: true });
         console.error("World Journal country news request failed", error);
     } finally {
-        if (controller.newsRequestId === requestId) {
+        if (controller.newsAbortController === abortController) {
             controller.newsAbortController = null;
         }
+        startPendingCountryNews(controller);
     }
 }
 
@@ -388,13 +432,24 @@ function selectCountrySection(controller, section, { focus = false } = {}) {
 }
 
 function renderSelection(controller, code, { fit = true, focusDrawer = false } = {}) {
+    const drawer = controller.page.querySelector("[data-country-drawer]");
+    if (code && code === controller.selectedCode && !drawer.hidden) {
+        // Re-clicking the selected country should keep loaded tabs and pending
+        // requests intact. Initial/deep-link rendering still runs for a hidden drawer.
+        const requestedSection = new URL(window.location.href).searchParams.get("section");
+        if (["overview", "notes"].includes(requestedSection)) selectCountrySection(controller, requestedSection);
+        if (fit) focusCountry(controller, controller.countriesByCode.get(code));
+        if (focusDrawer) drawer.focus({ preventScroll: true });
+        return;
+    }
     setSelectedCountry(controller, code);
     personalSelectionChanged(controller);
     factsSelectionChanged(controller);
-    const drawer = controller.page.querySelector("[data-country-drawer]");
 
     if (!code) {
         cancelCountryNews(controller);
+        controller.newsContent.replaceChildren();
+        controller.newsContent.setAttribute("aria-busy", "false");
         cancelCountryVideos(controller);
         drawer.hidden = true;
         controller.page.classList.remove("has-country-drawer");
@@ -966,6 +1021,8 @@ async function initializeMapPage() {
         newsUrlTemplate: page.dataset.countryNewsUrlTemplate,
         newsAbortController: null,
         newsRequestId: 0,
+        newsTimer: null,
+        pendingNews: null,
         videoContent: page.querySelector("[data-country-videos-content]"),
         videoUrlTemplate: page.dataset.countryVideosUrlTemplate,
         videoAbortController: null,
@@ -1092,7 +1149,7 @@ export function cleanupMapPage() {
     activeController = null;
     cancelHoverFrame(controller);
     window.clearTimeout(controller.fallbackTimer);
-    cancelCountryNews(controller);
+    cancelCountryNews(controller, { abort: true });
     cancelCountryVideos(controller);
     controller.abortController.abort();
     controller.attributionObserver?.disconnect();
