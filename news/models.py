@@ -18,14 +18,14 @@ class SourcePreference(models.Model):
 class NewsPreferences(models.Model):
     id = models.PositiveSmallIntegerField(primary_key=True, default=1, editable=False)
     freshness_minutes = models.PositiveSmallIntegerField(
-        default=30, validators=[MinValueValidator(5), MaxValueValidator(120)],
+        default=720, validators=[MinValueValidator(360), MaxValueValidator(720)],
     )
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         constraints = [
             models.CheckConstraint(condition=models.Q(id=1), name="news_preferences_singleton"),
-            models.CheckConstraint(condition=models.Q(freshness_minutes__gte=5, freshness_minutes__lte=120), name="news_freshness_bounds"),
+            models.CheckConstraint(condition=models.Q(freshness_minutes__gte=360, freshness_minutes__lte=720), name="news_freshness_bounds"),
         ]
 
 
@@ -36,6 +36,7 @@ class CustomSource(models.Model):
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     kind = models.CharField(max_length=12, choices=Kind.choices)
+    parent = models.ForeignKey("self", null=True, blank=True, on_delete=models.CASCADE, related_name="extra_feeds")
     name = models.CharField(max_length=160, blank=True)
     url = models.URLField(max_length=2048, unique=True)
     feed_format = models.CharField(max_length=40, blank=True)
@@ -47,7 +48,7 @@ class CustomSource(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        ordering = ["created_at", "id"]
+        ordering = ["parent_id", "created_at", "id"]
 
     @property
     def registry_id(self):
@@ -58,6 +59,11 @@ class CustomSource(models.Model):
         from .services.custom_sources import normalize_location
         from .services.fetch import FeedFetchError
         from .registry import YOUTUBE_CHANNEL_PATTERN
+
+        if self.parent_id:
+            parent = self._state.fields_cache.get("parent")
+            if self.parent_id == self.id or self.kind != self.Kind.RSS or parent and (parent.kind != self.Kind.RSS or parent.parent_id):
+                raise ValidationError({"parent": "Additional article feeds must belong directly to an article publisher."})
 
         try:
             normalize_location(self.url, self.kind)

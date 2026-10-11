@@ -16,7 +16,7 @@ from news.types import CountryNewsPage, CountryNewsResult, NewsItem
 
 from .cache import age as _age
 from .cache import cache_lock as _cache_lock
-from .cache import deserialize_items, google_cache_key, parse_datetime as _parse_datetime
+from .cache import clear_google_pause, deserialize_items, failure_retry_pending, google_cache_key, google_pause_until, pause_google, record_failure, parse_datetime as _parse_datetime
 from .fetch import FeedFetchError, FeedResponse, fetch_feed
 from .region_routing import eligible_fixed_feeds
 from .regional_news import get_regional_news
@@ -101,12 +101,14 @@ def get_country_news(
         snapshot = backend.get(cache_key)
         if not isinstance(snapshot, dict):
             snapshot = {}
+        if google_pause_until(backend, current_time):
+            paused = {**snapshot, "last_error": "Google News refresh is paused after a rate-limit response; it will resume automatically."}
+            return _result(country, source, paused, is_stale=bool(snapshot.get("last_success_at")))
         retrying_failure = retry_failed and bool(snapshot.get("last_error"))
         success_age = _age(current_time, snapshot.get("fetched_at"))
         if not force_refresh and not retrying_failure and not snapshot.get("last_error") and snapshot.get("last_success_at") and success_age is not None and success_age.total_seconds() < fresh_seconds:
             return _result(country, source, snapshot)
-        failure_age = _age(current_time, snapshot.get("last_attempt_at"))
-        if not force_refresh and not retrying_failure and snapshot.get("last_error") and failure_age is not None and failure_age.total_seconds() < settings.NEWS_FAILURE_BACKOFF_SECONDS:
+        if not force_refresh and not retrying_failure and failure_retry_pending(snapshot, current_time):
             return _result(country, source, snapshot, is_stale=bool(snapshot.get("last_success_at")))
 
         try:
@@ -126,6 +128,8 @@ def get_country_news(
                     "last_error": "",
                     "last_error_detail": "",
                     "last_attempt_at": current_time.isoformat(),
+                    "consecutive_failures": 0,
+                    "retry_after_at": None,
                 })
             else:
                 normalized = normalize_feed(response.body, source, settings.NEWS_MAX_ITEMS)
@@ -140,16 +144,20 @@ def get_country_news(
                     "last_attempt_at": current_time.isoformat(),
                     "parser_warnings": list(normalized.parser_warnings),
                 }
+            clear_google_pause(backend, current_time)
             backend.set(cache_key, snapshot, settings.NEWS_STALE_SECONDS)
             return _result(country, source, snapshot)
         except (FeedFetchError, FeedParseError) as error:
+            if getattr(error, "status_code", None) == 429:
+                pause_google(backend, current_time, error)
+            failure_ttl = record_failure(snapshot, current_time, error)
             snapshot["last_error"] = "Google News is temporarily unavailable."
             snapshot["last_error_detail"] = str(error)[:240]
             snapshot["last_attempt_at"] = current_time.isoformat()
             last_success_age = _age(current_time, snapshot.get("last_success_at"))
             if last_success_age is not None and last_success_age.total_seconds() < settings.NEWS_STALE_SECONDS:
                 remaining = max(1, settings.NEWS_STALE_SECONDS - int(last_success_age.total_seconds()))
-                backend.set(cache_key, snapshot, remaining)
+                backend.set(cache_key, snapshot, max(remaining, failure_ttl))
                 return _result(country, source, snapshot, is_stale=True)
             empty_snapshot = {
                 "items": [],
@@ -161,8 +169,10 @@ def get_country_news(
                 "last_error_detail": str(error)[:240],
                 "last_attempt_at": current_time.isoformat(),
                 "parser_warnings": [],
+                "consecutive_failures": snapshot["consecutive_failures"],
+                "retry_after_at": snapshot["retry_after_at"],
             }
-            backend.set(cache_key, empty_snapshot, settings.NEWS_FAILURE_BACKOFF_SECONDS)
+            backend.set(cache_key, empty_snapshot, failure_ttl)
             return _result(country, source, empty_snapshot)
 
 

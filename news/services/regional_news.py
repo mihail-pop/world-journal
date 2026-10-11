@@ -14,7 +14,7 @@ from django.core.cache import cache
 from news.adapters.rss import FeedParseError, normalize_feed
 from news.types import FeedResult, NewsFeed, NewsItem, NewsProvider, RegionalProviderResult
 
-from .cache import age, cache_lock, deserialize_items, fixed_feed_cache_key, parse_datetime
+from .cache import age, cache_lock, deserialize_items, failure_retry_pending, fixed_feed_cache_key, parse_datetime, record_failure
 from .country_matcher import MatchClass, match_country_text
 from .fetch import FeedFetchError, FeedResponse, fetch_feed
 from .region_routing import has_regional_affinity
@@ -87,12 +87,9 @@ def get_fixed_feed(
             and success_age.total_seconds() < fresh_seconds
         ):
             return _feed_result(feed, snapshot)
-        failure_age = age(current_time, snapshot.get("last_attempt_at"))
         if (
             not force_refresh and not retrying_failure
-            and snapshot.get("last_error")
-            and failure_age is not None
-            and failure_age.total_seconds() < settings.NEWS_FAILURE_BACKOFF_SECONDS
+            and failure_retry_pending(snapshot, current_time)
         ):
             return _feed_result(
                 feed,
@@ -120,6 +117,8 @@ def get_fixed_feed(
                     "last_error": "",
                     "last_error_detail": "",
                     "last_attempt_at": current_time.isoformat(),
+                    "consecutive_failures": 0,
+                    "retry_after_at": None,
                 })
             else:
                 normalized = normalize_feed(
@@ -143,6 +142,7 @@ def get_fixed_feed(
             backend.set(key, snapshot, settings.NEWS_REGIONAL_STALE_SECONDS)
             return _feed_result(feed, snapshot)
         except (FeedFetchError, FeedParseError) as error:
+            failure_ttl = record_failure(snapshot, current_time, error)
             snapshot["last_error"] = "This regional feed is temporarily unavailable."
             snapshot["last_error_detail"] = str(error)[:240]
             snapshot["last_attempt_at"] = current_time.isoformat()
@@ -155,7 +155,7 @@ def get_fixed_feed(
                     1,
                     settings.NEWS_REGIONAL_STALE_SECONDS - int(last_success_age.total_seconds()),
                 )
-                backend.set(key, snapshot, remaining)
+                backend.set(key, snapshot, max(remaining, failure_ttl))
                 return _feed_result(feed, snapshot, stale=True, failed=True)
             empty = {
                 "items": [],
@@ -167,8 +167,10 @@ def get_fixed_feed(
                 "last_error_detail": str(error)[:240],
                 "last_attempt_at": current_time.isoformat(),
                 "parser_warnings": [],
+                "consecutive_failures": snapshot["consecutive_failures"],
+                "retry_after_at": snapshot["retry_after_at"],
             }
-            backend.set(key, empty, settings.NEWS_FAILURE_BACKOFF_SECONDS)
+            backend.set(key, empty, failure_ttl)
             return _feed_result(feed, empty, failed=True)
 
 

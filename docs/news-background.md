@@ -13,11 +13,25 @@ This is intended for the project's single-process local server.
 - Selecting a country promotes its Google request and missing/shared feeds.
   A request already fetching cannot be interrupted, but duplicate jobs are avoided.
 - A scan every 30 seconds queues feeds whose own successful-check timestamp is
-  older than the saved refresh interval (30 minutes by default).
-- Failed feeds retain usable stale data. Automatic retries wait five minutes;
-  explicit Retry and source Refresh now can bypass that backoff.
+  older than the saved refresh interval (12 hours by default), plus 1–30 random
+  minutes. The offset stays fixed between scans/restarts and changes after each
+  successful check. It extends the refresh interval, not the time between queued
+  downloads. Missing feeds are prepared immediately; the worker pool and
+  0.75-second Google request spacing remain unchanged.
+- Failed feeds retain usable stale data. Automatic retries start at 30 minutes
+  and double up to 12 hours, honoring longer publisher Retry-After delays.
+  Explicit Retry and Refresh now bypass individual failure backoff.
+- Google HTTP 429 responses pause all Google queries, including manual sweeps,
+  with increasing delays and respect for Retry-After. Regional/video feeds
+  continue. The shared cache card explains the pause and its end time.
 - Switches are rechecked when a job starts, so a disabled queued source is skipped.
   Saving source preferences also wakes the scheduler.
+
+The shared Feed cache card in Sources shows completed queue jobs and currently
+running feed/country names. Refresh now forces a bounded sweep of all enabled
+feeds without deleting usable cache. It retains Google pacing, deduplicates
+in-flight checks, and shows failures centrally. Additional custom article feeds
+use this same queue and retain independent cache/failure state.
 
 The queue continues after browser tabs close, while the Django process runs.
 Stopping the server stops all fetching. After a restart, opening a page resumes
@@ -25,9 +39,9 @@ preparation from retained SQLite snapshots. Development autoreloads restart the
 queue similarly. Management commands do not start it.
 
 Al Arabiya's provider and five feed records have been removed. The migration
-removes their obsolete source choices and changes a saved legacy 15-minute
-interval to 30; other saved intervals and journal entries are retained. Old feed
-cache records expire normally.
+removes their obsolete source choices. Migration 0005 changes saved minute-based
+intervals to 12 hours. Journal entries and existing source choices are retained.
+Old feed cache records expire normally.
 
 ## Immediate drawer display
 
@@ -65,8 +79,7 @@ old content with a loading screen.
 
 Reload the app with Ctrl+F5 after updating JavaScript.
 
-1. Confirm Al Arabiya is absent from Sources. Confirm a 30-minute interval, unless
-   a different nondefault interval was previously saved.
+1. Confirm Al Arabiya is absent from Sources and the new interval is 12 hours.
 2. Open a country during initial preparation: existing cached articles should
    show immediately; remaining results should appear automatically.
 3. Switch between countries, close/reopen the drawer, and use back/forward. Warm
@@ -77,9 +90,9 @@ Reload the app with Ctrl+F5 after updating JavaScript.
 5. Navigate to Journal/Settings and back. The map, viewport and drawer remain.
 6. Disable a source and save. Cached drawer results should update to exclude it;
    other sources and journal entries remain intact.
-7. Temporarily select a five-minute refresh interval, leave the server running
-   and close the browser. Reopen after six minutes and check source timestamps.
-   They should have advanced without country clicks. Restore 30 afterward.
+7. Select a six-hour interval, leave the server running and close the browser.
+   Reopen after six and a half hours. Enabled feeds should have refreshed without
+   country clicks (subject to source availability). Restore 12 hours afterward.
 8. If offline or a publisher fails, retained articles should remain visible.
    A never-successful feed should show a source failure rather than fabricated data.
 

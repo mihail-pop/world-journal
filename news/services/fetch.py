@@ -5,6 +5,8 @@ import socket
 import time
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass
+from datetime import UTC, datetime
+from email.utils import parsedate_to_datetime
 from urllib.parse import urljoin, urlsplit
 
 import httpx
@@ -12,7 +14,21 @@ from django.conf import settings
 
 
 class FeedFetchError(RuntimeError):
-    pass
+    def __init__(self, message, *, status_code=None, retry_after=None):
+        super().__init__(message)
+        self.status_code = status_code
+        self.retry_after_seconds = 0
+        if retry_after:
+            try:
+                self.retry_after_seconds = max(0, int(retry_after))
+            except (ValueError, TypeError):
+                try:
+                    deadline = parsedate_to_datetime(retry_after)
+                    if deadline.tzinfo is None:
+                        deadline = deadline.replace(tzinfo=UTC)
+                    self.retry_after_seconds = max(0, int((deadline - datetime.now(UTC)).total_seconds()))
+                except (ValueError, TypeError, OverflowError):
+                    pass
 
 
 @dataclass(frozen=True, slots=True)
@@ -145,7 +161,7 @@ def fetch_feed(
                     detail = "The publisher is rate-limiting feed requests (HTTP 429)"
                 else:
                     detail = f"The publisher returned HTTP {status}"
-                raise FeedFetchError(detail) from error
+                raise FeedFetchError(detail, status_code=status, retry_after=error.response.headers.get("Retry-After")) from error
             except httpx.TimeoutException as error:
                 raise FeedFetchError("The publisher did not respond within the time limit") from error
             except httpx.HTTPError as error:

@@ -24,7 +24,9 @@ The app now prepares all enabled feeds and per-country Google searches in a
 bounded in-process queue, beginning with the first application page request.
 Country drawers read available snapshots without waiting for publishers and retain
 rendered country content in the browser. The default automatic refresh interval
-is 30 minutes, and the queue continues while Django runs even if the browser is
+is 12 hours plus 1–30 random minutes before each feed becomes due; spacing between
+queued downloads remains unchanged. The queue
+continues while Django runs even if the browser is
 closed. Al Arabiya and all five of its feeds have been removed from the active
 registry; earlier audits below are historical. See [Background news cache](news-background.md)
 for the queue, limits, restart behavior and manual acceptance steps.
@@ -180,9 +182,9 @@ Create the existing database-cache table once after setup:
 
 Google keys use `news:v<schema>:google_country:<ISO2>:<edition>`. Fixed feed keys use `news:v<schema>:rss:<feed_id>:<language>`. Raw fixed-feed snapshots are country-neutral and contain provider/feed attribution but no matched country codes, match evidence, match class, or stale presentation state. A fresh feed snapshot is reused across every country.
 
-YouTube keys use `news:v<schema>:youtube:<source_id>:<language>:<channel_id>`. Each channel is fetched and cached independently before country filtering, so switching between countries in one channel's route reuses the same fresh normalized snapshot. Corrupt values are discarded and fetched again. Successful entries are retained for 24 hours as stale fallback, and each channel has an independent five-minute failure backoff and process lock. Cold eligible channels use at most `NEWS_YOUTUBE_WORKERS` concurrent requests and return after `NEWS_YOUTUBE_FETCH_WAIT_SECONDS`; one failed or timed-out channel does not hide another. `NEWS_YOUTUBE_PER_CHANNEL_LIMIT` and `NEWS_YOUTUBE_TOTAL_LIMIT` bound rendered results.
+YouTube keys use `news:v<schema>:youtube:<source_id>:<language>:<channel_id>`. Each channel is fetched and cached independently before country filtering, so switching between countries in one channel's route reuses the same fresh normalized snapshot. Corrupt values are discarded and fetched again. Successful entries are retained for 24 hours as stale fallback; each channel has a process lock and increasing failure delays from 30 minutes to 12 hours, respecting longer Retry-After values. Cold eligible channels use at most `NEWS_YOUTUBE_WORKERS` concurrent requests and return after `NEWS_YOUTUBE_FETCH_WAIT_SECONDS`; one failed or timed-out channel does not hide another. `NEWS_YOUTUBE_PER_CHANNEL_LIMIT` and `NEWS_YOUTUBE_TOTAL_LIMIT` bound rendered results.
 
-Successful snapshots are fresh for 30 minutes by default, or the saved source refresh interval. Google stale content is retained for three days; fixed-feed stale content is retained for 24 hours. Each feed has independent conditional headers, failure state, five-minute backoff, and process lock. One failed sibling cannot invalidate another. A provider is `partial` when at least one sibling is usable and another fails, and `unavailable` only when none of its enabled siblings is usable. Google remains independent of every regional provider.
+Successful snapshots are fresh for 12 hours by default, or the saved source refresh interval; automatic checks add up to 30 minutes of staggering. Google stale content is retained for three days; fixed-feed stale content is retained for 24 hours. Each feed has independent conditional headers, failure state, increasing backoff and a process lock. One failed sibling cannot invalidate another. A provider is `partial` when at least one sibling is usable and another fails, and `unavailable` only when none of its enabled siblings is usable. Google remains independent of every regional provider; a Google 429 pauses all country queries together. Failure metadata can outlive stale content to preserve retry delays.
 
 A cold request can fan out to all 13 enabled feeds. Work is bounded to `NEWS_REGIONAL_WORKERS` concurrent requests and the aggregate waits at most `NEWS_REGIONAL_FETCH_WAIT_SECONDS`; unfinished feeds become scoped failures for that response. A fully warm request performs no fixed-feed network calls and only filters cached snapshots. This synchronous service path is retained for explicit source refreshes and service callers. Browser drawers use cache-only reads while the process-local queue handles fetching.
 

@@ -26,7 +26,7 @@ from news.models import CustomSource, NewsPreferences, SourcePreference
 
 
 FORMAT = "world-journal-backup"
-VERSION = 3
+VERSION = 4
 MANIFEST_LIMIT = 32 * 1024 * 1024
 RECORD_LIMIT = 100_000
 IMAGE_TYPES = {"image/jpeg": (".jpg", "JPEG"), "image/png": (".png", "PNG"), "image/webp": (".webp", "WEBP"), "image/gif": (".gif", "GIF")}
@@ -54,6 +54,7 @@ LABELS = {
 # Freeze archive fields independently of future optional model fields.
 # Version 2 adds preset_groups; all version 1 datasets remain unchanged.
 # Version 3 adds custom_sources; older archives import with no custom sources.
+# Version 4 adds parent_id for grouped custom article feeds.
 # New backup versions must retain a reader for older archive versions.
 CONTENT_FIELDS = "title body body_format entry_type source_url source_name source_published_at youtube_video_id youtube_start_seconds"
 SCHEMA_FIELDS = {
@@ -69,7 +70,7 @@ SCHEMA_FIELDS = {
     SourcePreference: "source_id enabled updated_at",
     NewsPreferences: "id freshness_minutes updated_at",
     MapPersonalState: "id active_preset_id",
-    CustomSource: "id kind name url feed_format channel_id verified_at last_checked_at last_error created_at updated_at",
+    CustomSource: "id parent_id kind name url feed_format channel_id verified_at last_checked_at last_error created_at updated_at",
 }
 
 
@@ -150,8 +151,8 @@ def _read_archive(archive):
     if total > settings.BACKUP_MAX_BYTES:
         raise BackupError("The expanded backup exceeds the configured size limit.")
     manifest = json.loads(archive.read("manifest.json"))
-    if not isinstance(manifest, dict) or manifest.get("format") != FORMAT or type(manifest.get("version")) is not int or manifest["version"] not in {1, 2, VERSION}:
-        raise BackupError("Unsupported backup format or version. Use a World Journal version 1, 2 or 3 archive.")
+    if not isinstance(manifest, dict) or manifest.get("format") != FORMAT or type(manifest.get("version")) is not int or manifest["version"] not in {1, 2, 3, VERSION}:
+        raise BackupError("Unsupported backup format or version. Use a World Journal version 1–4 archive.")
     records, media = manifest.get("records"), manifest.get("media")
     expected_datasets = set(DATASETS) - ({"preset_groups"} if manifest["version"] == 1 else set()) - ({"custom_sources"} if manifest["version"] < 3 else set())
     if not isinstance(records, dict) or set(records) != expected_datasets or not isinstance(media, dict):
@@ -164,6 +165,11 @@ def _read_archive(archive):
         raise BackupError("The attachment list does not match the files in the archive.")
     if any(not isinstance(items, list) for items in records.values()) or sum(map(len, records.values())) > RECORD_LIMIT:
         raise BackupError("The backup has invalid datasets or too many records.")
+    if manifest["version"] == 3:
+        for record in records["custom_sources"]:
+            if not isinstance(record, dict) or "parent_id" in record:
+                raise BackupError("The custom source fields do not match version 3.")
+            record["parent_id"] = None
     return records, media
 
 
@@ -193,6 +199,9 @@ def _decode_records(records):
                     raise BackupError("Backup timestamps must include a timezone.")
             if model in (Entry, EntrySection) and values.get("entry_type") == "mixed":
                 values["entry_type"] = "note"
+            if model is NewsPreferences and type(values.get("freshness_minutes")) is int and 5 <= values["freshness_minutes"] <= 120:
+                # Older backups retain their source choices with the new cadence.
+                values["freshness_minutes"] = 720
             obj = model(**values)
             foreign_keys = [field.name for field in fields if isinstance(field, models.ForeignKey)]
             obj.clean_fields(exclude=foreign_keys)
@@ -240,6 +249,10 @@ def _validate_relationships(data, tags):
                     raise BackupError(f"{LABELS[name]} reference a missing parent or unknown country.")
             if isinstance(obj, Attachment) and obj.section_id and sections[obj.section_id].entry_id != obj.entry_id:
                 raise BackupError("An image's subsection belongs to another entry.")
+            if isinstance(obj, CustomSource) and obj.parent_id:
+                parent = next(item for item in data["custom_sources"] if item.pk == obj.parent_id)
+                if parent.kind != CustomSource.Kind.RSS or parent.parent_id:
+                    raise BackupError("Additional feeds must belong directly to an article publisher.")
     if any(code not in countries for codes in tags.values() for code in codes):
         raise BackupError("An entry references an unknown country code.")
     for name in ("collections", "presets"):

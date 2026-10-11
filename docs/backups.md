@@ -6,7 +6,7 @@ dependencies, accounts, or background service are needed.
 ## Portable export
 
 Download backup ZIP after saving open editors. The archive contains a UTF-8
-`manifest.json` identifying format `world-journal-backup`, version `3`, export
+`manifest.json` identifying format `world-journal-backup`, version `4`, export
 time, record datasets, and SHA-256 image checksums. Image files use generated
 archive paths under `media/`; original display filenames remain in metadata.
 
@@ -71,7 +71,9 @@ the preset editor and legend derive untitled groups from their country colors.
 Version 3 adds custom sources, including detected format, channel identity and
 check metadata. Version 1 and 2 archives remain readable. Sources already present
 at the same URL are reused without replacing their configuration or choices.
-Older app versions cannot read version 3 exports.
+Version 4 adds parent links for additional custom article feeds. Version 3 sources
+import as independent publishers/channels, preserving their identities. Versions
+1–3 remain readable; older app versions cannot read version 4 exports.
 
 ## Exact manual backup
 

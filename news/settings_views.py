@@ -14,15 +14,17 @@ from django.views.decorators.http import require_http_methods
 from core.views import render_page
 from countries.models import Country
 
-from .forms import CustomSourceForm, NewsPreferencesForm
+from .forms import AdditionalFeedForm, CustomSourceForm, NewsPreferencesForm
 from .models import CustomSource, NewsPreferences, SourcePreference
 from .preferences import effective_registry, freshness_seconds, source_choices
 from .registry import get_source_registry
-from .services.cache import fixed_feed_cache_key, google_cache_key, parse_datetime, youtube_cache_key
+from .services.cache import fixed_feed_cache_key, google_cache_key, google_pause_until, parse_datetime, youtube_cache_key
 from .services.country_news import get_country_news
 from .services.regional_news import get_fixed_feed
 from .services.youtube_news import get_youtube_feed
 from .services.custom_sources import check_custom_source, format_label, registry_items, with_custom_sources
+from .services.background import feed_jobs, feed_warmer
+from .services.country_news import _countries_by_code
 from .types import SourceKind
 
 
@@ -109,12 +111,23 @@ def _context(registry, choices, form, country, fresh_seconds):
         provider_row["enabled_feed_count"] = sum(feed["enabled"] for feed in provider_row["feeds"])
         providers.append(provider_row)
     custom_rows = []
-    for record in CustomSource.objects.all():
+    custom_records = list(CustomSource.objects.select_related("parent"))
+    for record in (record for record in custom_records if not record.parent_id):
         item, feed = registry_items(record)
+        if feed:
+            item = registry.get_provider(item.id)
         source_row = row(item)
-        source_row.update({"record": record, "format": format_label(record.feed_format), "feed_url": record.url})
+        source_row.update({"record": record, "format": format_label(record.feed_format), "feed_url": record.url, "feeds": []})
         if feed:
             source_row["health"] = _health(snapshots.get(keys[feed.id]), enabled[feed.id], fresh_seconds)
+            for child in (child for child in custom_records if child.pk == record.pk or child.parent_id == record.pk):
+                _provider, child_feed = registry_items(child)
+                feed_row = row(registry.get_feed(child_feed.id))
+                child_attempt = feed_row["health"]["last_attempt"]
+                child_error = child.last_error if child.last_error and (not child_attempt or not child.last_checked_at or child.last_checked_at >= child_attempt) else ""
+                feed_row.update(record=child, format=format_label(child.feed_format), check_error=child_error)
+                source_row["feeds"].append(feed_row)
+            source_row["add_feed_form"] = AdditionalFeedForm(prefix=f"feed-{record.pk}")
         health = source_row["health"]
         check_error = record.last_error if record.last_error and (
             not health["last_attempt"] or not record.last_checked_at or record.last_checked_at >= health["last_attempt"]
@@ -122,7 +135,7 @@ def _context(registry, choices, form, country, fresh_seconds):
         source_row["check_error"] = check_error
         if check_error and source_row["enabled"]:
             health.update(label="Last check failed · cached results retained", failed=True)
-        if not record.verified_at:
+        if not item.enabled_by_default:
             health.update(label="Check failed · paused", failed=True)
         custom_rows.append(source_row)
     return {
@@ -162,7 +175,7 @@ def save_preference(request):
         try:
             value = NewsPreferencesForm.base_fields["freshness_minutes"].clean(request.POST.get("value"))
         except ValidationError:
-            return JsonResponse({"error": "Choose a refresh interval from 5 to 120 minutes."}, status=400)
+            return JsonResponse({"error": "Choose a refresh interval of 6, 8, 10 or 12 hours."}, status=400)
         NewsPreferences.objects.update_or_create(pk=1, defaults={"freshness_minutes": value})
     else:
         identity = request.POST.get("source_id")
@@ -180,9 +193,98 @@ def save_preference(request):
     form = NewsPreferencesForm(registry=registry, choices=choices, freshness=interval)
     context = _context(registry, choices, form, _country(request), interval)
     rows = [*context["google_sources"], *context["youtube_sources"], *context["custom_sources"]]
+    for source in context["custom_sources"]:
+        rows.extend(source["feeds"])
     for provider in context["providers"]:
         rows.extend((provider, *provider["feeds"]))
-    return JsonResponse({"states": {row["id"]: {"enabled": row["enabled"], "label": row["health"]["label"], "failed": row["health"]["failed"]} for row in rows}})
+    return JsonResponse({"states": {row["id"]: {"enabled": row["enabled"], "label": "Connected" if row["enabled"] else "Off", "failed": False} for row in rows}})
+
+
+@never_cache
+@require_http_methods(["GET"])
+def refresh_status(request):
+    feed_warmer.start()
+    registry = effective_registry()
+    jobs = tuple(feed_jobs(registry))
+    snapshots = cache.get_many([key for _job, key in jobs])
+    providers = {provider.id: provider for provider in registry.providers}
+    feeds = {feed.id: feed for feed in registry.feeds}
+    sources = {source.id: source for source in registry.sources}
+
+    def label(job):
+        kind, identity = job
+        if kind == "google":
+            return f"Google News · {_countries_by_code()[identity]['name']}"
+        if kind == "rss" and identity in feeds:
+            feed = feeds[identity]
+            return f"{providers[feed.provider_id].display_name} · {feed.section_label}"
+        if identity in sources:
+            return sources[identity].display_name
+        return "Updating sources"
+
+    progress = feed_warmer.progress()
+    progress["current"] = [label(job) for job in progress.pop("running")]
+    errors = []
+    paused_until = google_pause_until(cache, datetime.now(UTC))
+    if paused_until and registry.get("google_news_country").enabled_by_default:
+        errors.append({"name": "Google News", "error": f"Automatic refresh is paused after a rate-limit response. It resumes after {paused_until:%H:%M UTC on %b %d}. Cached headlines remain available."})
+    errored_jobs = set()
+    for job, key in jobs:
+        snapshot = snapshots.get(key)
+        if isinstance(snapshot, dict) and snapshot.get("last_error"):
+            errors.append({"name": label(job), "error": snapshot.get("last_error_detail") or snapshot["last_error"]})
+            errored_jobs.add(job)
+    # Also expose unexpected worker failures, but drop them after a later
+    # successful check or when the source is disabled/removed.
+    keys = dict(jobs)
+    started = parse_datetime(progress.pop("started_at"))
+    for job in map(tuple, progress.pop("failed_jobs")):
+        if job not in keys or job in errored_jobs:
+            continue
+        snapshot = snapshots.get(keys[job])
+        attempted = parse_datetime(snapshot.get("last_attempt_at")) if isinstance(snapshot, dict) else None
+        if not attempted or not started or attempted < started:
+            errors.append({"name": label(job), "error": "The last check could not be completed; cached results are retained where available."})
+    progress["errors"] = errors
+    progress["failed"] = len(errors)
+    progress["enabled"] = len(jobs)
+    return JsonResponse(progress)
+
+
+@never_cache
+@require_http_methods(["POST"])
+def refresh_all(request):
+    feed_warmer.refresh_all()
+    if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+        return JsonResponse({"queued": True})
+    messages.success(request, "All enabled feeds are refreshing in the background.")
+    return _navigate(request, _country(request))
+
+
+@never_cache
+@require_http_methods(["POST"])
+def add_publisher_feed(request, source_id):
+    publisher = get_object_or_404(CustomSource, pk=source_id, kind=CustomSource.Kind.RSS, parent=None)
+    form = AdditionalFeedForm(request.POST, prefix=f"feed-{publisher.pk}")
+    if form.is_valid():
+        record = CustomSource(parent=publisher, kind=CustomSource.Kind.RSS, url=form.cleaned_data["location"], name=form.cleaned_data["name"])
+        success = check_custom_source(record)
+        record.save()
+        feed_warmer.rescan()
+        if success:
+            messages.success(request, "Feed added to this publisher and checked.")
+        else:
+            messages.warning(request, "Feed saved, but its check failed. See its reason in Feed details.")
+        return _navigate(request, _country(request))
+    country = _country(request)
+    registry, choices, interval = with_custom_sources(get_source_registry()), source_choices(), freshness_seconds()
+    preferences_form = NewsPreferencesForm(registry=registry, choices=choices, freshness=interval)
+    context = _context(registry, choices, preferences_form, country, interval)
+    for row in context["custom_sources"]:
+        if row["record"].pk == publisher.pk:
+            row["add_feed_form"] = form
+            row["details_open"] = True
+    return render_page(request, "settings", page_template="news/settings.html", context=context)
 
 
 @never_cache
@@ -216,11 +318,15 @@ def custom_source_action(request, source_id, action):
     from .services.background import feed_warmer
 
     if action == "remove":
-        item, feed = registry_items(record)
-        identity = record.registry_id
-        SourcePreference.objects.filter(source_id__in=(identity, f"{identity}_feed")).delete()
+        records = [record, *record.extra_feeds.all()]
+        identities, keys = [], []
+        for removed in records:
+            item, feed = registry_items(removed)
+            identities.extend((removed.registry_id, f"{removed.registry_id}_feed"))
+            keys.append(fixed_feed_cache_key(feed) if feed else youtube_cache_key(item))
+        SourcePreference.objects.filter(source_id__in=identities).delete()
         record.delete()
-        cache.delete(fixed_feed_cache_key(feed) if feed else youtube_cache_key(item))
+        cache.delete_many(keys)
         messages.success(request, "Custom source removed. Saved journal entries are kept.")
     elif action == "check":
         success = check_custom_source(record)

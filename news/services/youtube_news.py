@@ -14,7 +14,7 @@ from news.preferences import effective_registry, freshness_seconds
 from news.registry import SourceRegistry
 from news.types import CountryVideosPage, NewsSource, VideoItem, VideoSourceResult
 
-from .cache import age, cache_lock, deserialize_video_items, parse_datetime, youtube_cache_key
+from .cache import age, cache_lock, deserialize_video_items, failure_retry_pending, parse_datetime, record_failure, youtube_cache_key
 from .country_matcher import match_title
 from .country_news import _country_for_code
 from .fetch import FeedFetchError, FeedResponse, fetch_feed
@@ -97,12 +97,9 @@ def get_youtube_feed(
             and success_age.total_seconds() < fresh_seconds
         ):
             return _source_result(source, snapshot)
-        failure_age = age(current_time, snapshot.get("last_attempt_at"))
         if (
             not force_refresh and not retrying_failure
-            and snapshot.get("last_error")
-            and failure_age is not None
-            and failure_age.total_seconds() < settings.NEWS_YOUTUBE_FAILURE_BACKOFF_SECONDS
+            and failure_retry_pending(snapshot, current_time)
         ):
             return _source_result(
                 source,
@@ -128,6 +125,8 @@ def get_youtube_feed(
                     "last_error": "",
                     "last_error_detail": "",
                     "last_attempt_at": current_time.isoformat(),
+                    "consecutive_failures": 0,
+                    "retry_after_at": None,
                 })
             else:
                 normalized = normalize_youtube_feed(
@@ -148,6 +147,7 @@ def get_youtube_feed(
             backend.set(key, snapshot, settings.NEWS_YOUTUBE_STALE_SECONDS)
             return _source_result(source, snapshot)
         except (FeedFetchError, YouTubeFeedParseError) as error:
+            failure_ttl = record_failure(snapshot, current_time, error)
             snapshot["last_error"] = "This video channel is temporarily unavailable."
             snapshot["last_error_detail"] = str(error)[:240]
             snapshot["last_attempt_at"] = current_time.isoformat()
@@ -160,7 +160,7 @@ def get_youtube_feed(
                     1,
                     settings.NEWS_YOUTUBE_STALE_SECONDS - int(last_success_age.total_seconds()),
                 )
-                backend.set(key, snapshot, remaining)
+                backend.set(key, snapshot, max(remaining, failure_ttl))
                 return _source_result(source, snapshot, stale=True, failed=True)
             empty = {
                 "items": [],
@@ -171,8 +171,10 @@ def get_youtube_feed(
                 "last_error": "This video channel is temporarily unavailable.",
                 "last_error_detail": str(error)[:240],
                 "last_attempt_at": current_time.isoformat(),
+                "consecutive_failures": snapshot["consecutive_failures"],
+                "retry_after_at": snapshot["retry_after_at"],
             }
-            backend.set(key, empty, settings.NEWS_YOUTUBE_FAILURE_BACKOFF_SECONDS)
+            backend.set(key, empty, failure_ttl)
             return _source_result(source, empty, failed=True)
 
 

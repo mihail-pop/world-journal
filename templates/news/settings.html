@@ -1,22 +1,29 @@
-<section class="page page-standard source-settings-page settings-page" data-page="settings" data-source-settings data-save-url="{% url 'news:save_preference' %}" hx-boost="true" hx-target="#app-content" hx-push-url="true" aria-labelledby="sources-title">
+<section class="page page-standard source-settings-page settings-page" data-page="settings" data-source-settings data-save-url="{% url 'news:save_preference' %}" data-refresh-status-url="{% url 'news:refresh_status' %}" hx-boost="true" hx-target="#app-content" hx-push-url="true" aria-labelledby="sources-title">
     {% include 'core/partials/settings_nav.html' with section='sources' heading_id='sources-title' %}
     {% for message in messages %}<p class="source-settings-message {% if message.tags == 'warning' %}is-warning{% endif %}" role="status">{{ message }}</p>{% endfor %}
     <div class="settings-grid source-overview-grid">
         <form id="news-preferences" class="settings-card source-preferences-form" method="post" action="{% url 'news:settings' %}">
             {% csrf_token %}<input type="hidden" name="country" value="{{ country.pk }}">
             <h2>Background refresh</h2>{{ form.non_field_errors }}
-            <div class="settings-field"><label for="{{ form.freshness_minutes.id_for_label }}">Interval in minutes</label>{{ form.freshness_minutes }}{{ form.freshness_minutes.errors }}</div>
-            <p class="field-note">5–120 minutes. Cached results stay available during refreshes.</p>
+            <div class="settings-field"><label for="{{ form.freshness_minutes.id_for_label }}">Refresh interval</label>{{ form.freshness_minutes }}{{ form.freshness_minutes.errors }}</div>
+            <p class="field-note">The next refresh is due after this interval plus 1–30 random minutes. First-time loading and Refresh now start immediately.</p>
             <p class="source-save-status" data-source-save-status role="status" aria-live="polite"></p>
             <noscript><button type="submit" class="journal-button is-primary">Save source preferences</button></noscript>
         </form>
         {% for row in google_sources %}<article class="source-settings-card settings-card">
             <h2>Google News</h2><p class="field-note">English country searches · US edition.</p>
-            <form class="source-country-form" method="get" action="{% url 'news:settings' %}"><div class="settings-field"><label for="source-check-country">Country cache</label><select id="source-check-country" name="country" data-country-select data-source-health-country>{% for option in countries %}<option value="{{ option.pk }}"{% if option.pk == country.pk %} selected{% endif %}>{{ option.name }}</option>{% endfor %}</select></div><noscript><button type="submit" class="journal-button">Show country cache</button></noscript></form>
             {% include "news/partials/source_control.html" %}
         </article>{% endfor %}
+        <article class="settings-card source-refresh-card">
+            <h2>Feed cache</h2>
+            <p class="source-refresh-status" data-refresh-summary role="status" aria-live="polite">Checking background activity…</p>
+            <progress data-refresh-progress max="1" value="0" aria-label="Feed refresh progress"></progress>
+            <p class="field-note source-refresh-current" data-refresh-current></p>
+            <form method="post" action="{% url 'news:refresh_all' %}" data-refresh-all-form>{% csrf_token %}<input type="hidden" name="country" value="{{ country.pk }}"><button class="journal-button" type="submit" data-refresh-all>Refresh now</button></form>
+            <details class="source-refresh-errors" data-refresh-errors hidden><summary data-refresh-error-summary>Sources needing attention</summary><ul data-refresh-error-list></ul></details>
+            <p class="field-note">Refreshes all enabled feeds. Cached articles stay available.</p>
+        </article>
     </div>
-    <details class="settings-help"><summary>How sources work</summary><p>Choices save as you change them. Turning off a publisher pauses its feeds and retains their individual choices. Feeds refresh while Django runs, even with the browser closed.</p><p>Article feeds match country references in headlines and summaries. Videos match country references in titles. Custom sources can contribute to any country; adding a feed does not assign every item to every country. Playback starts only after Play.</p></details>
     <section class="source-settings-section" aria-labelledby="custom-sources-title">
         <h2 id="custom-sources-title">Your sources</h2>
         <details class="settings-card custom-source-add" {% if custom_form.errors %}open{% endif %}><summary>Add a source</summary>
@@ -28,16 +35,23 @@
             </form>
         </details>
         <div class="source-card-grid custom-source-grid">{% for row in custom_sources %}<article class="settings-card source-settings-card" data-source-row="{{ row.id }}">
-            <h3><a href="{{ row.record.url }}" target="_blank" rel="noopener noreferrer">{{ row.name }}</a></h3>
+            <div class="custom-source-card-heading"><h3><a href="{{ row.record.url }}" target="_blank" rel="noopener noreferrer">{{ row.name }}</a></h3><form method="post" action="{% url 'news:custom_action' row.record.pk 'remove' %}" hx-disabled-elt="find button">{% csrf_token %}<input type="hidden" name="country" value="{{ country.pk }}"><button class="source-remove-button" type="submit" aria-label="Remove {{ row.name }}{% if row.feeds %} and its feeds{% endif %}" title="Remove source">{% include 'core/partials/icon.html' with name='close' %}</button></form></div>
             <p class="field-note">{{ row.record.get_kind_display }}{% if row.record.feed_format %} · {{ row.format }}{% endif %}</p>
             <label class="source-choice" for="{{ row.toggle.id_for_label }}">{{ row.toggle }} Include this source</label>{{ row.toggle.errors }}
-            {% if row.record.verified_at %}<p class="source-health {% if row.health.failed %}is-warning{% endif %}">{{ row.health.label }}</p>{% else %}<p class="source-health is-warning">Check failed · paused</p>{% endif %}
-            {% if row.check_error %}<p class="custom-source-error">{{ row.check_error }}</p>{% elif row.health.error_detail %}<p class="custom-source-error">{{ row.health.error_detail }}</p>{% endif %}
-            <div class="custom-source-actions">
-                <form method="post" action="{% url 'news:custom_action' row.record.pk 'check' %}" hx-disabled-elt="find button" hx-indicator="find .source-check-progress">{% csrf_token %}<input type="hidden" name="country" value="{{ country.pk }}"><button class="journal-button" type="submit">{% if row.record.verified_at %}Check now{% else %}Check again{% endif %}</button><span class="source-check-progress htmx-indicator" role="status">Checking…</span></form>
-                <form method="post" action="{% url 'news:custom_action' row.record.pk 'remove' %}" hx-disabled-elt="find button">{% csrf_token %}<input type="hidden" name="country" value="{{ country.pk }}"><button class="journal-button" type="submit">Remove</button></form>
-            </div>
-            <details class="source-details"><summary>Feed details</summary><a href="{{ row.feed_url }}" target="_blank" rel="noopener noreferrer">Open feed ↗</a><dl class="source-health-details"><div><dt>Last check</dt><dd>{% if row.record.last_checked_at %}{{ row.record.last_checked_at|date:'M j, Y, H:i T' }}{% else %}Not checked{% endif %}</dd></div><div><dt>Cached entries</dt><dd>{{ row.health.item_count|default_if_none:'None' }}</dd></div></dl></details>
+            <p class="source-health {% if not row.available %}is-warning{% endif %}">{% if not row.available %}Check failed · paused{% elif row.enabled %}Connected{% else %}Off{% endif %}</p>
+            {% if not row.feeds %}{% if row.check_error %}<p class="custom-source-error">{{ row.check_error }}</p>{% endif %}{% if not row.available %}<form method="post" action="{% url 'news:custom_action' row.record.pk 'check' %}" hx-disabled-elt="find button" hx-indicator="find .source-check-progress">{% csrf_token %}<input type="hidden" name="country" value="{{ country.pk }}"><button class="journal-button" type="submit">Check again</button><span class="source-check-progress htmx-indicator">Checking…</span></form>{% endif %}{% endif %}
+            <details class="source-details" {% if row.details_open or not row.available %}open{% endif %}><summary>Feed details{% if row.feeds %} ({{ row.feeds|length }}){% endif %}</summary>
+                {% if row.feeds %}
+                    {% for feed in row.feeds %}<div class="source-feed-row" data-source-row="{{ feed.id }}">
+                        <div class="custom-source-card-heading"><h4>{{ feed.name }}{% if feed.record.feed_format %} · {{ feed.format }}{% endif %}</h4>{% if feed.record.parent_id %}<form method="post" action="{% url 'news:custom_action' feed.record.pk 'remove' %}" hx-disabled-elt="find button">{% csrf_token %}<input type="hidden" name="country" value="{{ country.pk }}"><button class="source-remove-button" type="submit" aria-label="Remove {{ feed.name }} feed" title="Remove feed">{% include 'core/partials/icon.html' with name='close' %}</button></form>{% endif %}</div>
+                        <label class="source-choice" for="{{ feed.toggle.id_for_label }}">{{ feed.toggle }} Include this feed</label>{{ feed.toggle.errors }}
+                        <a href="{{ feed.feed_url }}" target="_blank" rel="noopener noreferrer">Open feed ↗</a>
+                        {% if feed.check_error %}<p class="custom-source-error">{{ feed.check_error }}</p>{% endif %}
+                        {% if not feed.available %}<form method="post" action="{% url 'news:custom_action' feed.record.pk 'check' %}" hx-disabled-elt="find button" hx-indicator="find .source-check-progress">{% csrf_token %}<input type="hidden" name="country" value="{{ country.pk }}"><button class="journal-button" type="submit">Check again</button><span class="source-check-progress htmx-indicator">Checking…</span></form>{% endif %}
+                    </div>{% endfor %}
+                    <details class="custom-extra-feed-add" {% if row.add_feed_form.errors %}open{% endif %}><summary>Add feed</summary><form method="post" action="{% url 'news:custom_feed_add' row.record.pk %}" hx-disabled-elt="find button" hx-indicator="find .source-check-progress">{% csrf_token %}<input type="hidden" name="country" value="{{ country.pk }}">{{ row.add_feed_form.kind }}{{ row.add_feed_form.non_field_errors }}<div class="settings-field"><label for="{{ row.add_feed_form.location.id_for_label }}">Feed URL</label>{{ row.add_feed_form.location }}{{ row.add_feed_form.location.errors }}</div><div class="settings-field"><label for="{{ row.add_feed_form.name.id_for_label }}">Feed label (optional)</label>{{ row.add_feed_form.name }}{{ row.add_feed_form.name.errors }}</div><div class="custom-source-actions"><button class="journal-button" type="submit">Add and check</button><span class="source-check-progress htmx-indicator">Checking feed…</span></div></form></details>
+                {% else %}<a href="{{ row.feed_url }}" target="_blank" rel="noopener noreferrer">Open feed ↗</a>{% endif %}
+            </details>
         </article>{% empty %}<p class="field-note">Add an article feed or YouTube channel above.</p>{% endfor %}</div>
     </section>
     <section class="source-settings-section" aria-labelledby="regional-sources-title"><h2 id="regional-sources-title">Regional publishers</h2>

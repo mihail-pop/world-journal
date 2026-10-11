@@ -18,7 +18,7 @@ from django.db import close_old_connections
 from news.preferences import effective_registry, freshness_seconds
 from news.types import SourceKind
 
-from .cache import age, fixed_feed_cache_key, google_cache_key, youtube_cache_key
+from .cache import age, failure_retry_pending, fixed_feed_cache_key, google_cache_key, google_pause_until, refresh_jitter, youtube_cache_key
 from .country_news import _countries_by_code, _country_for_code, get_country_news
 from .regional_news import get_fixed_feed
 from .region_routing import eligible_youtube_sources
@@ -40,15 +40,13 @@ def feed_jobs(registry):
             yield ("google", code), google_cache_key(google, code)
 
 
-def needs_refresh(snapshot, interval, now):
+def needs_refresh(snapshot, interval, now, job=None):
     if not isinstance(snapshot, dict) or not isinstance(snapshot.get("items"), list):
         return True
     if snapshot.get("last_error"):
-        attempted_age = age(now, snapshot.get("last_attempt_at"))
-        # Background failures retry gently; clicking Retry remains immediate.
-        return attempted_age is None or attempted_age.total_seconds() >= min(interval, 300)
+        return not failure_retry_pending(snapshot, now)
     fetched_age = age(now, snapshot.get("fetched_at"))
-    return not snapshot.get("last_success_at") or fetched_age is None or fetched_age.total_seconds() >= interval
+    return not snapshot.get("last_success_at") or fetched_age is None or fetched_age.total_seconds() >= interval + refresh_jitter(job, snapshot)
 
 
 class FeedWarmer:
@@ -61,6 +59,11 @@ class FeedWarmer:
         self.google_pacing = Lock()
         self.next_google_at = 0.0
         self.scan_requested = Event()
+        self.force_jobs = set()
+        self.cycle = {}
+        self.cycle_started_at = None
+        self.cycle_finished_at = None
+        self.manual_refresh = False
 
     def start(self):
         with self.condition:
@@ -73,10 +76,18 @@ class FeedWarmer:
             Thread(target=self._worker, args=(True,), daemon=True, name="feeds-priority").start()
             Thread(target=self._schedule, daemon=True, name="feeds-refresh").start()
 
-    def _enqueue(self, job, *, urgent=False, retry=False):
+    def _enqueue(self, job, *, urgent=False, retry=False, force=False):
         with self.condition:
             if job in self.running:
                 return
+            if not (self.urgent or self.normal or self.running):
+                self.cycle = {}
+                self.cycle_started_at = datetime.now(UTC).isoformat()
+                self.cycle_finished_at = None
+                self.manual_refresh = False
+            self.cycle[job] = "queued"
+            if force:
+                self.force_jobs.add(job)
             if urgent:
                 previous_retry = self.normal.pop(job, False) or self.urgent.get(job, False)
                 retry = retry or previous_retry
@@ -84,6 +95,8 @@ class FeedWarmer:
                 self.urgent.move_to_end(job, last=False)
             elif job not in self.urgent and job not in self.normal:
                 self.normal[job] = retry
+            elif retry and job in self.normal:
+                self.normal[job] = True
             self.condition.notify_all()
 
     def prioritize(self, code, *, retry=False):
@@ -94,11 +107,14 @@ class FeedWarmer:
         jobs += [(("youtube", source.id), youtube_cache_key(source)) for source in eligible_youtube_sources(country, registry)]
         snapshots = cache.get_many([key for _, key in jobs])
         now = datetime.now(UTC)
+        google_paused = google_pause_until(cache, now)
         # Enqueue shared feeds first, then Google last so the newest country goes first.
         jobs.sort(key=lambda pair: pair[0][0] == "google")
         for job, key in jobs:
+            if job[0] == "google" and google_paused:
+                continue
             snapshot = snapshots.get(key)
-            if needs_refresh(snapshot, interval, now) or retry and isinstance(snapshot, dict) and snapshot.get("last_error"):
+            if needs_refresh(snapshot, interval, now, job) or retry and isinstance(snapshot, dict) and snapshot.get("last_error"):
                 self._enqueue(job, urgent=True, retry=retry)
 
     def busy(self):
@@ -109,6 +125,45 @@ class FeedWarmer:
         self.start()
         self.scan_requested.set()
 
+    def refresh_all(self):
+        """Queue a bounded forced sweep, retaining current snapshots for readers."""
+        self.start()
+        jobs = tuple(job for job, _key in feed_jobs(effective_registry()))
+        with self.condition:
+            if self.manual_refresh and (self.urgent or self.normal or self.running):
+                return
+            # Keep only currently enabled jobs. Existing in-flight fetches count
+            # toward this sweep and are not duplicated.
+            enabled = set(jobs)
+            self.urgent = OrderedDict((job, retry) for job, retry in self.urgent.items() if job in enabled)
+            self.normal = OrderedDict((job, retry) for job, retry in self.normal.items() if job in enabled)
+            self.force_jobs.intersection_update(enabled)
+            # Populate the queue atomically before workers can consume it.
+            for job in jobs:
+                if job not in self.running and job not in self.urgent:
+                    self.normal[job] = True
+                if job not in self.running:
+                    self.force_jobs.add(job)
+            self.cycle = {job: "running" if job in self.running else "queued" for job in jobs}
+            self.cycle_started_at = datetime.now(UTC).isoformat()
+            self.cycle_finished_at = None
+            self.manual_refresh = True
+            self.condition.notify_all()
+
+    def progress(self):
+        with self.condition:
+            total = len(self.cycle)
+            completed = sum(state in {"done", "failed", "skipped"} for state in self.cycle.values())
+            return {
+                "total": total, "completed": completed,
+                "failed": sum(state == "failed" for state in self.cycle.values()),
+                "busy": bool(self.urgent or self.normal or self.running),
+                "running": list(self.running),
+                "failed_jobs": [job for job, state in self.cycle.items() if state == "failed"],
+                "started_at": self.cycle_started_at,
+                "finished_at": self.cycle_finished_at,
+            }
+
     def _schedule(self):
         while True:
             self.scan_requested.clear()
@@ -118,8 +173,11 @@ class FeedWarmer:
                 jobs = tuple(feed_jobs(registry))
                 snapshots = cache.get_many([key for _, key in jobs])
                 now = datetime.now(UTC)
+                google_paused = google_pause_until(cache, now)
                 for job, key in jobs:
-                    if needs_refresh(snapshots.get(key), interval, now):
+                    if job[0] == "google" and google_paused:
+                        continue
+                    if needs_refresh(snapshots.get(key), interval, now, job):
                         self._enqueue(job)
             except Exception:
                 logger.exception("Background feed scheduling failed; will retry")
@@ -134,37 +192,50 @@ class FeedWarmer:
                 queue = self.urgent if self.urgent else self.normal
                 job, retry = queue.popitem(last=False)
                 self.running.add(job)
+                if job in self.cycle:
+                    self.cycle[job] = "running"
+                force = job in self.force_jobs
+                self.force_jobs.discard(job)
+            outcome = "failed"
             try:
                 close_old_connections()
-                self._run(job, retry)
+                result = self._run(job, retry, force)
+                outcome = "skipped" if result is None else "done" if result else "failed"
             except Exception:
                 logger.exception("Background feed %s failed", job)
             finally:
                 close_old_connections()
                 with self.condition:
                     self.running.discard(job)
+                    if job in self.cycle:
+                        self.cycle[job] = outcome
+                    if self.cycle and all(state in {"done", "failed", "skipped"} for state in self.cycle.values()):
+                        self.cycle_finished_at = datetime.now(UTC).isoformat()
 
-    def _run(self, job, retry):
+    def _run(self, job, retry, force=False):
         # Re-read switches at dispatch: disabling a queued feed prevents its fetch.
         registry, interval = effective_registry(), freshness_seconds()
         kind, identity = job
-        options = {"fresh_seconds": interval, "retry_failed": retry}
+        options = {"fresh_seconds": interval, "retry_failed": retry, "force_refresh": force}
         if kind == "rss":
             feed = next((feed for feed in registry.feeds if feed.id == identity), None)
             if feed and feed.enabled_by_default:
-                get_fixed_feed(feed, registry.get_provider(feed.provider_id), **options)
+                return not get_fixed_feed(feed, registry.get_provider(feed.provider_id), **options).refresh_failed
         elif kind == "youtube":
             source = next((source for source in registry.sources if source.id == identity), None)
             if source and source.enabled_by_default:
-                get_youtube_feed(source, **options)
+                return not get_youtube_feed(source, **options).refresh_failed
         elif registry.get("google_news_country").enabled_by_default:
             # Smooth out the initial 238-country sweep instead of flooding Google.
             with self.google_pacing:
+                if google_pause_until(cache, datetime.now(UTC)):
+                    return None
                 delay = self.next_google_at - time.monotonic()
                 if delay > 0:
                     time.sleep(delay)
                 self.next_google_at = time.monotonic() + settings.NEWS_GOOGLE_REQUEST_SPACING_SECONDS
-            get_country_news(identity, registry=registry, **options)
+            result = get_country_news(identity, registry=registry, **options)
+            return not (result.error or result.warning)
 
 
 feed_warmer = FeedWarmer()

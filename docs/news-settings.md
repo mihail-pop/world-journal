@@ -15,9 +15,12 @@ dependencies are required.
 - Al Arabiya and its five feeds have been removed from the active configuration.
   The four YouTube candidate IDs were replaced with verified working channels
   on October 11, 2026 and can now be enabled.
-- Background refresh runs every 5–120 minutes (30 by default). Each feed's own
-  fetch/check timestamp determines when it is due. The previous default of 15
-  minutes is upgraded to 30 by the migration; other saved intervals are retained.
+- Background refresh offers 6, 8, 10 or 12 hours (12 by default). Each feed's own
+  successful-check timestamp determines when it is due, plus a stable 1–30 minute
+  offset that changes after each successful check. This extends the refresh
+  interval, not the spacing between downloads. Missing feeds load immediately.
+  Migration 0005 upgrades saved minute-based intervals to 12 hours; old backups
+  receive the same upgrade on import.
 - Changing preferences does not remove cached feeds, journal items, or the playing
   video. Visible drawer results update as refreshed feeds become available.
 
@@ -28,29 +31,28 @@ cannot enable an unavailable registry record. Disabled records are skipped befor
 fetching. Video feeds are warmed in the background; thumbnails and playback remain
 lazy on the Map page. See [Background news cache](news-background.md).
 
-## Health and manual refresh
+## Shared refresh card
 
-Health on this page reads the retained feed cache. The first application page
-request starts the background warmer, without waiting for publishers.
-Google News health is specific to the selected country. Regional and YouTube
-health covers the whole feed, so its entry count can differ from country matches.
+The top row has three small cards: Background refresh, Google News and Feed cache.
+Feed cache shows real completed/total queue jobs, the active source/country names
+and a progress bar. Status polls every two seconds while busy and every 15 seconds
+while idle, only on the Sources page; hidden tabs pause polling. Finishing shows
+Done/cache ready or a count of unavailable feeds. Failure details live together
+in that card. Individual cards no longer repeat cache times, counts or refresh
+buttons. Source links and publisher notes remain available.
 
-**Refresh now** checks one saved, enabled endpoint. It bypasses normal freshness
-and failure backoff for that request, but keeps existing bounded fetching,
-conditional requests, identity validation, and stale fallback. A successful empty
-feed is different from a failed refresh. Choices save directly. Changing the
-Google health country reloads Sources with that country's cache details.
-
-The last successful check includes HTTP 304 responses. Registry review dates are
-separate historical audit dates. Health is not a permanent event log: when the
-underlying cache expires, the page reports no retained check. A failed refresh
-retains prior usable results where available.
-
-After a failed refresh, **Feed details → Failure reason** distinguishes publisher
-HTTP errors (including 403, 404 and 429), connection/time limits, invalid feed
-responses and channel identity mismatches. Old cache records may have only the
-generic warning until another refresh. YouTube rows also expose their derived
-Atom feed link.
+**Refresh now** queues all enabled regional feeds, channel feeds and country
+Google feeds without blocking the page. It bypasses freshness/backoff but keeps
+conditional requests, the bounded worker pool, Google pacing and stale fallback.
+Google-wide rate-limit pauses apply even to manual refreshes. A 429 pauses all
+country queries; the pause honors Retry-After if supplied. Other feed failures
+retry after 30 minutes, then 1, 2, 4, 8 and 12 hours, capped at 12 hours unless a
+publisher requests a longer wait. Successful checks reset the failure count.
+Repeated clicks during a manual sweep do not create another sweep. Sources that
+are disabled before dispatch are skipped. Existing in-flight checks count toward
+the sweep and are not duplicated. No useful cache is deleted to create progress.
+The button is disabled while refreshing. Progress is process-local, and resets
+after a Django restart; retained feed snapshots remain in SQLite.
 
 ## Custom feeds and channels
 
@@ -75,7 +77,14 @@ No API key, dependency or special publisher parser is required.
   subject to existing country matching and limits. Aliases remain English/reviewed
   terms; no automatic translation or full article scraping is added.
 - Removal keeps saved journal entries. Configurations and check metadata join
-  version 3 backups; feed cache remains excluded. Version 1/2 backups still import.
+  version 4 backups; feed cache remains excluded. Version 1–3 backups still import.
+- Each custom card has an accessible X. Removing an article publisher removes
+  its associated additional feeds. In an article card, **Feed details → Add feed**
+  adds a second feed under that publisher with its own label, format, validation,
+  cache and switch. Extra feeds have an X of their own. Turning the publisher off
+  pauses them all without forgetting feed switches. A failed first check remains
+  visible with Check again; unrelated feeds continue working. Existing custom
+  sources retain their identities and original feed through migration.
 
 ## Setup and manual checks
 
@@ -89,17 +98,17 @@ Use the workspace virtual environment:
 Open `http://127.0.0.1:8000/` and reload with Ctrl+F5 after updating static files.
 
 1. Open source settings. Al Arabiya is absent. Sources and saved choices appear
-   immediately while background preparation proceeds. Reopening the page shows
-   the latest retained health.
+   immediately while the shared card shows background preparation.
 2. Turn Google News off. Wait for Saved, then open Articles: Google shows a
    switched-off message while enabled regional coverage remains available.
 3. Disable a regional publisher, then enable it again. Its individual
    feed checkbox choices should be retained. Unavailable channels remain locked.
-4. Save a freshness value, revisit the page, and confirm it persists. Values
-   outside 5–120 should show a validation message.
-5. Refresh one enabled source. Its attempt time and cache status update; a remote
-   failure shows a warning and keeps prior usable cached entries. Google checks
-   use the chosen country.
+4. Confirm the interval defaults to Every 12 hours. Choose 6, 8 or 10 hours,
+   wait for Saved, revisit and confirm it persists. Restore 12 hours afterward.
+5. Press the shared Refresh now. Progress should count completed feeds, show
+   active sources, then finish. Failures should appear together; cached country
+   results and any playing video should remain available. Navigate away/back
+   during a sweep and confirm progress resumes from the server.
 6. Try the page in all themes and a narrow window. Navigate between Map, Journal,
    and Settings while a video plays; the shell player should stay intact.
 7. Add an RSS/Atom feed and a YouTube channel that are not built-in. Check their
@@ -110,6 +119,9 @@ Open `http://127.0.0.1:8000/` and reload with Ctrl+F5 after updating static file
    Stop the server before toggling to verify the previous choice is restored.
 9. Export/import on an empty installation: custom sources and choices should
    return. Re-importing should not create duplicates.
+10. Add an extra RSS feed inside an article card's Feed details. It should appear
+    in that card rather than a second publisher card. Check its individual switch,
+    publisher switch, failure behavior and X. The card X removes the group.
 
 Additional manual checks for first-load preparation, priority, persistence and
 automatic refresh are in [Background news cache](news-background.md). Automated

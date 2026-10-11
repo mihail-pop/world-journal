@@ -1,4 +1,5 @@
 """User feeds join the existing registry, matching, cache and background queue."""
+from dataclasses import replace
 from html.parser import HTMLParser
 from urllib.parse import parse_qs, urlsplit, urlunsplit
 from xml.etree import ElementTree
@@ -102,9 +103,11 @@ def registry_items(record):
             verification_date=reviewed, display_priority=100,
         ), None
     host = urlsplit(record.url).hostname
-    provider = NewsProvider(identity, name, f"https://{host}/", "und", None, "global", (), 100, enabled)
+    parent = record.parent if record.parent_id else record
+    publisher_name = parent.name or urlsplit(parent.url).hostname or "Custom source"
+    provider = NewsProvider(parent.registry_id, publisher_name, f"https://{urlsplit(parent.url).hostname}/", "und", None, "global", (), 100, enabled)
     feed = NewsFeed(
-        id=f"{identity}_feed", provider_id=identity, section_label="Articles",
+        id=f"{identity}_feed", provider_id=parent.registry_id, section_label=name if record.parent_id else "Articles",
         feed_url=record.url, source_type=FeedType.RSS, language="und",
         enabled_by_default=enabled, allowed_hosts=(host,), verification_date=reviewed,
         allow_public_redirects=True,
@@ -114,14 +117,16 @@ def registry_items(record):
 
 def with_custom_sources(registry):
     sources, providers, feeds = list(registry.sources), list(registry.providers), list(registry.feeds)
-    for record in CustomSource.objects.all():
+    grouped_providers = {}
+    for record in CustomSource.objects.select_related("parent"):
         item, feed = registry_items(record)
         if feed:
-            providers.append(item)
+            previous = grouped_providers.get(item.id)
+            grouped_providers[item.id] = replace(item, enabled_by_default=item.enabled_by_default or bool(previous and previous.enabled_by_default))
             feeds.append(feed)
         else:
             sources.append(item)
-    return SourceRegistry(tuple(sources), tuple(providers), tuple(feeds))
+    return SourceRegistry(tuple(sources), tuple(providers) + tuple(grouped_providers.values()), tuple(feeds))
 
 
 def check_custom_source(record):

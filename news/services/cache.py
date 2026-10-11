@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
+from hashlib import blake2b
 from threading import Lock
 
 from django.conf import settings
@@ -42,6 +43,63 @@ def parse_datetime(value: object) -> datetime | None:
 def age(now: datetime, value: object) -> timedelta | None:
     parsed = parse_datetime(value)
     return now - parsed if parsed else None
+
+
+def refresh_jitter(job, snapshot):
+    """Extend the refresh interval, never the spacing between queued downloads."""
+    stamp = snapshot.get("fetched_at")
+    if not stamp:
+        return 0  # Missing feeds should be prepared immediately.
+    seed = repr((job, stamp)).encode()
+    minimum = 60
+    return minimum + int.from_bytes(blake2b(seed, digest_size=8).digest(), "big") % (settings.NEWS_REFRESH_JITTER_SECONDS - minimum + 1)
+
+
+def failure_retry_pending(snapshot, now):
+    if not snapshot.get("last_error"):
+        return False
+    deadline = parse_datetime(snapshot.get("retry_after_at"))
+    if deadline:
+        return now < deadline
+    attempted = age(now, snapshot.get("last_attempt_at"))
+    return attempted is not None and attempted.total_seconds() < settings.NEWS_FAILURE_BACKOFF_SECONDS
+
+
+def record_failure(snapshot, now, error):
+    count = min(6, int(snapshot.get("consecutive_failures", 0)) + 1)
+    delay = min(settings.NEWS_FAILURE_BACKOFF_MAX_SECONDS, settings.NEWS_FAILURE_BACKOFF_SECONDS * 2 ** (count - 1))
+    delay = max(delay, getattr(error, "retry_after_seconds", 0) or 0)
+    snapshot.update(consecutive_failures=count, retry_after_at=(now + timedelta(seconds=delay)).isoformat())
+    return delay + 60  # Keep empty failure records until the next eligible scan.
+
+
+GOOGLE_COOLDOWN_KEY = "news:google_rate_limit"
+
+
+def google_pause_until(backend, now):
+    state = backend.get(GOOGLE_COOLDOWN_KEY) or {}
+    deadline = parse_datetime(state.get("retry_after_at"))
+    return deadline if deadline and now < deadline else None
+
+
+def pause_google(backend, now, error):
+    # One blocked country must pause all country queries, including manual sweeps.
+    with cache_lock(GOOGLE_COOLDOWN_KEY):
+        state = backend.get(GOOGLE_COOLDOWN_KEY) or {}
+        existing = google_pause_until(backend, now)
+        if existing:
+            deadline = max(existing, now + timedelta(seconds=getattr(error, "retry_after_seconds", 0) or 0))
+            state["retry_after_at"] = deadline.isoformat()
+            timeout = max(settings.NEWS_STALE_SECONDS, int((deadline - now).total_seconds()) + 60)
+        else:
+            timeout = max(settings.NEWS_STALE_SECONDS, record_failure(state, now, error))
+        backend.set(GOOGLE_COOLDOWN_KEY, state, timeout)
+
+
+def clear_google_pause(backend, now):
+    with cache_lock(GOOGLE_COOLDOWN_KEY):
+        if not google_pause_until(backend, now):
+            backend.delete(GOOGLE_COOLDOWN_KEY)
 
 
 def deserialize_items(snapshot: dict) -> tuple[NewsItem, ...] | None:
