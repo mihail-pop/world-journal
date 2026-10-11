@@ -20,6 +20,61 @@ YouTube feed URLs are derived from trusted registry channel IDs as `https://www.
 
 ## Feed audit
 
+### Current review: October 11, 2026
+
+All configured article feeds and nine original channel feeds were fetched through
+the bounded application fetcher, without writing production caches. Google News
+was also checked for Romania. Thirteen enabled article feeds responded with usable
+entries after the Africanews normalization repair; all five previously enabled
+YouTube feeds returned 15 valid entries. The five Al Arabiya endpoints refuse the
+application's requests with HTTP 403 and remain disabled pending reliable retrieval.
+
+A follow-up comparison confirmed that the Al Arabiya Top Stories URL itself is
+valid: browser-style requests sometimes return RSS 2.0 with 30 entries. The 403
+responses are Cloudflare challenge/access-denied HTML, received before feed parsing.
+Adding `Accept-Language: en-US,en;q=0.9` was sufficient for some requests, including
+requests identifying as World Journal, but subsequent equivalent requests and the
+bounded application fetcher still received 403. The English language preference
+is now included; it does not establish reliable access. No browser session,
+challenge solver or cookie copying is used by the application. Changing the local
+app hostname cannot fix these server-to-server requests: neither the local page
+URL nor its origin/referrer is sent to the publisher, and feed URLs already use HTTPS.
+
+Africanews returns valid RSS 2.0 with 50 entries, but publishes HTTP article links.
+The previous HTTPS-only link filter discarded all of them and reported an empty
+feed. HTTPS article access was verified. Links using HTTP on a reviewed feed's
+own allowed host are now upgraded to HTTPS; unrelated HTTP links remain rejected.
+Unrecognized responses and nonempty feeds with no usable entries now count as
+parse failures, preserving stale results rather than replacing them with an empty
+success. CBC has current articles alongside occasional old or inconsistent item
+dates; its original feed URL and supplied dates are retained.
+
+The four original YouTube candidates still return 404. Their replacements were
+resolved from channels linked by the official publisher websites, confirmed
+against canonical YouTube channel pages, and validated against feed and entry
+channel identities. Each replacement returned 15 usable English entries:
+
+| Channel | Verified replacement ID | Official publisher reference |
+| --- | --- | --- |
+| CGTN | `UCgrNz-aDmcr2uuto8_DL2jg` | [CGTN](https://www.cgtn.com/) → YouTube CGTN |
+| CNA | `UC83jt4dlz1Gjl58fzQrrKZg` | [CNA](https://www.channelnewsasia.com/) → YouTube channelnewsasia |
+| teleSUR English | `UCmuTmpLY35O3csvhyA6vrkg` | [teleSUR English](https://www.telesurenglish.net/) → YouTube telesurenglish |
+| Africanews English | `UC1_E8NeF5QHY2dtdLRBCCLA` | [Africanews](https://www.africanews.com/) → canonical channel link |
+
+All nine channels are now available in the curated registry. Saved user choices
+remain authoritative: a previously switched-off channel stays off. Page reads
+were a maintenance audit only; application feed retrieval does not scrape channel
+or publisher pages. The original August audit below is historical and its four
+disabled-channel decisions are superseded by this review.
+
+Cache schema 5 starts new normalized snapshots so an old empty Africanews response
+and its conditional headers cannot conceal the repaired articles. Prior cache
+records expire normally; journal entries and source preferences are unaffected.
+Feed failure causes are retained separately from the short drawer warning and
+shown in source settings. Browser checks and the test suite were left to the user.
+
+### Original review: August 30, 2026
+
 Candidates were checked on 2026-08-30 with one bounded request per supplied URL and one recovery pass after the audit result formatter failed. Requests required HTTPS and public DNS destinations, revalidated redirects, allowed at most three redirects, read at most 512 KiB, and used explicit connect, read, and total timeouts. No publisher page was scraped and no unofficial proxy was substituted.
 
 ### Replacement candidates
@@ -76,7 +131,7 @@ YouTube's Atom `yt:channelId` value omits the conventional leading `UC`; the fiv
 | teleSUR English | `UCeYq7r_8p6N0aI704y67q1A` | 404 / `www.youtube.com` / `text/html` | Not Atom; no returned identity or entries | Not assessable | Disabled: candidate feed returned 404 |
 | Africanews English | `UCU_n-m_tW_UuL8c6p3V3l4w` | 404 / `www.youtube.com` / `text/html` | Not Atom; no returned identity or entries | Not assessable | Disabled: candidate feed returned 404 |
 
-The four failed IDs are preliminary candidates that differ from the corrected IDs recorded in `APP_CONTEXT.md`. They remain disabled because this phase audits only the explicitly supplied candidates and does not scrape pages or perform unofficial replacement lookup.
+The four failed IDs were preliminary candidates that differed from the corrected IDs recorded in `APP_CONTEXT.md`. They were left disabled at this original audit; the October review above verifies and enables replacements.
 
 ## Eligibility and affinity
 
@@ -114,7 +169,7 @@ Create the existing database-cache table once after setup:
 
 Google keys use `news:v<schema>:google_country:<ISO2>:<edition>`. Fixed feed keys use `news:v<schema>:rss:<feed_id>:<language>`. Raw fixed-feed snapshots are country-neutral and contain provider/feed attribution but no matched country codes, match evidence, match class, or stale presentation state. A fresh feed snapshot is reused across every country.
 
-YouTube keys use `news:v<schema>:youtube:<source_id>:<language>`. Each channel is fetched and cached independently before country filtering, so switching between countries in one channel's route reuses the same fresh normalized snapshot. Corrupt values are discarded and fetched again. Successful entries are retained for 24 hours as stale fallback, and each channel has an independent 60-second failure backoff and process lock. Cold eligible channels use at most `NEWS_YOUTUBE_WORKERS` concurrent requests and return after `NEWS_YOUTUBE_FETCH_WAIT_SECONDS`; one failed or timed-out channel does not hide another. `NEWS_YOUTUBE_PER_CHANNEL_LIMIT` and `NEWS_YOUTUBE_TOTAL_LIMIT` bound rendered results.
+YouTube keys use `news:v<schema>:youtube:<source_id>:<language>:<channel_id>`. Each channel is fetched and cached independently before country filtering, so switching between countries in one channel's route reuses the same fresh normalized snapshot. Corrupt values are discarded and fetched again. Successful entries are retained for 24 hours as stale fallback, and each channel has an independent 60-second failure backoff and process lock. Cold eligible channels use at most `NEWS_YOUTUBE_WORKERS` concurrent requests and return after `NEWS_YOUTUBE_FETCH_WAIT_SECONDS`; one failed or timed-out channel does not hide another. `NEWS_YOUTUBE_PER_CHANNEL_LIMIT` and `NEWS_YOUTUBE_TOTAL_LIMIT` bound rendered results.
 
 Successful snapshots are fresh for approximately 15 minutes. Google stale content is retained for three days; fixed-feed stale content is retained for 24 hours. Each feed has independent conditional headers, failure state, 60-second backoff, and process lock. One failed sibling cannot invalidate another. A provider is `partial` when at least one sibling is usable and another fails, and `unavailable` only when none of its enabled siblings is usable. Google remains independent of every regional provider.
 

@@ -10,8 +10,9 @@ dependencies are required.
   have separate on/off choices. Save the form to apply changes.
 - Switching off a publisher pauses its feeds without forgetting their individual
   choices. Re-enabling it restores those choices.
-- Unavailable records in the curated registry stay locked. In particular, the
-  four previously failed YouTube candidate IDs cannot be enabled here.
+- Unavailable records in the curated registry stay locked. Al Arabiya's blocked
+  feeds remain unavailable. The four YouTube candidate IDs were replaced with
+  verified working channels on October 11, 2026 and can now be enabled.
 - Successful cache entries are reused for 5–120 minutes (15 by default). This is
   a freshness threshold, not a background timer: requests trigger refreshes.
 - Changing preferences does not remove cached feeds, journal items, or the playing
@@ -38,6 +39,12 @@ The last successful check includes HTTP 304 responses. Registry review dates are
 separate historical audit dates. Health is not a permanent event log: when the
 underlying cache expires, the page reports no retained check. A failed refresh
 retains prior usable results where available.
+
+After a failed refresh, **Feed details → Failure reason** distinguishes publisher
+HTTP errors (including 403, 404 and 429), connection/time limits, invalid feed
+responses and channel identity mismatches. Old cache records may have only the
+generic warning until another refresh. YouTube rows also expose their derived
+Atom feed link.
 
 ## Setup and manual checks
 

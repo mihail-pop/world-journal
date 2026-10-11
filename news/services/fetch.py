@@ -68,6 +68,9 @@ def fetch_feed(
     normalized_hosts = frozenset(host.lower() for host in allowed_hosts)
     headers = {
         "Accept": "application/atom+xml, application/rss+xml, application/xml, text/xml;q=0.9",
+        # These integrations request English feeds. Some publishers reject an
+        # otherwise valid feed request when its language preference is absent.
+        "Accept-Language": "en-US,en;q=0.9",
         "User-Agent": settings.NEWS_USER_AGENT,
     }
     if etag:
@@ -124,8 +127,23 @@ def fetch_feed(
                         etag=response.headers.get("ETag"),
                         last_modified=response.headers.get("Last-Modified"),
                     )
-            except (httpx.HTTPError, ValueError) as error:
-                raise FeedFetchError("The feed request failed") from error
+            except httpx.HTTPStatusError as error:
+                status = error.response.status_code
+                if status == 403:
+                    detail = "The publisher refused the feed request (HTTP 403)"
+                elif status == 404:
+                    detail = "The feed address or channel ID was not found (HTTP 404)"
+                elif status == 429:
+                    detail = "The publisher is rate-limiting feed requests (HTTP 429)"
+                else:
+                    detail = f"The publisher returned HTTP {status}"
+                raise FeedFetchError(detail) from error
+            except httpx.TimeoutException as error:
+                raise FeedFetchError("The publisher did not respond within the time limit") from error
+            except httpx.HTTPError as error:
+                raise FeedFetchError("Could not connect to the publisher or read its response") from error
+            except ValueError as error:
+                raise FeedFetchError("The publisher returned an invalid response") from error
         raise FeedFetchError("The feed exceeded the redirect limit")
     finally:
         if owns_client:

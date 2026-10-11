@@ -21,7 +21,7 @@ def fixed_feed_cache_key(feed) -> str:
 
 
 def youtube_cache_key(source: NewsSource) -> str:
-    return f"news:v{settings.NEWS_CACHE_SCHEMA_VERSION}:youtube:{source.id}:{source.language}"
+    return f"news:v{settings.NEWS_CACHE_SCHEMA_VERSION}:youtube:{source.id}:{source.language}:{source.youtube_channel_id}"
 
 
 def cache_lock(key: str) -> Lock:

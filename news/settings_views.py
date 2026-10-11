@@ -66,7 +66,11 @@ def _health(snapshot, enabled, fresh_seconds):
             label += " · empty feed"
     else:
         label = "No retained check"
-    return {"label": label, "failed": failed and enabled, "last_attempt": attempted, "last_success": successful, "item_count": count}
+    return {
+        "label": label, "failed": failed and enabled,
+        "last_attempt": attempted, "last_success": successful, "item_count": count,
+        "error_detail": snapshot.get("last_error_detail", "") if failed else "",
+    }
 
 
 def _context(registry, choices, form, country, fresh_seconds):
@@ -84,7 +88,8 @@ def _context(registry, choices, form, country, fresh_seconds):
         return {
             "id": item.id, "toggle": form[f"enabled_{item.id}"],
             "name": getattr(item, "display_name", getattr(item, "section_label", item.id)),
-            "homepage": getattr(item, "homepage_url", ""), "feed_url": getattr(item, "feed_url", ""),
+            "homepage": getattr(item, "homepage_url", ""),
+            "feed_url": item.youtube_feed_url if getattr(item, "kind", None) is SourceKind.YOUTUBE else getattr(item, "feed_url", ""),
             "notes": getattr(item, "operational_notes", ""),
             "region": REGION_LABELS.get(getattr(item, "editorial_region", ""), ""),
             "verification_date": getattr(item, "verification_date", None),

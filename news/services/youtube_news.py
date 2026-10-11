@@ -115,6 +115,7 @@ def get_youtube_feed(
                     "etag": response.etag,
                     "last_modified": response.last_modified,
                     "last_error": "",
+                    "last_error_detail": "",
                     "last_attempt_at": current_time.isoformat(),
                 })
             else:
@@ -130,12 +131,14 @@ def get_youtube_feed(
                     "etag": response.etag,
                     "last_modified": response.last_modified,
                     "last_error": "",
+                    "last_error_detail": "",
                     "last_attempt_at": current_time.isoformat(),
                 }
             backend.set(key, snapshot, settings.NEWS_YOUTUBE_STALE_SECONDS)
             return _source_result(source, snapshot)
-        except (FeedFetchError, YouTubeFeedParseError):
+        except (FeedFetchError, YouTubeFeedParseError) as error:
             snapshot["last_error"] = "This video channel is temporarily unavailable."
+            snapshot["last_error_detail"] = str(error)[:240]
             snapshot["last_attempt_at"] = current_time.isoformat()
             last_success_age = age(current_time, snapshot.get("last_success_at"))
             if (
@@ -155,6 +158,7 @@ def get_youtube_feed(
                 "etag": None,
                 "last_modified": None,
                 "last_error": "This video channel is temporarily unavailable.",
+                "last_error_detail": str(error)[:240],
                 "last_attempt_at": current_time.isoformat(),
             }
             backend.set(key, empty, settings.NEWS_YOUTUBE_FAILURE_BACKOFF_SECONDS)

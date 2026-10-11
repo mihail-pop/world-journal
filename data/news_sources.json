@@ -26,7 +26,7 @@
       "editorial_region": "middle_east",
       "coverage_regions": ["middle_east"],
       "allowed_hosts": ["www.youtube.com"],
-      "verification_date": "2026-08-30",
+      "verification_date": "2026-10-11",
       "disabled_reason": "",
       "operational_notes": "Verified English Atom feed with matching channel identity and 15 usable recent entries.",
       "display_priority": 10
@@ -35,32 +35,32 @@
       "id": "youtube_cgtn",
       "kind": "youtube",
       "display_name": "CGTN",
-      "homepage_url": "https://www.youtube.com/channel/UCgrNz-SZj64zgOUV4au9SJA",
+      "homepage_url": "https://www.youtube.com/channel/UCgrNz-aDmcr2uuto8_DL2jg",
       "language": "en",
-      "enabled_by_default": false,
-      "youtube_channel_id": "UCgrNz-SZj64zgOUV4au9SJA",
+      "enabled_by_default": true,
+      "youtube_channel_id": "UCgrNz-aDmcr2uuto8_DL2jg",
       "editorial_region": "asia_pacific",
       "coverage_regions": ["asia_pacific"],
       "allowed_hosts": ["www.youtube.com"],
-      "verification_date": "2026-08-30",
-      "disabled_reason": "The candidate feed returned HTTP 404 with HTML instead of Atom.",
-      "operational_notes": "The preliminary channel ID was not replaced or enabled without a successful feed identity audit.",
+      "verification_date": "2026-10-11",
+      "disabled_reason": "",
+      "operational_notes": "Replaced the previous 404 candidate with the channel linked by the official publisher. Canonical YouTube identity and Atom feed identity verified; 15 usable English entries.",
       "display_priority": 10
     },
     {
       "id": "youtube_cna",
       "kind": "youtube",
       "display_name": "CNA",
-      "homepage_url": "https://www.youtube.com/channel/UC83jt4dlz1Gjl58fzQrrkkA",
+      "homepage_url": "https://www.youtube.com/channel/UC83jt4dlz1Gjl58fzQrrKZg",
       "language": "en",
-      "enabled_by_default": false,
-      "youtube_channel_id": "UC83jt4dlz1Gjl58fzQrrkkA",
+      "enabled_by_default": true,
+      "youtube_channel_id": "UC83jt4dlz1Gjl58fzQrrKZg",
       "editorial_region": "asia_pacific",
       "coverage_regions": ["asia_pacific"],
       "allowed_hosts": ["www.youtube.com"],
-      "verification_date": "2026-08-30",
-      "disabled_reason": "The candidate feed returned HTTP 404 with HTML instead of Atom.",
-      "operational_notes": "The preliminary channel ID was not replaced or enabled without a successful feed identity audit.",
+      "verification_date": "2026-10-11",
+      "disabled_reason": "",
+      "operational_notes": "Replaced the previous 404 candidate with the channel linked by the official publisher. Canonical YouTube identity and Atom feed identity verified; 15 usable English entries.",
       "display_priority": 20
     },
     {
@@ -74,7 +74,7 @@
       "editorial_region": "europe",
       "coverage_regions": ["europe"],
       "allowed_hosts": ["www.youtube.com"],
-      "verification_date": "2026-08-30",
+      "verification_date": "2026-10-11",
       "disabled_reason": "",
       "operational_notes": "Verified English Atom feed with matching channel identity and 15 usable recent entries.",
       "display_priority": 10
@@ -90,7 +90,7 @@
       "editorial_region": "europe",
       "coverage_regions": ["europe"],
       "allowed_hosts": ["www.youtube.com"],
-      "verification_date": "2026-08-30",
+      "verification_date": "2026-10-11",
       "disabled_reason": "",
       "operational_notes": "Verified English Atom feed with matching channel identity and 15 usable recent entries.",
       "display_priority": 20
@@ -106,7 +106,7 @@
       "editorial_region": "north_america",
       "coverage_regions": ["north_america"],
       "allowed_hosts": ["www.youtube.com"],
-      "verification_date": "2026-08-30",
+      "verification_date": "2026-10-11",
       "disabled_reason": "",
       "operational_notes": "Verified English Atom feed with matching channel identity and 15 usable recent entries.",
       "display_priority": 20
@@ -122,7 +122,7 @@
       "editorial_region": "north_america",
       "coverage_regions": ["north_america"],
       "allowed_hosts": ["www.youtube.com"],
-      "verification_date": "2026-08-30",
+      "verification_date": "2026-10-11",
       "disabled_reason": "",
       "operational_notes": "Verified English Atom feed with matching channel identity and 15 usable recent entries.",
       "display_priority": 10
@@ -131,32 +131,32 @@
       "id": "youtube_telesur_en",
       "kind": "youtube",
       "display_name": "teleSUR English",
-      "homepage_url": "https://www.youtube.com/channel/UCeYq7r_8p6N0aI704y67q1A",
+      "homepage_url": "https://www.youtube.com/channel/UCmuTmpLY35O3csvhyA6vrkg",
       "language": "en",
-      "enabled_by_default": false,
-      "youtube_channel_id": "UCeYq7r_8p6N0aI704y67q1A",
+      "enabled_by_default": true,
+      "youtube_channel_id": "UCmuTmpLY35O3csvhyA6vrkg",
       "editorial_region": "latin_america_caribbean",
       "coverage_regions": ["latin_america_caribbean"],
       "allowed_hosts": ["www.youtube.com"],
-      "verification_date": "2026-08-30",
-      "disabled_reason": "The candidate feed returned HTTP 404 with HTML instead of Atom.",
-      "operational_notes": "The preliminary channel ID was not replaced or enabled without a successful feed identity audit.",
+      "verification_date": "2026-10-11",
+      "disabled_reason": "",
+      "operational_notes": "Replaced the previous 404 candidate with the channel linked by the official publisher. Canonical YouTube identity and Atom feed identity verified; 15 usable English entries.",
       "display_priority": 10
     },
     {
       "id": "youtube_africanews_en",
       "kind": "youtube",
       "display_name": "Africanews English",
-      "homepage_url": "https://www.youtube.com/channel/UCU_n-m_tW_UuL8c6p3V3l4w",
+      "homepage_url": "https://www.youtube.com/channel/UC1_E8NeF5QHY2dtdLRBCCLA",
       "language": "en",
-      "enabled_by_default": false,
-      "youtube_channel_id": "UCU_n-m_tW_UuL8c6p3V3l4w",
+      "enabled_by_default": true,
+      "youtube_channel_id": "UC1_E8NeF5QHY2dtdLRBCCLA",
       "editorial_region": "africa",
       "coverage_regions": ["africa"],
       "allowed_hosts": ["www.youtube.com"],
-      "verification_date": "2026-08-30",
-      "disabled_reason": "The candidate feed returned HTTP 404 with HTML instead of Atom.",
-      "operational_notes": "The preliminary channel ID was not replaced or enabled without a successful feed identity audit.",
+      "verification_date": "2026-10-11",
+      "disabled_reason": "",
+      "operational_notes": "Replaced the previous 404 candidate with the channel linked by the official publisher. Canonical YouTube identity and Atom feed identity verified; 15 usable English entries.",
       "display_priority": 10
     }
   ],
@@ -304,7 +304,7 @@
       "language": "en",
       "enabled_by_default": true,
       "allowed_hosts": ["www.aljazeera.com"],
-      "verification_date": "2026-08-30",
+      "verification_date": "2026-10-11",
       "disabled_reason": "",
       "operational_notes": "Verified RSS with English titles, article links, and publication dates."
     },
@@ -317,8 +317,8 @@
       "language": "en",
       "enabled_by_default": false,
       "allowed_hosts": ["english.alarabiya.net"],
-      "verification_date": "2026-08-30",
-      "disabled_reason": "The endpoint returned HTTP 403 with HTML instead of a feed.",
+      "verification_date": "2026-10-11",
+      "disabled_reason": "Cloudflare refuses the application's feed request (HTTP 403); direct browser access can differ. Reliable automated retrieval has not been verified.",
       "operational_notes": "Audited once with one bounded recovery request; no usable feed items."
     },
     {
@@ -330,8 +330,8 @@
       "language": "en",
       "enabled_by_default": false,
       "allowed_hosts": ["english.alarabiya.net"],
-      "verification_date": "2026-08-30",
-      "disabled_reason": "The endpoint returned HTTP 403 with HTML instead of a feed.",
+      "verification_date": "2026-10-11",
+      "disabled_reason": "Cloudflare refuses the application's feed request (HTTP 403); direct browser access can differ. Reliable automated retrieval has not been verified.",
       "operational_notes": "Audited once with one bounded recovery request; no usable feed items."
     },
     {
@@ -343,8 +343,8 @@
       "language": "en",
       "enabled_by_default": false,
       "allowed_hosts": ["english.alarabiya.net"],
-      "verification_date": "2026-08-30",
-      "disabled_reason": "The endpoint returned HTTP 403 with HTML instead of a feed.",
+      "verification_date": "2026-10-11",
+      "disabled_reason": "Cloudflare refuses the application's feed request (HTTP 403); direct browser access can differ. Reliable automated retrieval has not been verified.",
       "operational_notes": "Audited once with one bounded recovery request; no usable feed items."
     },
     {
@@ -356,8 +356,8 @@
       "language": "en",
       "enabled_by_default": false,
       "allowed_hosts": ["english.alarabiya.net"],
-      "verification_date": "2026-08-30",
-      "disabled_reason": "The endpoint returned HTTP 403 with HTML instead of a feed.",
+      "verification_date": "2026-10-11",
+      "disabled_reason": "Cloudflare refuses the application's feed request (HTTP 403); direct browser access can differ. Reliable automated retrieval has not been verified.",
       "operational_notes": "Audited once with one bounded recovery request; no usable feed items."
     },
     {
@@ -369,8 +369,8 @@
       "language": "en",
       "enabled_by_default": false,
       "allowed_hosts": ["english.alarabiya.net"],
-      "verification_date": "2026-08-30",
-      "disabled_reason": "The endpoint returned HTTP 403 with HTML instead of a feed.",
+      "verification_date": "2026-10-11",
+      "disabled_reason": "Cloudflare refuses the application's feed request (HTTP 403); direct browser access can differ. Reliable automated retrieval has not been verified.",
       "operational_notes": "Audited once with one bounded recovery request; no usable feed items."
     },
     {
@@ -382,7 +382,7 @@
       "language": "en",
       "enabled_by_default": true,
       "allowed_hosts": ["www.cgtn.com"],
-      "verification_date": "2026-08-30",
+      "verification_date": "2026-10-11",
       "disabled_reason": "",
       "operational_notes": "Verified RSS with 50 usable English items and complete title, link, summary, and date fields in the first 20 items."
     },
@@ -395,7 +395,7 @@
       "language": "en",
       "enabled_by_default": true,
       "allowed_hosts": ["www.cgtn.com"],
-      "verification_date": "2026-08-30",
+      "verification_date": "2026-10-11",
       "disabled_reason": "",
       "operational_notes": "Verified RSS with 49 usable English items; seven normalized titles overlapped Politics during audit."
     },
@@ -408,7 +408,7 @@
       "language": "en",
       "enabled_by_default": true,
       "allowed_hosts": ["www.cgtn.com"],
-      "verification_date": "2026-08-30",
+      "verification_date": "2026-10-11",
       "disabled_reason": "",
       "operational_notes": "Verified RSS with 50 usable English items; seven normalized titles overlapped World during audit."
     },
@@ -421,7 +421,7 @@
       "language": "en",
       "enabled_by_default": true,
       "allowed_hosts": ["www.channelnewsasia.com"],
-      "verification_date": "2026-08-30",
+      "verification_date": "2026-10-11",
       "disabled_reason": "",
       "operational_notes": "Verified RSS with English titles, article links, and publication dates."
     },
@@ -434,7 +434,7 @@
       "language": "en",
       "enabled_by_default": true,
       "allowed_hosts": ["feeds.npr.org"],
-      "verification_date": "2026-08-30",
+      "verification_date": "2026-10-11",
       "disabled_reason": "",
       "operational_notes": "Verified RSS with English titles, article links, and publication dates."
     },
@@ -447,9 +447,9 @@
       "language": "en",
       "enabled_by_default": true,
       "allowed_hosts": ["www.cbc.ca"],
-      "verification_date": "2026-08-30",
+      "verification_date": "2026-10-11",
       "disabled_reason": "",
-      "operational_notes": "The supplied URL redirected on the same host to this verified RSS URL."
+      "operational_notes": "Verified RSS 2.0 with 20 entries, including current stories. Some item dates can be older or inconsistent; dates are retained as supplied by CBC."
     },
     {
       "id": "dw_all",
@@ -460,7 +460,7 @@
       "language": "en",
       "enabled_by_default": true,
       "allowed_hosts": ["rss.dw.com"],
-      "verification_date": "2026-08-30",
+      "verification_date": "2026-10-11",
       "disabled_reason": "",
       "operational_notes": "Verified RSS 1.0/RDF-style feed with English titles, links, and dates."
     },
@@ -473,7 +473,7 @@
       "language": "en",
       "enabled_by_default": true,
       "allowed_hosts": ["www.france24.com"],
-      "verification_date": "2026-08-30",
+      "verification_date": "2026-10-11",
       "disabled_reason": "",
       "operational_notes": "Verified RSS with English titles, article links, and publication dates."
     },
@@ -486,7 +486,7 @@
       "language": "en",
       "enabled_by_default": true,
       "allowed_hosts": ["www.telesurenglish.net"],
-      "verification_date": "2026-08-30",
+      "verification_date": "2026-10-11",
       "disabled_reason": "",
       "operational_notes": "Verified RSS with 30 usable English items and complete title, link, summary, publisher, and date fields in the first 20 items."
     },
@@ -499,7 +499,7 @@
       "language": "en",
       "enabled_by_default": true,
       "allowed_hosts": ["en.mercopress.com"],
-      "verification_date": "2026-08-30",
+      "verification_date": "2026-10-11",
       "disabled_reason": "",
       "operational_notes": "Verified RSS with English titles, article links, and publication dates."
     },
@@ -512,9 +512,9 @@
       "language": "en",
       "enabled_by_default": true,
       "allowed_hosts": ["www.africanews.com"],
-      "verification_date": "2026-08-30",
+      "verification_date": "2026-10-11",
       "disabled_reason": "",
-      "operational_notes": "Verified RSS despite an application/xhtml+xml response content type."
+      "operational_notes": "Verified RSS 2.0 with 50 entries. Publisher supplies HTTP article links; the adapter upgrades links on the reviewed feed host to HTTPS. HTTPS article access verified."
     },
     {
       "id": "allafrica_latest",
@@ -525,7 +525,7 @@
       "language": "en",
       "enabled_by_default": true,
       "allowed_hosts": ["allafrica.com"],
-      "verification_date": "2026-08-30",
+      "verification_date": "2026-10-11",
       "disabled_reason": "",
       "operational_notes": "Verified RSS; preserve item-level publisher metadata only when explicitly supplied."
     }

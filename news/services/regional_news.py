@@ -104,6 +104,7 @@ def get_fixed_feed(
                     "etag": response.etag,
                     "last_modified": response.last_modified,
                     "last_error": "",
+                    "last_error_detail": "",
                     "last_attempt_at": current_time.isoformat(),
                 })
             else:
@@ -120,13 +121,15 @@ def get_fixed_feed(
                     "etag": response.etag,
                     "last_modified": response.last_modified,
                     "last_error": "",
+                    "last_error_detail": "",
                     "last_attempt_at": current_time.isoformat(),
                     "parser_warnings": list(normalized.parser_warnings),
                 }
             backend.set(key, snapshot, settings.NEWS_REGIONAL_STALE_SECONDS)
             return _feed_result(feed, snapshot)
-        except (FeedFetchError, FeedParseError):
+        except (FeedFetchError, FeedParseError) as error:
             snapshot["last_error"] = "This regional feed is temporarily unavailable."
+            snapshot["last_error_detail"] = str(error)[:240]
             snapshot["last_attempt_at"] = current_time.isoformat()
             last_success_age = age(current_time, snapshot.get("last_success_at"))
             if (
@@ -146,6 +149,7 @@ def get_fixed_feed(
                 "etag": None,
                 "last_modified": None,
                 "last_error": "This regional feed is temporarily unavailable.",
+                "last_error_detail": str(error)[:240],
                 "last_attempt_at": current_time.isoformat(),
                 "parser_warnings": [],
             }

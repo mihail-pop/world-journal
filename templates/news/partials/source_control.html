@@ -5,6 +5,7 @@
 {% if row.disabled_reason %}<p class="field-note">{{ row.disabled_reason }}</p>{% elif not row.enabled %}<p class="field-note">Switched off, or paused because its publisher is off. Save an enabled choice before refreshing.</p>{% endif %}
 <details class="source-details"><summary>Feed details</summary>
 <dl class="source-health-details">
+    {% if row.health.error_detail %}<div><dt>Failure reason</dt><dd>{{ row.health.error_detail }}</dd></div>{% endif %}
     <div><dt>Last attempt</dt><dd>{% if row.health.last_attempt %}<time datetime="{{ row.health.last_attempt|date:'c' }}">{{ row.health.last_attempt|date:'M j, Y, H:i T' }}</time>{% else %}No retained check{% endif %}</dd></div>
     <div><dt>Last successful check</dt><dd>{% if row.health.last_success %}<time datetime="{{ row.health.last_success|date:'c' }}">{{ row.health.last_success|date:'M j, Y, H:i T' }}</time>{% else %}No retained success{% endif %}</dd></div>
     <div><dt>Cached entries</dt><dd>{% if row.health.item_count != None %}{{ row.health.item_count }}{% else %}None{% endif %}</dd></div>

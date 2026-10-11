@@ -39,10 +39,21 @@ def _plain_text(value: object) -> str:
     return " ".join("".join(parser.parts).split())
 
 
-def _safe_link(value: object) -> str | None:
+def _safe_link(value: object, *, https_hosts: tuple[str, ...] = ()) -> str | None:
     if not isinstance(value, str):
         return None
-    parsed = urlsplit(value.strip())
+    try:
+        parsed = urlsplit(value.strip())
+        port = parsed.port
+    except ValueError:
+        return None
+    if parsed.username or parsed.password:
+        return None
+    # Reviewed publishers sometimes advertise HTTP links despite serving HTTPS.
+    # Upgrade only their own host; never guess HTTPS support for unrelated links.
+    if parsed.scheme == "http" and parsed.hostname in https_hosts and port in (None, 80):
+        parsed = parsed._replace(scheme="https", netloc=parsed.hostname)
+        value = urlunsplit(parsed)
     if parsed.scheme != "https" or not parsed.hostname or parsed.username or parsed.password:
         return None
     without_fragment, _fragment = urldefrag(value.strip())
@@ -94,6 +105,8 @@ def normalize_feed(
     feed: NewsFeed | None = None,
 ) -> NormalizedFeed:
     parsed = feedparser.parse(payload)
+    if not parsed.version:
+        raise FeedParseError("The response is not a recognized RSS or Atom feed")
     warnings = ()
     if parsed.bozo:
         warnings = (str(parsed.bozo_exception)[:240],)
@@ -103,7 +116,7 @@ def normalize_feed(
     items = []
     for source_order, entry in enumerate(parsed.entries):
         title = _plain_text(entry.get("title"))
-        link = _safe_link(entry.get("link"))
+        link = _safe_link(entry.get("link"), https_hosts=feed.allowed_hosts if feed else ())
         if not title or not link:
             continue
         publisher = _publisher(entry, source)
@@ -127,4 +140,6 @@ def normalize_feed(
         )
         if len(items) >= max_items * 2:
             break
+    if parsed.entries and not items:
+        raise FeedParseError("The feed contains entries, but none have a usable title and HTTPS link")
     return NormalizedFeed(items=_deduplicate(items)[:max_items], parser_warnings=warnings)
