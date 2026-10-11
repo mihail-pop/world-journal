@@ -128,6 +128,64 @@ function updateFilter(map, layerId, code) {
     }
 }
 
+function setHoveredCountry(controller, code) {
+    code = controller.countriesByCode.has(code) ? code : null;
+    if (code === controller.hoveredCode) {
+        return;
+    }
+    const { map, hoveredCode } = controller;
+    // Paint state changes coalesce in the renderer's next frame. Changing layer
+    // filters instead would rebuild GeoJSON tiles asynchronously on every hover.
+    if (map.getSource(SOURCE_ID)) {
+        if (hoveredCode) {
+            map.setFeatureState({ source: SOURCE_ID, id: hoveredCode }, { hover: false });
+        }
+        if (code) {
+            map.setFeatureState({ source: SOURCE_ID, id: code }, { hover: true });
+        }
+    }
+    controller.hoveredCode = code;
+    map.getCanvas().style.cursor = code ? "pointer" : "";
+}
+
+function cancelHoverFrame(controller) {
+    if (controller.hoverFrame !== null) {
+        cancelAnimationFrame(controller.hoverFrame);
+        controller.hoverFrame = null;
+    }
+}
+
+function clearHover(controller) {
+    cancelHoverFrame(controller);
+    controller.hoverPoint = null;
+    setHoveredCountry(controller, null);
+}
+
+function scheduleHoverUpdate(controller) {
+    if (
+        activeController !== controller || controller.abortController.signal.aborted
+        || controller.hoverFrame !== null || !controller.hoverPoint || !controller.layersInstalled
+    ) {
+        return;
+    }
+    controller.hoverFrame = requestAnimationFrame(() => {
+        controller.hoverFrame = null;
+        if (
+            activeController !== controller || controller.abortController.signal.aborted
+            || !controller.hoverPoint || !controller.layersInstalled
+        ) {
+            return;
+        }
+        // Read the latest point, not the point from the event that queued this
+        // frame. Intermediate mouse moves never become a backlog of highlights.
+        if (controller.map.isMoving()) {
+            setHoveredCountry(controller, null);
+            return;
+        }
+        setHoveredCountry(controller, queryCountryCode(controller, controller.hoverPoint));
+    });
+}
+
 function drawerPadding() {
     if (window.matchMedia("(max-width: 46rem)").matches) {
         return { top: 56, right: 36, bottom: 260, left: 36 };
@@ -546,8 +604,23 @@ function installCountryLayers(controller) {
     addLayer(controller, { id: LAYERS.fill, type: "fill", source: SOURCE_ID, paint: { "fill-color": "#32445b", "fill-opacity": 0.22 } });
     addLayer(controller, { id: LAYERS.presetFill, type: "fill", source: SOURCE_ID, paint: { "fill-color": "rgba(0,0,0,0)", "fill-opacity": 0.65 } });
     addLayer(controller, { id: LAYERS.outline, type: "line", source: SOURCE_ID, paint: { "line-color": "#8596a5", "line-opacity": 0.62, "line-width": 0.8 } });
-    addLayer(controller, { id: LAYERS.hoverFill, type: "fill", source: SOURCE_ID, filter: ["==", ["get", "iso_a2"], ""], paint: { "fill-color": "#00bfff", "fill-opacity": 0.32 } });
-    addLayer(controller, { id: LAYERS.hoverLine, type: "line", source: SOURCE_ID, filter: ["==", ["get", "iso_a2"], ""], paint: { "line-color": "#00bfff", "line-width": 2 } });
+    const isHovered = ["boolean", ["feature-state", "hover"], false];
+    addLayer(controller, {
+        id: LAYERS.hoverFill, type: "fill", source: SOURCE_ID,
+        paint: {
+            "fill-color": "#00bfff", "fill-opacity": ["case", isHovered, 0.32, 0],
+            "fill-color-transition": { duration: 0, delay: 0 },
+            "fill-opacity-transition": { duration: 0, delay: 0 },
+        },
+    });
+    addLayer(controller, {
+        id: LAYERS.hoverLine, type: "line", source: SOURCE_ID,
+        paint: {
+            "line-color": "#00bfff", "line-width": 2, "line-opacity": ["case", isHovered, 1, 0],
+            "line-color-transition": { duration: 0, delay: 0 },
+            "line-opacity-transition": { duration: 0, delay: 0 },
+        },
+    });
     addLayer(controller, { id: LAYERS.selectedFill, type: "fill", source: SOURCE_ID, filter: ["==", ["get", "iso_a2"], ""], paint: { "fill-color": "#00bfff", "fill-opacity": 0.26 } });
     addLayer(controller, { id: LAYERS.selectedLine, type: "line", source: SOURCE_ID, filter: ["==", ["get", "iso_a2"], ""], paint: { "line-color": "#a8b5c4", "line-width": 3.5 } });
     addLayer(controller, {
@@ -610,10 +683,15 @@ function installCountryLayers(controller) {
         paint: { "text-color": "#a8b5c4", "text-halo-color": "#0b1622", "text-halo-width": 1.2 },
     });
     controller.layersInstalled = true;
+    if (controller.hoveredCode) {
+        // A replacement basemap can recreate the source and lose feature state.
+        map.setFeatureState({ source: SOURCE_ID, id: controller.hoveredCode }, { hover: true });
+    }
     applyPreferences(controller);
     updateFilter(map, LAYERS.selectedFill, controller.selectedCode);
     updateFilter(map, LAYERS.selectedLine, controller.selectedCode);
     controller.status.hidden = true;
+    scheduleHoverUpdate(controller);
     if (controller.initialFocusCode) {
         focusCountry(controller, controller.countriesByCode.get(controller.initialFocusCode), false);
         controller.initialFocusCode = null;
@@ -726,16 +804,19 @@ function createMap(controller, styleUrl) {
             showNotice(controller, "Some map-provider resources are unavailable; bundled country selection remains active.");
         }
     });
-    map.on("moveend", () => saveViewport(map));
+    map.on("movestart", () => {
+        cancelHoverFrame(controller);
+        setHoveredCountry(controller, null);
+    });
+    map.on("moveend", () => {
+        saveViewport(map);
+        scheduleHoverUpdate(controller);
+    });
+    // Recheck a stationary pointer once newly loaded tiles have been rendered.
+    map.on("idle", () => scheduleHoverUpdate(controller));
     map.on("mousemove", (event) => {
-        const code = queryCountryCode(controller, event.point);
-        if (code === controller.hoveredCode) {
-            return;
-        }
-        controller.hoveredCode = code;
-        updateFilter(map, LAYERS.hoverFill, code);
-        updateFilter(map, LAYERS.hoverLine, code);
-        map.getCanvas().style.cursor = code ? "pointer" : "";
+        controller.hoverPoint = [event.point.x, event.point.y];
+        scheduleHoverUpdate(controller);
     });
     map.on("click", (event) => {
         const code = queryCountryCode(controller, event.point);
@@ -743,12 +824,8 @@ function createMap(controller, styleUrl) {
             selectCountry(controller, code, { fit: true, focusDrawer: true });
         }
     });
-    map.getCanvas().addEventListener("mouseleave", () => {
-        controller.hoveredCode = null;
-        updateFilter(map, LAYERS.hoverFill, null);
-        updateFilter(map, LAYERS.hoverLine, null);
-        map.getCanvas().style.cursor = "";
-    }, { signal: controller.abortController.signal });
+    map.getCanvas().addEventListener("mouseleave", () => clearHover(controller), { signal: controller.abortController.signal });
+    window.addEventListener("blur", () => clearHover(controller), { signal: controller.abortController.signal });
     if (requested.code) {
         renderSelection(controller, requested.code, { fit: false });
     }
@@ -848,6 +925,8 @@ async function initializeMapPage() {
         capitals: null,
         selectedCode: null,
         hoveredCode: null,
+        hoverPoint: null,
+        hoverFrame: null,
         layersInstalled: false,
         usingFallbackStyle: false,
         basemapVisibility: new Map(),
@@ -990,6 +1069,7 @@ export function cleanupMapPage() {
     }
     const controller = activeController;
     activeController = null;
+    cancelHoverFrame(controller);
     window.clearTimeout(controller.fallbackTimer);
     cancelCountryNews(controller);
     cancelCountryVideos(controller);

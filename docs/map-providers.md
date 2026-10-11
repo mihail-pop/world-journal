@@ -16,6 +16,35 @@ The map controller owns country and capital labels. It suppresses matching provi
 
 For every loaded style, the adapter records each provider layer's original visibility before applying preferences. Water restoration and leaving simple mode restore those exact values. A `style.load` event clears the previous style snapshot, reinstalls application sources and layers idempotently, reapplies preferences, and restores selection state. Simple mode hides all provider layers without changing styles, so the bundled sources remain installed and external attribution controls remain untouched.
 
+## Country hover rendering
+
+Hover fill and outline use `feature-state` paint expressions on the country's
+promoted ISO alpha-2 feature ID. Their geometry and layer filters stay fixed while
+the pointer moves. The old country's state is cleared and the new country's state
+is set together before the next rendered frame, including all loaded polygon
+parts and repeated world copies. Hover color and opacity transitions have zero
+duration and delay.
+
+Pointer movement keeps one latest position and at most one animation-frame
+callback. Hit-testing runs once per frame rather than for every mouse event;
+intermediate positions never queue old highlights. Clicks still hit-test their own
+position immediately and do not depend on the hover callback.
+
+Leaving the canvas or losing window focus clears hover and cancels pending work.
+Camera movement suppresses hover until it settles, then rechecks the stationary
+pointer; the idle event also rechecks after new source tiles are rendered. Style
+reloads restore paint state, and page cleanup cancels pending hover work before
+removing the map. Selection, centroid hit targets, preset colors and themes keep
+their existing behavior.
+
+Manual check: reload with Ctrl+F5, sweep rapidly across European countries, then
+stop on one. Only the current country should be highlighted. Hover Russia,
+Canada, and the United States at several zoom levels: loaded country parts should
+change together, without a tile-by-tile fill animation. Move onto ocean, the
+drawer, or toolbar and out of the map: the hover should clear. Try dragging,
+zooming, microstate markers, simple mode, themes, and Map → Journal → Map. Browser
+checks and automated tests are left to the user for this change.
+
 ## Terrain availability
 
 The Liberty style configured for Phase 2A was inspected on 2026-08-30. Its sources are an OpenMapTiles vector source and a Natural Earth shaded raster source. It does not contain a MapLibre-compatible `raster-dem` source or a hillshade layer. OpenFreeMap's official quick-start and self-hosting documentation do not document a compatible elevation source, elevation usage terms, or terrain attribution requirements.
