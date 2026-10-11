@@ -4,6 +4,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="csrf-token" content="{{ csrf_token }}">
     <link rel="icon" href="data:,">
     <title>{{ active_page|title }} | {{ app_display_name }}</title>
     <script>
@@ -22,7 +23,7 @@
     <script src="{% static 'vendor/htmx/htmx-2.0.8.min.js' %}" defer></script>
     <script type="module" src="{% static 'js/app.js' %}"></script>
 </head>
-<body hx-ext="page-memory" data-news-cache-url="{% url 'news:cached_drawers' %}">
+<body hx-ext="page-memory" data-news-cache-url="{% url 'news:cached_drawers' %}" data-journal-new-url="{% url 'journal:new' %}" data-journal-quick-save-url="{% url 'journal:quick_save' %}">
     <header class="app-header">
         <a class="app-name" href="{% url 'core:map' %}" aria-label="{{ app_display_name }} map">{{ app_display_name }}</a>
         <nav class="primary-nav" aria-label="Primary" hx-boost="true" hx-target="#app-content" hx-push-url="true" hx-swap="innerHTML show:top">
@@ -41,20 +42,25 @@
     </main>
 
     <aside id="persistent-player" class="persistent-player" aria-label="Video player" data-player-state="empty">
-        <div class="player-heading">
-            <div>
-
-                <p class="player-title" data-player-title>No video selected</p>
-                <p class="player-channel" data-player-channel></p>
-            </div>
-            <div class="player-actions" data-player-actions hidden>
+        <div class="player-toolbar" role="toolbar" aria-label="Video controls">
+            <div class="player-toolbar-left">
+                <a class="player-bookmark" data-player-bookmark href="{% url 'journal:new' %}" hx-boost="true" hx-target="#app-content" hx-push-url="true" aria-label="Save video and write in Journal" title="Save and write in Journal">{% include 'core/partials/icon.html' with name='bookmark' %}</a>
                 <button type="button" data-player-minimize aria-label="Minimize video player" title="Minimize"><span data-player-minimize-icon>{% include 'core/partials/icon.html' with name='minimize' %}</span><span data-player-restore-icon hidden>{% include 'core/partials/icon.html' with name='restore' %}</span></button>
+            </div>
+            <button class="player-play-pause" type="button" data-player-play-pause aria-label="Play video" title="Play" disabled><span data-player-play-icon>{% include 'core/partials/icon.html' with name='play' %}</span><span data-player-pause-icon hidden>{% include 'core/partials/icon.html' with name='pause' %}</span></button>
+            <div class="player-toolbar-right">
+                <button type="button" data-player-expand aria-label="Expand video to app view" title="Expand to app view" aria-pressed="false"><span data-player-expand-icon>{% include 'core/partials/icon.html' with name='restore' %}</span><span data-player-contract-icon hidden>{% include 'core/partials/icon.html' with name='contract' %}</span></button>
                 <button type="button" data-player-close aria-label="Close video player" title="Close">{% include 'core/partials/icon.html' with name='close' %}</button>
+                <button type="button" data-player-drag aria-label="Move player: drag or use arrow keys" title="Drag to move · arrow keys also work">{% include 'core/partials/icon.html' with name='hand' %}</button>
             </div>
         </div>
         <div class="player-stage" data-player-stage></div>
+        <p class="player-notice" data-player-notice role="status" hidden><span data-player-notice-text></span> <a data-player-external target="_blank" rel="noopener noreferrer">Open on YouTube</a></p>
     </aside>
     <template data-control-icon="down">{% include 'core/partials/icon.html' with name='down' %}</template>
     <template data-control-icon="close">{% include 'core/partials/icon.html' with name='close' %}</template>
+    <template data-control-icon="plus">{% include 'core/partials/icon.html' with name='plus' %}</template>
+    <template data-control-icon="check">{% include 'core/partials/icon.html' with name='check' %}</template>
+    <div class="journal-save-notice" data-quick-save-notice role="status" hidden></div>
 </body>
 </html>

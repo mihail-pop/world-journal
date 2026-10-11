@@ -379,22 +379,39 @@ details[open] > summary { margin-bottom: .9rem; color: var(--ui-text); }
 .video-feed-note summary { font-size: .9rem; }
 .country-saved-research li { border-color: var(--ui-border); }
 .country-notes-heading a { font-size: .9rem; color: var(--ui-accent); }
-/* The player keeps its existing shell-owned iframe. */
-.persistent-player { width: 30rem; background: var(--ui-surface); border-color: var(--ui-border); color: var(--ui-text); border-radius: 7px 7px 0 0; box-shadow: 0 -3px 24px #0003; }
-.player-heading { padding: .85rem 1rem; gap: .8rem; }
-.player-heading > div:first-child { min-width: 0; }
-.player-title { color: var(--ui-text); font-size: .95rem; font-weight: 500; line-height: 1.45; }
-.player-channel { color: var(--ui-muted); font-size: .9rem; margin-top: .25rem; }
-.player-actions { gap: .2rem; }
-.player-actions button { padding: .35rem; width: 2rem; min-height: 2rem; background: transparent; border-color: transparent; }
-.player-stage { padding: 0 .7rem .7rem; }
-.player-stage iframe { border-radius: 3px; }
-.persistent-player.is-minimized .player-title { display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
+/* One floating shell player: the video has no surrounding panel or padding. */
+.persistent-player { z-index: 40; width: min(30rem, calc(100vw - 1rem), calc((100dvh - var(--header-height) - 5rem) * 16 / 9)); bottom: 1rem; background: transparent; border: 0; border-radius: 0; box-shadow: none; color: var(--ui-text); }
+.player-toolbar { position: relative; z-index: 2; display: grid; grid-template-columns: minmax(0, 1fr) 2.25rem minmax(0, 1fr); align-items: center; gap: .35rem; min-height: 3.1rem; margin-bottom: .4rem; padding: .35rem .45rem; border: 1px solid var(--ui-border); border-radius: 9px; background: var(--ui-surface); box-shadow: 0 3px 16px #0004; }
+.player-toolbar-left, .player-toolbar-right { display: flex; align-items: center; gap: .15rem; min-width: 0; }
+.player-toolbar-right { justify-content: flex-end; }
+.player-toolbar button, .player-toolbar a { display: inline-flex; align-items: center; justify-content: center; width: 2.25rem; height: 2.25rem; flex: 0 0 auto; padding: .4rem; border: 0; border-radius: 6px; background: transparent; color: var(--ui-text); text-decoration: none; }
+.player-toolbar button:hover:not(:disabled), .player-toolbar a:hover { background: var(--ui-hover); color: var(--ui-accent); }
+.player-toolbar .player-play-pause { border-radius: 50%; background: var(--ui-accent); color: var(--ui-accent-ink); }
+.player-toolbar .player-play-pause:hover:not(:disabled) { background: var(--ui-accent); color: var(--ui-accent-ink); }
+.player-stage { width: 100%; min-height: 0; padding: 0; aspect-ratio: 16 / 9; background: transparent; border: 0; }
+.player-stage iframe { display: block; width: 100%; height: 100%; aspect-ratio: auto; border: 0; border-radius: 0; }
+.player-notice { margin: .4rem 0 0; padding: .6rem .8rem; border-radius: 6px; background: var(--ui-surface); color: var(--ui-muted); font-size: .9rem; }
+.player-notice a { color: var(--ui-accent); }
+.persistent-player.is-expanded { inset: var(--header-height) 0 0; width: 100%; height: calc(100dvh - var(--header-height)); }
+.persistent-player.is-expanded .player-stage { height: 100%; aspect-ratio: auto; }
+.persistent-player.is-expanded .player-toolbar { position: absolute; left: 50%; bottom: 1rem; transform: translateX(-50%); width: min(30rem, calc(100% - 2rem)); margin: 0; }
+.persistent-player.is-expanded .player-notice { position: absolute; top: .75rem; left: 50%; transform: translateX(-50%); max-width: calc(100% - 2rem); }
+[data-player-drag] { cursor: grab; touch-action: none; }
+.is-dragging [data-player-drag] { cursor: grabbing; }
+.persistent-player.is-dragging iframe { pointer-events: none; }
+.journal-bookmark-actions { display: inline-flex; align-items: center; gap: 0; position: relative; }
+.journal-bookmark-actions .journal-quick-save { display: inline-flex; align-items: center; justify-content: center; width: 0; max-width: 0; height: 2.25rem; padding: 0; margin: 0; overflow: hidden; visibility: hidden; border: 0; border-radius: 50%; background: var(--ui-hover); color: var(--ui-accent); opacity: 0; }
+.journal-bookmark-actions:hover .journal-quick-save, .journal-bookmark-actions:focus-within .journal-quick-save { width: 2.25rem; max-width: 2.25rem; margin-left: .3rem; visibility: visible; opacity: 1; }
+.journal-bookmark-actions .journal-quick-save:hover:not(:disabled) { background: var(--ui-accent); color: var(--ui-accent-ink); }
+.journal-bookmark-actions .journal-quick-save.is-saved { opacity: 1; color: var(--ui-accent); }
+.journal-save-notice { position: fixed; z-index: 90; top: calc(var(--header-height) + .75rem); left: 50%; transform: translateX(-50%); max-width: calc(100vw - 2rem); padding: .7rem 1rem; border: 1px solid var(--ui-border); border-radius: 7px; background: var(--ui-surface); color: var(--ui-text); box-shadow: 0 3px 16px #0003; }
+.journal-save-notice.is-error { border-color: var(--ui-favorite); }
+@media (hover: none) { .journal-bookmark-actions .journal-quick-save { width: 2.25rem; max-width: 2.25rem; margin-left: .3rem; visibility: visible; opacity: 1; } }
 .statistics-panel, .preset-card, .empty-state { background: var(--ui-surface); border-color: var(--ui-border); }
 .statistics-heading { margin-bottom: 1.25rem; }
 .statistics-totals strong { color: var(--ui-text); }
 @media (min-width: 70rem) {
-    .persistent-player { left: 1rem; right: auto; }
+    .persistent-player:not(.is-expanded) { left: 1rem; right: auto; }
     body:has(.page-map):has(.persistent-player[data-player-state=playing]) .country-drawer { bottom: auto; max-height: calc(100% - 2rem); }
 }
 @media (max-width: 64rem) {
@@ -450,8 +467,7 @@ details[open] > summary { margin-bottom: .9rem; color: var(--ui-text); }
     .country-video-item { grid-template-columns: 6.5rem minmax(0, 1fr); gap: .7rem; }
     .video-card-copy h4 { font-size: .95rem; }
     .video-card-actions { grid-column: 1 / -1; }
-    .persistent-player { width: auto; left: .5rem; right: .5rem; }
-    .player-heading { padding: .7rem .8rem; }
+    .persistent-player:not(.is-expanded) { left: .5rem; right: auto; }
     body:has(.persistent-player[data-player-state=playing]) .country-drawer { max-height: max(5rem, min(40%, calc(100% - var(--persistent-player-map-offset) - .75rem))); }
 }
 

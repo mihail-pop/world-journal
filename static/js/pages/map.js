@@ -1157,11 +1157,13 @@ async function initializeMapPage() {
         }
         const playButton = event.target.closest("[data-video-play]");
         if (playButton) {
+            const bookmark = playButton.closest(".country-video-item")?.querySelector("[data-bookmark-url]");
             document.dispatchEvent(new CustomEvent("world-journal:play-video", {
                 detail: {
                     videoId: playButton.dataset.videoId,
                     title: playButton.dataset.videoTitle,
                     channel: playButton.dataset.videoChannel,
+                    saveUrl: bookmark?.dataset.bookmarkUrl || bookmark?.href,
                 },
             }));
         }

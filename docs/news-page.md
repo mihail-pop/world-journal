@@ -74,9 +74,10 @@ JavaScript, Apply and normal navigation still work. News keeps its current nodes
 filters and scroll when navigating to another main page, like Journal. Clicking
 News in the header while already on News returns to the main Articles screen.
 Playback and the retained Map remain outside these results updates.
-The same shell player floats over every page, at the bottom left on wide screens
-and across the bottom on phones. Opening it does not narrow the page or change
-the number of cards in its grid. The header order is Map, Journal, News.
+The same shell player floats over every page. It supports a draggable small view
+and an expanded app view, without narrowing the page or changing card columns.
+See [Player and bookmarks](player-and-bookmarks.md) for the shared controls and
+quick-save behavior. The header order is Map, Journal, News.
 
 ## Manual checks
 

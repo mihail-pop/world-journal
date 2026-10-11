@@ -66,20 +66,21 @@ def statistics(request):
     return page(request, "journal/statistics.html", context)
 
 
-def initial_entry(request):
-    initial = {"entry_type": request.GET.get("type") if request.GET.get("type") in EntryType.values else EntryType.NOTE}
+def initial_entry(request, parameters=None):
+    parameters = request.GET if parameters is None else parameters
+    initial = {"entry_type": parameters.get("type") if parameters.get("type") in EntryType.values else EntryType.NOTE}
     for field, parameter in (("title", "title"), ("source_url", "url"), ("source_name", "source"), ("youtube_reference", "video")):
-        if value := request.GET.get(parameter):
+        if value := parameters.get(parameter):
             limit = {"title": 300, "source_name": 200}.get(field)
             initial[field] = value[:limit] if limit else value
-    initial["countries"] = list(Country.objects.filter(code__in=[c.upper() for c in request.GET.getlist("country")]).values_list("pk", flat=True))
-    collection = request.GET.get("collection", "")
+    initial["countries"] = list(Country.objects.filter(code__in=[c.upper() for c in parameters.getlist("country")]).values_list("pk", flat=True))
+    collection = parameters.get("collection", "")
     if collection:
         try:
             initial["collection"] = Collection.objects.get(pk=collection)
         except (Collection.DoesNotExist, ValidationError):
             pass
-    if published := request.GET.get("published"):
+    if published := parameters.get("published"):
         try:
             moment = parse_datetime(published)
             if moment:
@@ -87,6 +88,38 @@ def initial_entry(request):
         except ValueError:
             pass
     return initial
+
+
+@require_http_methods(["POST"])
+def quick_save(request):
+    if request.POST.get("type") not in {EntryType.ARTICLE, EntryType.YOUTUBE}:
+        return JsonResponse({"message": "Choose an article or video to save."}, status=422)
+    initial = initial_entry(request, request.POST)
+    data = QueryDict(mutable=True)
+    for field in ("title", "entry_type", "source_url", "source_name", "youtube_reference"):
+        data[field] = initial.get(field, "")
+    if moment := initial.get("source_published_at"):
+        data["source_published_at"] = moment.strftime("%Y-%m-%dT%H:%M:%S")
+    data.setlist("countries", [str(pk) for pk in initial["countries"]])
+    form = EntryForm(data)
+    if not form.is_valid():
+        message = next(iter(form.errors.values()))[0]
+        return JsonResponse({"message": str(message)}, status=422)
+    content = form.instance
+    if content.entry_type == EntryType.YOUTUBE and not content.youtube_video_id:
+        return JsonResponse({"message": "This video has no valid YouTube ID."}, status=422)
+    if content.entry_type == EntryType.ARTICLE and not content.source_url:
+        return JsonResponse({"message": "This article has no valid source link."}, status=422)
+    with transaction.atomic():
+        # Repeated quick saves reuse the original entry without changing notes.
+        lookup = {"youtube_video_id": content.youtube_video_id} if content.youtube_video_id else {"source_url": content.source_url}
+        entry = Entry.objects.filter(**lookup).first()
+        created = entry is None
+        if created:
+            entry = form.save()
+        else:
+            entry.countries.add(*form.cleaned_data["countries"])
+    return JsonResponse({"edit_url": reverse("journal:edit", args=[entry.pk]), "created": created})
 
 
 def section_submission(data, entry):

@@ -33,6 +33,7 @@ function capturePage(page, url) {
             .filter(element => element.scrollTop || element.scrollLeft)
             .map(element => [element, element.scrollLeft, element.scrollTop]),
         focus: page.contains(document.activeElement) ? document.activeElement : null,
+        journalDirty: remembered.get(page.dataset.page)?.journalDirty || false,
     };
 }
 
@@ -88,10 +89,13 @@ export function registerPageMemory() {
             if (preserve) outgoing.remove();
             if (resetPage) remembered.delete(resetPage);
             const saved = remembered.get(name);
-            const reuse = saved && (name === "map"
+            const refreshJournal = name === "journal" && resumeJournal && saved?.url === currentUrl()
+                && saved.journalDirty && !saved.page.querySelector("[data-journal-editor]");
+            const reuse = !refreshJournal && saved && (name === "map"
                 || (name === "journal" && resumeJournal && saved.url === currentUrl())
                 || (name === "news" && resumeNews && saved.url === currentUrl()));
-            pendingScroll = reuse ? saved : null;
+            pendingScroll = refreshJournal ? {...saved, page: incoming, scrolls: [], focus: null} : reuse ? saved : null;
+            if (name === "journal" && !reuse && saved) saved.journalDirty = false;
             pendingTop = !reuse;
             if (reuse && name === "news") {
                 // Keep the reading position but use current source choices from
@@ -177,6 +181,11 @@ export function registerPageMemory() {
             saved.url = event.detail.url;
             updateHeaderLinks();
         }
+    });
+    document.addEventListener("world-journal:data-changed", event => {
+        if (event.detail?.path !== document.body.dataset.journalQuickSaveUrl) return;
+        const saved = remembered.get("journal");
+        if (saved) saved.journalDirty = true;
     });
     document.body.addEventListener("htmx:afterRequest", event => {
         const config = event.detail.requestConfig;

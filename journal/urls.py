@@ -7,6 +7,7 @@ app_name = "journal"
 urlpatterns = [
     path("", views.index, name="index"),
     path("new/", views.edit, name="new"),
+    path("quick-save/", views.quick_save, name="quick_save"),
     path("preview/", views.preview, name="preview"),
     path("statistics/", views.statistics, name="statistics"),
     path("collections/new/", views.collection_edit, name="collection_new"),

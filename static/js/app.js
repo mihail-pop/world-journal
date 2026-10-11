@@ -7,6 +7,7 @@ import { registerSettingsPage } from "./pages/settings.js";
 import { registerSourceSettings } from "./pages/sources.js";
 import { registerNewsPage } from "./pages/news.js";
 import { initializePlayer } from "./player.js";
+import { registerJournalBookmarks } from "./journal_bookmarks.js";
 import { initializeTheme } from "./theme.js";
 import { registerUiControls } from "./ui_controls.js";
 
@@ -14,6 +15,7 @@ function initializeApplication() {
     initializeTheme();
     registerUiControls();
     initializePlayer();
+    registerJournalBookmarks();
     initializeNewsCache();
     registerMapPage();
     registerSettingsPage();

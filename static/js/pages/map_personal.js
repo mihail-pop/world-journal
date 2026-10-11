@@ -236,6 +236,7 @@ export function initializePersonalMap(controller, selectCountry) {
     visibility.observe(drawer, {attributes: true, attributeFilter: ["hidden"]});
     if (player) visibility.observe(player, {attributes: true, attributeFilter: ["data-player-state", "class"]});
     window.addEventListener("resize", position, {signal});
+    document.addEventListener("world-journal:player-moved", position, {signal});
     window.addEventListener("scroll", position, {signal, passive: true});
     signal.addEventListener("abort", () => {resize.disconnect(); visibility.disconnect();}, {once: true});
     state.retry.addEventListener("click", () => loadPersonalData(controller), {signal});

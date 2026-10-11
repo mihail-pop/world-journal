@@ -95,7 +95,8 @@ export function registerJournalPage() {
     document.addEventListener("click", event => {
         const play = event.target.closest("[data-journal-play]");
         if (play) {
-            document.dispatchEvent(new CustomEvent("world-journal:play-video", {detail: {videoId: play.dataset.videoId, title: play.dataset.videoTitle, channel: play.dataset.videoChannel, startSeconds: Number(play.dataset.videoStart || 0)}}));
+            const entryPath = location.pathname.match(/^\/journal\/([a-f0-9-]{36})\//);
+            document.dispatchEvent(new CustomEvent("world-journal:play-video", {detail: {videoId: play.dataset.videoId, title: play.dataset.videoTitle, channel: play.dataset.videoChannel, startSeconds: Number(play.dataset.videoStart || 0), saveUrl: entryPath ? `/journal/${entryPath[1]}/edit/` : undefined}}));
             return;
         }
         const editor = event.target.closest("[data-journal-editor]");
