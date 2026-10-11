@@ -616,6 +616,7 @@ function applyPreferences(controller) {
     const showCapitals = controller.preferences.capitalNames;
     setLayerVisibility(controller.map, LAYERS.capitalMarkers, showCapitals);
     setLayerVisibility(controller.map, LAYERS.capitalNames, showCapitals);
+    setLayerVisibility(controller.map, LAYERS.smallMarker, controller.preferences.smallCountryMarkers);
     updateLayerTheme(controller);
     const styleLayers = controller.basemapLayers;
     const isVisible = (layerId) => controller.map.getLayoutProperty(layerId, "visibility") !== "none";
@@ -704,6 +705,7 @@ function installCountryLayers(controller) {
         type: "circle",
         source: CENTROID_SOURCE_ID,
         filter: ["==", ["get", "small"], true],
+        layout: { visibility: "none" },
         paint: { "circle-color": "#00bfff", "circle-radius": 3.5, "circle-stroke-color": "#a8b5c4", "circle-stroke-width": 1.5 },
     });
     addLayer(controller, {
