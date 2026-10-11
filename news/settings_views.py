@@ -214,7 +214,7 @@ def refresh_status(request):
     def label(job):
         kind, identity = job
         if kind == "google":
-            return f"Google News · {_countries_by_code()[identity]['name']}"
+            return "Google News · World headlines" if identity == "WORLD" else f"Google News · {_countries_by_code()[identity]['name']}"
         if kind == "rss" and identity in feeds:
             feed = feeds[identity]
             return f"{providers[feed.provider_id].display_name} · {feed.section_label}"

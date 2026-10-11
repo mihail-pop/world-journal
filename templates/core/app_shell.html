@@ -27,6 +27,7 @@
         <a class="app-name" href="{% url 'core:map' %}" aria-label="{{ app_display_name }} map">{{ app_display_name }}</a>
         <nav class="primary-nav" aria-label="Primary" hx-boost="true" hx-target="#app-content" hx-push-url="true" hx-swap="innerHTML show:top">
             <a data-nav-page="map" href="{% url 'core:map' %}"{% if active_page == 'map' %} aria-current="page"{% endif %}>Map</a>
+            <a data-nav-page="news" href="{% url 'news:index' %}"{% if active_page == 'news' %} aria-current="page"{% endif %}>News</a>
             <a data-nav-page="journal" href="{% url 'core:journal' %}"{% if active_page == 'journal' %} aria-current="page"{% endif %}>Journal</a>
         </nav>
         <div class="header-actions">

@@ -10,6 +10,7 @@ from news.types import NewsSource, NormalizedVideoFeed, SourceKind, VideoItem
 
 ATOM_NAMESPACE = "http://www.w3.org/2005/Atom"
 YOUTUBE_NAMESPACE = "http://www.youtube.com/xml/schemas/2015"
+MEDIA_NAMESPACE = "http://search.yahoo.com/mrss/"
 VIDEO_ID_PATTERN = re.compile(r"^[A-Za-z0-9_-]{11}$")
 
 
@@ -53,6 +54,14 @@ def _published_at(value: str | None) -> datetime | None:
     return parsed if parsed.tzinfo else parsed.replace(tzinfo=UTC)
 
 
+def _view_count(entry) -> int | None:
+    statistics = entry.find(f".//{{{MEDIA_NAMESPACE}}}statistics")
+    value = statistics.get("views", "") if statistics is not None else ""
+    if not re.fullmatch(r"[0-9]{1,19}", value):
+        return None
+    return int(value)
+
+
 def normalize_youtube_feed(
     payload: bytes,
     source: NewsSource,
@@ -94,6 +103,7 @@ def normalize_youtube_feed(
             embed_url=build_embed_url(video_id),
             thumbnail_url=build_thumbnail_url(video_id),
             source_order=source_order,
+            view_count=_view_count(entry),
         ))
         if len(items) >= max_items:
             break

@@ -61,8 +61,16 @@ def _result(country: dict, source, snapshot: dict, *, is_stale: bool = False) ->
     )
 
 
-def get_country_news(
-    iso2: str,
+def get_country_news(iso2: str, **options) -> CountryNewsResult:
+    return _get_google_news(_country_for_code(iso2), **options)
+
+
+def get_world_news(**options) -> CountryNewsResult:
+    return _get_google_news({"iso_a2": "WORLD", "name": "World"}, **options)
+
+
+def _get_google_news(
+    country: dict,
     *,
     cache_backend=None,
     registry: SourceRegistry | None = None,
@@ -73,7 +81,6 @@ def get_country_news(
     fresh_seconds: int | None = None,
     cache_only: bool = False,
 ) -> CountryNewsResult:
-    country = _country_for_code(iso2)
     source = (registry or effective_registry()).get(GOOGLE_SOURCE_ID)
     if not source.enabled_by_default or not source.feed_host:
         return CountryNewsResult(
@@ -132,7 +139,8 @@ def get_country_news(
                     "retry_after_at": None,
                 })
             else:
-                normalized = normalize_feed(response.body, source, settings.NEWS_MAX_ITEMS)
+                limit = settings.NEWS_WORLD_MAX_ITEMS if country["iso_a2"] == "WORLD" else settings.NEWS_MAX_ITEMS
+                normalized = normalize_feed(response.body, source, limit)
                 snapshot = {
                     "items": [item.as_cache_value() for item in normalized.items],
                     "fetched_at": current_time.isoformat(),

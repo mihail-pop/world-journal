@@ -5,6 +5,7 @@ import { registerPresetEditor } from "./pages/map_personal.js";
 import { registerMapPage } from "./pages/map.js";
 import { registerSettingsPage } from "./pages/settings.js";
 import { registerSourceSettings } from "./pages/sources.js";
+import { registerNewsPage } from "./pages/news.js";
 import { initializePlayer } from "./player.js";
 import { initializeTheme } from "./theme.js";
 import { registerUiControls } from "./ui_controls.js";
@@ -17,6 +18,7 @@ function initializeApplication() {
     registerMapPage();
     registerSettingsPage();
     registerSourceSettings();
+    registerNewsPage();
     registerJournalPage();
     registerPresetEditor();
     registerHtmxLifecycle();

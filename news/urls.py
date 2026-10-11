@@ -1,11 +1,13 @@
 from django.urls import path
 
-from . import settings_views, views
+from . import board_views, settings_views, views
 
 
 app_name = "news"
 
 urlpatterns = [
+    path("news/", board_views.index, name="index"),
+    path("news/results/", board_views.results, name="results"),
     path("news/cache/", views.cached_drawers, name="cached_drawers"),
     path("settings/news/", settings_views.source_settings, name="settings"),
     path("settings/news/preference/", settings_views.save_preference, name="save_preference"),

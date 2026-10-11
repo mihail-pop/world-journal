@@ -130,6 +130,7 @@ class VideoItem:
     matched_country_codes: tuple[str, ...] = ()
     match_evidence: tuple[str, ...] = ()
     is_stale: bool = False
+    view_count: int | None = None
 
     def as_cache_value(self) -> dict[str, str | int | None]:
         return {
@@ -142,6 +143,7 @@ class VideoItem:
             "embed_url": self.embed_url,
             "thumbnail_url": self.thumbnail_url,
             "source_order": self.source_order,
+            "view_count": self.view_count,
         }
 
 

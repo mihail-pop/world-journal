@@ -24,5 +24,7 @@ def build_country_query(country: dict) -> str:
 def build_feed_url(source: NewsSource, country: dict) -> str:
     if source.kind is not SourceKind.DYNAMIC_COUNTRY_RSS or not source.feed_host:
         raise ValueError("Google News requires a dynamic country RSS source")
+    if country["iso_a2"] == "WORLD":
+        return f"https://{source.feed_host}/rss/headlines/section/topic/WORLD?{urlencode(source.edition_parameters)}"
     parameters = {"q": build_country_query(country), **source.edition_parameters}
     return f"https://{source.feed_host}/rss/search?{urlencode(parameters)}"

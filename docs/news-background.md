@@ -9,7 +9,8 @@ This is intended for the project's single-process local server.
 
 - All enabled regional RSS feeds and YouTube channel feeds are prepared first.
 - Google News has one generated feed per country, not one complete world feed.
-  All 238 countries are queued; requests start at least 0.75 seconds apart.
+  All 238 countries plus one World headlines feed for the News page are queued;
+  requests start at least 0.75 seconds apart.
 - Selecting a country promotes its Google request and missing/shared feeds.
   A request already fetching cannot be interrupted, but duplicate jobs are avoided.
 - A scan every 30 seconds queues feeds whose own successful-check timestamp is

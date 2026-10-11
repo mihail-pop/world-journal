@@ -2,6 +2,7 @@ import { registerPageMemory } from "./page_memory.js";
 
 const PAGE_LABELS = {
     map: "Map",
+    news: "News",
     journal: "Journal",
     settings: "Settings",
 };

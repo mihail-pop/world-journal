@@ -19,7 +19,7 @@ from news.preferences import effective_registry, freshness_seconds
 from news.types import SourceKind
 
 from .cache import age, failure_retry_pending, fixed_feed_cache_key, google_cache_key, google_pause_until, refresh_jitter, youtube_cache_key
-from .country_news import _countries_by_code, _country_for_code, get_country_news
+from .country_news import _countries_by_code, _country_for_code, get_country_news, get_world_news
 from .regional_news import get_fixed_feed
 from .region_routing import eligible_youtube_sources
 from .youtube_news import get_youtube_feed
@@ -36,6 +36,7 @@ def feed_jobs(registry):
             yield ("youtube", source.id), youtube_cache_key(source)
     google = registry.get("google_news_country")
     if google.enabled_by_default:
+        yield ("google", "WORLD"), google_cache_key(google, "WORLD")
         for code in _countries_by_code():
             yield ("google", code), google_cache_key(google, code)
 
@@ -120,6 +121,28 @@ class FeedWarmer:
     def busy(self):
         with self.condition:
             return bool(self.urgent or self.normal or self.running)
+
+    def prioritize_news(self, *, country="WORLD", videos=False):
+        """Promote missing/due general feeds without changing refresh intervals."""
+        self.start()
+        registry, interval = effective_registry(), freshness_seconds()
+        jobs = [(job, key) for job, key in feed_jobs(registry) if (
+            videos and job[0] == "youtube"
+            or not videos and (job[0] == "rss" or job == ("google", country))
+        )]
+        snapshots = cache.get_many([key for _, key in jobs])
+        now = datetime.now(UTC)
+        jobs.sort(key=lambda pair: pair[0][0] == "google")
+        for job, key in jobs:
+            if job[0] == "google" and google_pause_until(cache, now):
+                continue
+            snapshot = snapshots.get(key)
+            # Upgrade old cached video entries once, without waiting 12 hours
+            # for view counts. Failed upgrades use the normal retry backoff.
+            upgrade_views = bool(videos and isinstance(snapshot, dict) and isinstance(snapshot.get("items"), list) and not snapshot.get("last_error")
+                                 and any(isinstance(item, dict) and "view_count" not in item for item in snapshot.get("items", [])))
+            if needs_refresh(snapshot, interval, now, job) or upgrade_views:
+                self._enqueue(job, urgent=True, force=upgrade_views)
 
     def rescan(self):
         self.start()
@@ -234,7 +257,7 @@ class FeedWarmer:
                 if delay > 0:
                     time.sleep(delay)
                 self.next_google_at = time.monotonic() + settings.NEWS_GOOGLE_REQUEST_SPACING_SECONDS
-            result = get_country_news(identity, registry=registry, **options)
+            result = get_world_news(registry=registry, **options) if identity == "WORLD" else get_country_news(identity, registry=registry, **options)
             return not (result.error or result.warning)
 
 

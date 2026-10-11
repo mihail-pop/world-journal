@@ -1,0 +1,31 @@
+<div class="news-board-result" data-board-version="{{ version }}" data-board-pending="{{ pending }}">
+    <div class="news-board-summary"><span>{{ total }} {% if tab == 'videos' %}video{{ total|pluralize }}{% else %}article{{ total|pluralize }}{% endif %}</span>{% if pending %}<span class="news-board-loading" role="status">Preparing {{ pending }} feed{{ pending|pluralize }}…</span>{% endif %}</div>
+    {% if errors %}<details class="news-board-status" {% if not cards and not pending %}open{% endif %}><summary>{{ errors|length }} source notice{{ errors|length|pluralize }}</summary><ul>{% for name,message in errors %}<li><strong>{{ name }}</strong> — {{ message }}</li>{% endfor %}</ul></details>{% endif %}
+    {% if missing_views %}<p class="field-note">Some saved videos have no view count yet. They appear after videos with known counts. <a href="{% url 'news:settings' %}" hx-boost="true" hx-target="#app-content" hx-push-url="true">Refresh feeds</a> to update them.</p>{% endif %}
+    {% if cards %}
+        <ol class="news-board-grid {% if tab == 'videos' %}news-board-videos{% endif %}">
+        {% for card in cards %}{% with item=card.item %}
+            <li class="news-board-card" data-news-item="{% if tab == 'videos' %}{{ item.video_id }}{% else %}{{ item.link }}{% endif %}">
+            {% if tab == 'videos' %}
+                <div class="news-board-thumbnail"><img src="{{ item.thumbnail_url }}" alt="" width="480" height="360" loading="lazy" decoding="async" referrerpolicy="no-referrer"></div>
+                <div class="news-board-card-body"><div class="news-board-attribution"><span>{{ item.channel_name }}</span>{% if item.is_stale %}<span class="news-board-cache-label">Cached</span>{% endif %}</div>
+                    <h2><a href="{{ item.watch_url }}" target="_blank" rel="noopener noreferrer">{{ item.title }}</a></h2>
+                    <p class="news-board-byline">{% if item.published_at %}<time datetime="{{ item.published_at|date:'c' }}">{{ item.published_at|date:'M j, H:i' }}</time>{% endif %}{% if item.view_count != None %}<span>{{ item.view_count|floatformat:'0g' }} views</span>{% endif %}</p>
+                    <div class="news-board-card-actions"><button class="video-play-button" type="button" data-video-play data-video-id="{{ item.video_id }}" data-video-title="{{ item.title }}" data-video-channel="{{ item.channel_name }}">{% include 'core/partials/icon.html' with name='play' %} Play</button><a class="news-save-journal" href="{{ card.save_url }}" hx-boost="true" hx-target="#app-content" hx-push-url="true">{% include 'core/partials/icon.html' with name='bookmark' %} Save</a></div>
+                </div>
+            {% else %}
+                <div class="news-board-card-body"><div class="news-board-attribution"><span class="news-board-source {% if card.google %}is-google{% endif %}">{% if card.google %}Google News{% else %}{{ item.provider_name }}{% endif %}</span>{% if item.is_stale %}<span class="news-board-cache-label">Cached</span>{% endif %}</div>
+                    <h2><a href="{{ item.link }}" target="_blank" rel="noopener noreferrer">{{ item.title }}</a></h2>
+                    <p class="news-board-byline"><span>{{ item.publisher }}</span>{% if item.published_at %}<time datetime="{{ item.published_at|date:'c' }}">{{ item.published_at|date:'M j, H:i' }}</time>{% endif %}</p>
+                    {% if item.summary %}<details class="news-board-summary-text"><summary>Summary</summary><p>{{ item.summary }}</p></details>{% endif %}
+                    <div class="news-board-card-actions"><a class="news-save-journal" href="{{ card.save_url }}" hx-boost="true" hx-target="#app-content" hx-push-url="true">{% include 'core/partials/icon.html' with name='bookmark' %} Save</a><a class="news-board-open" href="{{ item.link }}" target="_blank" rel="noopener noreferrer">Read {% include 'core/partials/icon.html' with name='external' %}</a></div>
+                </div>
+            {% endif %}
+            </li>
+        {% endwith %}{% endfor %}
+        </ol>
+        {% if result_page.has_other_pages %}<nav class="news-board-pagination" aria-label="News pages" hx-boost="true" hx-target="#app-content" hx-push-url="true" hx-swap="innerHTML show:top">{% if previous_url %}<a class="journal-button" href="{{ previous_url }}">Previous</a>{% endif %}<span>Page {{ result_page.number }} of {{ result_page.paginator.num_pages }}</span>{% if next_url %}<a class="journal-button" href="{{ next_url }}">Next</a>{% endif %}</nav>{% endif %}
+    {% elif pending %}<p class="news-board-empty">Preparing your news. Available items will appear automatically.</p>
+    {% elif not enabled_count %}<p class="news-board-empty">No sources are enabled for this view. <a href="{% url 'news:settings' %}" hx-boost="true" hx-target="#app-content" hx-push-url="true">Manage sources</a></p>
+    {% else %}<p class="news-board-empty">No items in the selected time range. Try a longer period or another source.</p>{% endif %}
+</div>

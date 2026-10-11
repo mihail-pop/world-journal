@@ -175,6 +175,9 @@ def deserialize_video_items(snapshot: dict, source: NewsSource) -> tuple[VideoIt
         video_id = value.get("video_id")
         title = value.get("title")
         source_order = value.get("source_order", 0)
+        view_count = value.get("view_count")
+        if type(view_count) is not int or view_count < 0:
+            view_count = None
         if (
             not is_valid_video_id(video_id)
             or not isinstance(title, str)
@@ -199,5 +202,6 @@ def deserialize_video_items(snapshot: dict, source: NewsSource) -> tuple[VideoIt
             embed_url=build_embed_url(video_id),
             thumbnail_url=build_thumbnail_url(video_id),
             source_order=source_order,
+            view_count=view_count,
         ))
     return tuple(items)

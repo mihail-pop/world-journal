@@ -109,11 +109,14 @@ def get_youtube_feed(
             )
 
         try:
+            # A conditional 304 cannot upgrade old entries with view metadata.
+            # Download the full Atom payload once when this field is absent.
+            missing_views = any("view_count" not in item for item in snapshot.get("items", []))
             response = fetcher(
                 feed_url,
                 allowed_hosts=set(source.allowed_hosts),
-                etag=snapshot.get("etag"),
-                last_modified=snapshot.get("last_modified"),
+                etag=None if missing_views else snapshot.get("etag"),
+                last_modified=None if missing_views else snapshot.get("last_modified"),
             )
             if response.not_modified:
                 if not snapshot.get("last_success_at"):
