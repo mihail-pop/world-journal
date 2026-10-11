@@ -1277,3 +1277,25 @@ body:has(.persistent-player[data-player-state="playing"]) #app-content:not(:has(
 .backup-summary caption { text-align: left; padding-block: 0.5rem; color: var(--text-secondary); }
 .backup-summary th, .backup-summary td { text-align: left; padding: 0.65rem; border-bottom: 1px solid var(--overview-border); }
 .backup-summary th:first-child { min-width: 10rem; }
+
+/* Counts and links share the Journal's filters and persistent shell. */
+.statistics-page { max-width: 72rem; }
+.statistics-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 11rem), 1fr)); gap: 1rem; margin-block: 2rem; }
+.statistics-summary-card { display: grid; gap: 0.75rem; padding: 1rem; border: 1px solid var(--overview-border); border-radius: 6px; background: var(--bg-tertiary); text-decoration: none; overflow-wrap: anywhere; }
+.statistics-summary-card span { font-size: 0.85rem; color: var(--text-primary); }
+.statistics-summary-card strong { font-size: 2rem; color: var(--text-secondary); }
+.statistics-summary-card:hover, .statistics-row:hover { border-color: var(--special-color-hover); }
+.statistics-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; gap: 1.5rem; }
+.statistics-panel { min-width: 0; padding: 1.25rem; border: 1px solid var(--overview-border); border-radius: 6px; }
+.statistics-panel h2 { font-size: 1.35rem; color: var(--text-secondary); margin-top: 0; }
+.statistics-rows { list-style: none; margin: 1rem 0 0; padding: 0; }
+.statistics-rows li + li { margin-top: 0.35rem; }
+.statistics-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0.45rem 1rem; padding: 0.65rem; border: 1px solid transparent; border-radius: 4px; text-decoration: none; }
+.statistics-row-label { overflow-wrap: anywhere; color: var(--text-secondary); }
+.statistics-row strong { color: var(--special-color-hover); }
+.statistics-row progress { grid-column: 1 / -1; appearance: none; width: 100%; height: 0.4rem; border: 0; border-radius: 4px; overflow: hidden; background: var(--bg-quaternary); color: var(--special-color); }
+.statistics-row progress::-webkit-progress-bar { background: var(--bg-quaternary); }
+.statistics-row progress::-webkit-progress-value { background: var(--special-color); }
+.statistics-row progress::-moz-progress-bar { background: var(--special-color); }
+.statistics-country-list { max-height: 32rem; overflow-y: auto; }
+@media (max-width: 46rem) { .statistics-grid { grid-template-columns: 1fr; } .statistics-panel { padding: 0.85rem; } }

@@ -19,6 +19,7 @@ from .formatting import referenced_countries, render_body
 from .forms import AttachmentForm, CollectionForm, EntryForm, SectionFormSet
 from .models import Attachment, Collection, Entry, EntryType
 from .query import filtered_entries
+from .statistics import filter_params, statistics_context
 
 
 class ConfirmationForm(forms.Form):
@@ -53,7 +54,19 @@ def index(request):
         "selected_countries": [code.upper() for code in request.GET.getlist("country")],
         "pagination_query": params.urlencode(),
         "total_entries": Entry.objects.count(),
+        "statistics_query": filter_params(request.GET).urlencode(),
     })
+
+
+@require_http_methods(["GET"])
+def statistics(request):
+    context = statistics_context(request.GET)
+    context.update({
+        "collections": Collection.objects.all(), "countries": Country.objects.all(),
+        "entry_types": EntryType.choices, "filters": filter_params(request.GET),
+        "selected_countries": [code.upper() for code in request.GET.getlist("country")],
+    })
+    return page(request, "journal/statistics.html", context)
 
 
 def initial_entry(request):

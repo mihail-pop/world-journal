@@ -7,8 +7,10 @@ from django.db.models.functions import Substr
 from .models import Entry, EntryType
 
 
-def filtered_entries(params):
-    entries = Entry.objects.select_related("collection").prefetch_related("countries").annotate(excerpt=Substr("body", 1, 251)).defer("body")
+def filtered_entries(params, *, for_display=True):
+    entries = Entry.objects.all()
+    if for_display:
+        entries = entries.select_related("collection").prefetch_related("countries").annotate(excerpt=Substr("body", 1, 251)).defer("body")
     query = params.get("q", "").strip()[:300]
     if query:
         entries = entries.filter(Q(title__icontains=query) | Q(body__icontains=query) | Q(source_name__icontains=query) | Q(source_url__icontains=query) | Q(sections__title__icontains=query) | Q(sections__body__icontains=query) | Q(sections__source_url__icontains=query)).distinct()
@@ -30,6 +32,10 @@ def filtered_entries(params):
         entries = entries.filter(is_favorite=True)
     if params.get("pinned") == "1":
         entries = entries.filter(is_pinned=True)
+    if params.get("untagged") == "1":
+        entries = entries.filter(countries__isnull=True)
+    if params.get("undated") == "1":
+        entries = entries.filter(event_date__isnull=True)
     date_field = "created_at__date" if params.get("date_basis") == "created" else "event_date"
     day = params.get("date", "")
     if day:
@@ -56,4 +62,4 @@ def filtered_entries(params):
             except ValueError:
                 entries = entries.none()
     ordering = ("-is_pinned", "-created_at", "-id") if date_field.startswith("created") else ("-is_pinned", "-event_date", "-created_at", "-id")
-    return entries.order_by(*ordering)
+    return entries.order_by(*ordering) if for_display else entries.order_by()

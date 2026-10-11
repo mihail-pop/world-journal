@@ -1,7 +1,7 @@
 <section class="page page-standard journal-page" data-page="journal" aria-labelledby="journal-title" hx-boost="true" hx-target="#app-content" hx-push-url="true">
     <div class="journal-page-heading">
         <div class="page-copy"><p class="eyebrow">Research archive</p><h1 id="journal-title">Journal</h1><p>Your notes, sources and videos in one place.</p></div>
-        <a class="journal-button is-primary" href="{% url 'journal:new' %}{% if filters.collection and filters.collection != 'unfiled' %}?collection={{ filters.collection|urlencode }}{% endif %}">New entry</a>
+        <div class="journal-actions"><a class="journal-button" href="{% url 'journal:statistics' %}{% if statistics_query %}?{{ statistics_query }}{% endif %}">Statistics</a><a class="journal-button is-primary" href="{% url 'journal:new' %}{% if filters.collection and filters.collection != 'unfiled' %}?collection={{ filters.collection|urlencode }}{% endif %}">New entry</a></div>
     </div>
     <div class="journal-layout">
         <aside class="journal-sidebar" aria-label="Journal collections">
@@ -20,15 +20,7 @@
             <details class="journal-filter-panel" {% if filters %}open{% endif %}>
                 <summary>Search and filters</summary>
                 <form method="get" action="{% url 'core:journal' %}" class="journal-filter-form">
-                    {% if filters.collection %}<input type="hidden" name="collection" value="{{ filters.collection }}">{% endif %}
-                    <div class="journal-field journal-field-wide"><label for="journal-search">Search</label><input id="journal-search" type="search" name="q" value="{{ filters.q }}" placeholder="Titles, notes, subsections or source links"></div>
-                    <div class="journal-field"><label for="journal-type">Entry type</label><select id="journal-type" name="type"><option value="">All types</option>{% for value,label in entry_types %}<option value="{{ value }}" {% if filters.type == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
-                    <div class="journal-field"><label for="journal-date-basis">Date basis</label><select id="journal-date-basis" name="date_basis"><option value="event" {% if filters.date_basis != 'created' %}selected{% endif %}>Event date</option><option value="created" {% if filters.date_basis == 'created' %}selected{% endif %}>Created date</option></select></div>
-                    <div class="journal-field"><label for="journal-date">Exact day</label><input id="journal-date" type="date" name="date" value="{{ filters.date }}"></div>
-                    <div class="journal-field"><label for="journal-year">Year</label><input id="journal-year" type="number" name="year" min="1" max="9999" value="{{ filters.year }}" placeholder="Any year"></div>
-                    <div class="journal-field"><label for="journal-month">Month (1–12)</label><input id="journal-month" type="number" name="month" min="1" max="12" value="{{ filters.month }}" placeholder="Any month"></div>
-                    <div class="journal-field journal-field-wide"><label for="journal-country">Countries</label><select id="journal-country" name="country" multiple size="5">{% for country in countries %}<option value="{{ country.pk }}" {% if country.pk in selected_countries %}selected{% endif %}>{{ country.name }}</option>{% endfor %}</select><p class="field-note">Select multiple with Ctrl/Cmd. Entries matching any selected country are included.</p></div>
-                    <div class="journal-checkboxes"><label><input type="checkbox" name="favorite" value="1" {% if filters.favorite == '1' %}checked{% endif %}> Favorites</label><label><input type="checkbox" name="pinned" value="1" {% if filters.pinned == '1' %}checked{% endif %}> Pinned</label></div>
+                    {% include "journal/partials/filter_fields.html" %}
                     <div class="journal-actions"><button class="journal-button is-primary" type="submit">Apply</button><a href="{% url 'core:journal' %}">Clear filters</a></div>
                 </form>
             </details>

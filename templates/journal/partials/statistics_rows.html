@@ -1,0 +1,4 @@
+<ul class="statistics-rows">
+    {% for row in rows %}<li><a href="{{ row.url }}" class="statistics-row"><span class="statistics-row-label">{{ row.label }}</span><strong>{{ row.count }} <span class="visually-hidden">entr{{ row.count|pluralize:'y,ies' }}</span></strong><progress value="{{ row.count }}" max="{{ maximum }}" aria-label="Entries for {{ row.label }}">{{ row.count }}</progress></a></li>
+    {% empty %}<li class="field-note">{{ empty_message }}</li>{% endfor %}
+</ul>

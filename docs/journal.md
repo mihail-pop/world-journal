@@ -42,4 +42,4 @@ No new tests were generated, no test suite was run, and no browser acceptance wa
 
 ## Still deferred
 
-Autosave/recovery, nested collections, cross-entry backlinks, attachment caption editing/thumbnail generation, advanced full-text search, and statistics. Portable export/import is now available in Settings; see [Backups](backups.md). Manually back up SQLite and the media directory together while the server is stopped for an exact copy. The dependency pins and source model do not require a frontend build or background worker.
+Autosave/recovery, nested collections, cross-entry backlinks, attachment caption editing/thumbnail generation, and advanced full-text search. [Journal statistics](journal-statistics.md) provides counts and links back to filtered entries. Portable export/import is available in Settings; see [Backups](backups.md). Manually back up SQLite and the media directory together while the server is stopped for an exact copy. The dependency pins and source model do not require a frontend build or background worker.
