@@ -45,6 +45,23 @@ drawer, or toolbar and out of the map: the hover should clear. Try dragging,
 zooming, microstate markers, simple mode, themes, and Map → Journal → Map. Browser
 checks and automated tests are left to the user for this change.
 
+## Country selection rendering
+
+The clicked-country fill and outline also use fixed geometry with a separate
+`selected` feature-state flag and zero-duration color/opacity transitions.
+Switching countries clears the previous flag and sets the new flag before the
+next frame, without rebuilding tiles or changing the independent hover flag.
+Closing the drawer clears selection through the same path. Country URLs and
+browser history use that path too, and source/style recreation restores the
+current selected flag after installing the layers.
+
+Manual check: after Ctrl+F5, select a large country, then a neighboring country.
+The previous fill and outline should disappear together across the visible
+country, while the new selection appears together. Repeat quickly, close the
+drawer, use Back/Forward, and return from Journal to Map with a selected country.
+Also check simple mode and preset colors: removing selection should reveal the
+underlying country styling evenly. Tests and browser checks remain with the user.
+
 ## Terrain availability
 
 The Liberty style configured for Phase 2A was inspected on 2026-08-30. Its sources are an OpenMapTiles vector source and a Natural Earth shaded raster source. It does not contain a MapLibre-compatible `raster-dem` source or a hillshade layer. OpenFreeMap's official quick-start and self-hosting documentation do not document a compatible elevation source, elevation usage terms, or terrain attribution requirements.

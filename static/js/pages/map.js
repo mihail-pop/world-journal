@@ -122,10 +122,19 @@ function updateHistory(code) {
     history.pushState({ worldJournalCountry: code }, "", url);
 }
 
-function updateFilter(map, layerId, code) {
-    if (map.getLayer(layerId)) {
-        map.setFilter(layerId, ["==", ["get", "iso_a2"], code ?? ""]);
+function setSelectedCountry(controller, code) {
+    const { map, selectedCode } = controller;
+    // Selection must use the same paint-only path as hover. These updates merge
+    // only the selected flag, leaving any independent hover state intact.
+    if (map.getSource(SOURCE_ID)) {
+        if (selectedCode && selectedCode !== code) {
+            map.setFeatureState({ source: SOURCE_ID, id: selectedCode }, { selected: false });
+        }
+        if (code) {
+            map.setFeatureState({ source: SOURCE_ID, id: code }, { selected: true });
+        }
     }
+    controller.selectedCode = code;
 }
 
 function setHoveredCountry(controller, code) {
@@ -379,11 +388,9 @@ function selectCountrySection(controller, section, { focus = false } = {}) {
 }
 
 function renderSelection(controller, code, { fit = true, focusDrawer = false } = {}) {
-    controller.selectedCode = code;
+    setSelectedCountry(controller, code);
     personalSelectionChanged(controller);
     factsSelectionChanged(controller);
-    updateFilter(controller.map, LAYERS.selectedFill, code);
-    updateFilter(controller.map, LAYERS.selectedLine, code);
     const drawer = controller.page.querySelector("[data-country-drawer]");
 
     if (!code) {
@@ -621,8 +628,23 @@ function installCountryLayers(controller) {
             "line-opacity-transition": { duration: 0, delay: 0 },
         },
     });
-    addLayer(controller, { id: LAYERS.selectedFill, type: "fill", source: SOURCE_ID, filter: ["==", ["get", "iso_a2"], ""], paint: { "fill-color": "#00bfff", "fill-opacity": 0.26 } });
-    addLayer(controller, { id: LAYERS.selectedLine, type: "line", source: SOURCE_ID, filter: ["==", ["get", "iso_a2"], ""], paint: { "line-color": "#a8b5c4", "line-width": 3.5 } });
+    const isSelected = ["boolean", ["feature-state", "selected"], false];
+    addLayer(controller, {
+        id: LAYERS.selectedFill, type: "fill", source: SOURCE_ID,
+        paint: {
+            "fill-color": "#00bfff", "fill-opacity": ["case", isSelected, 0.26, 0],
+            "fill-color-transition": { duration: 0, delay: 0 },
+            "fill-opacity-transition": { duration: 0, delay: 0 },
+        },
+    });
+    addLayer(controller, {
+        id: LAYERS.selectedLine, type: "line", source: SOURCE_ID,
+        paint: {
+            "line-color": "#a8b5c4", "line-width": 3.5, "line-opacity": ["case", isSelected, 1, 0],
+            "line-color-transition": { duration: 0, delay: 0 },
+            "line-opacity-transition": { duration: 0, delay: 0 },
+        },
+    });
     addLayer(controller, {
         id: LAYERS.favoriteMarkers, type: "circle", source: CENTROID_SOURCE_ID,
         filter: ["in", ["get", "iso_a2"], ["literal", []]],
@@ -688,8 +710,7 @@ function installCountryLayers(controller) {
         map.setFeatureState({ source: SOURCE_ID, id: controller.hoveredCode }, { hover: true });
     }
     applyPreferences(controller);
-    updateFilter(map, LAYERS.selectedFill, controller.selectedCode);
-    updateFilter(map, LAYERS.selectedLine, controller.selectedCode);
+    setSelectedCountry(controller, controller.selectedCode);
     controller.status.hidden = true;
     scheduleHoverUpdate(controller);
     if (controller.initialFocusCode) {
