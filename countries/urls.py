@@ -5,6 +5,7 @@ from . import personal_views, views
 app_name = "countries"
 
 urlpatterns = [
+    path("countries/", views.index, name="index"),
     path("countries/<str:iso2>/facts/", views.country_overview, name="facts"),
     path("data/map-personal.json", personal_views.personal_data, name="personal_data"),
     path("countries/<str:iso2>/favorite/", personal_views.favorite, name="favorite"),

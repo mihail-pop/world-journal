@@ -7,10 +7,16 @@ The Map and Journal header links resume the last screen in the current browser t
 - One Map instance and its actual canvas, loaded geometry/style, camera, selected country, active drawer tab, article filter, loaded articles/videos/facts, and drawer scroll position.
 - One last Journal screen: filtered list, statistics, detail or editor, its URL, scroll positions, expanded controls, form values, subsections and text cursor. Changed drafts autosave about every minute; the editor displays save status.
 - The existing persistent video player remains outside the swapped page and continues playback.
+- Countries now retains its search, sorting, selected country/tab, loaded content
+  and reading/list positions in the same way. Its active header link resets to
+  the main country list. See [Countries](countries-page.md) for details.
 
 Retained pages are detached from the visible document, not stacked as hidden pages. Map suspension stops camera animation, clears transient hover and suppresses map-specific keyboard/history interaction while another page is active. Existing bounded loads may finish into its retained drawer. Return resizes the same canvas for the current layout and restores the camera without fitting the selected country again. If Map's initial data is still loading when the user leaves, map creation waits until return.
 
-There is one retained Map and at most one retained Journal screen, rather than an accumulating cache of every visited page/editor. Other pages remain freshly rendered. The shared swap hook keeps Map/Journal state when navigating to any page that uses the normal `#app-content` partial lifecycle. Future sections can opt into the same bounded pattern if they need their own workspace retention.
+There is one retained Map and at most one screen each for Journal, News and Countries,
+rather than an accumulating cache of every visited page/editor. Other pages remain
+freshly rendered. The shared swap hook preserves these workspaces when navigating
+to pages using the normal `#app-content` partial lifecycle.
 
 ## Navigation and fresh data
 

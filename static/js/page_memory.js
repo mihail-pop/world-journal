@@ -1,4 +1,4 @@
-// Keep one Map and the last Journal/News screens in this tab, using their real nodes
+// Keep one Map and the last Journal/News/Countries screens using their real nodes
 // so canvas state, form values, file selections and text cursors survive.
 // Other pages still use normal server-rendered HTMX navigation.
 const remembered = new Map();
@@ -7,6 +7,7 @@ let activeUrl = null;
 let outgoingUrl = null;
 let resumeJournal = false;
 let resumeNews = false;
+let resumeCountries = false;
 let pendingScroll = null;
 let resetPage = null;
 let pendingTop = false;
@@ -18,7 +19,7 @@ function currentUrl() {
 function updateHeaderLinks() {
     for (const link of document.querySelectorAll("[data-nav-page]")) {
         const name = link.dataset.navPage;
-        if (["map", "journal", "news"].includes(name)) {
+        if (["map", "journal", "news", "countries"].includes(name)) {
             const root = name === "map" ? "/" : `/${name}/`;
             link.href = activePage?.dataset.page === name ? root : remembered.get(name)?.url ?? root;
         }
@@ -61,7 +62,7 @@ function restorePosition() {
 export function registerPageMemory() {
     activePage = document.querySelector("#app-content > [data-page]");
     activeUrl = currentUrl();
-    if (activePage && ["map", "journal", "news"].includes(activePage.dataset.page)) {
+    if (activePage && ["map", "journal", "news", "countries"].includes(activePage.dataset.page)) {
         remembered.set(activePage.dataset.page, capturePage(activePage, activeUrl));
     }
     updateHeaderLinks();
@@ -73,16 +74,17 @@ export function registerPageMemory() {
             if (!incoming) return false;
             const outgoing = target.querySelector(":scope > [data-page]");
             const name = incoming.dataset.page;
-            const preserve = outgoing && ["map", "journal", "news"].includes(outgoing.dataset.page)
+            const preserve = outgoing && ["map", "journal", "news", "countries"].includes(outgoing.dataset.page)
                 && resetPage !== outgoing.dataset.page
                 && (outgoing.dataset.page === "map"
                     || outgoing.dataset.page === "journal" && (name !== "journal" || resumeJournal)
-                    || outgoing.dataset.page === "news" && (name !== "news" || resumeNews));
+                    || outgoing.dataset.page === "news" && (name !== "news" || resumeNews)
+                    || outgoing.dataset.page === "countries" && (name !== "countries" || resumeCountries));
             if (preserve) {
                 remembered.set(outgoing.dataset.page, capturePage(outgoing, outgoingUrl ?? activeUrl));
             }
             document.dispatchEvent(new CustomEvent("world-journal:page-cleanup", {
-                detail: {preserveMap: resetPage !== "map", preserveJournal: Boolean(preserve && outgoing.dataset.page === "journal"), page: outgoing?.dataset.page},
+                detail: {preserveMap: resetPage !== "map", preserveJournal: Boolean(preserve && outgoing.dataset.page === "journal"), preserveCountries: Boolean(preserve && outgoing.dataset.page === "countries"), page: outgoing?.dataset.page},
             }));
             // Detach retained nodes before HTMX's normal cleanup. Discarded pages
             // remain in the target and receive HTMX's ordinary cleanup instead.
@@ -93,7 +95,8 @@ export function registerPageMemory() {
                 && saved.journalDirty && !saved.page.querySelector("[data-journal-editor]");
             const reuse = !refreshJournal && saved && (name === "map"
                 || (name === "journal" && resumeJournal && saved.url === currentUrl())
-                || (name === "news" && resumeNews && saved.url === currentUrl()));
+                || (name === "news" && resumeNews && saved.url === currentUrl())
+                || (name === "countries" && resumeCountries && saved.url === currentUrl()));
             pendingScroll = refreshJournal ? {...saved, page: incoming, scrolls: [], focus: null} : reuse ? saved : null;
             if (name === "journal" && !reuse && saved) saved.journalDirty = false;
             pendingTop = !reuse;
@@ -110,6 +113,7 @@ export function registerPageMemory() {
             outgoingUrl = null;
             resumeJournal = false;
             resumeNews = false;
+            resumeCountries = false;
             resetPage = null;
             // Fall back to HTMX's innerHTML swap with the prepared fragment. It
             // still owns node processing, history, focus and all swap events.
@@ -131,6 +135,7 @@ export function registerPageMemory() {
         resetPage = navPage === activePage?.dataset.page ? navPage : null;
         resumeJournal = navPage === "journal" && !resetPage;
         resumeNews = navPage === "news" && !resetPage;
+        resumeCountries = navPage === "countries" && !resetPage;
         event.detail.swapOverride = "workspace show:top";
     });
     for (const name of ["htmx:historyCacheHit", "htmx:historyCacheMissLoad"]) {
@@ -140,6 +145,7 @@ export function registerPageMemory() {
             resetPage = null;
             resumeJournal = true;
             resumeNews = true;
+            resumeCountries = true;
             event.detail.swapSpec.swapStyle = "workspace";
         });
     }
@@ -147,7 +153,7 @@ export function registerPageMemory() {
         if (event.detail.target?.id !== "app-content" && event.target.id !== "app-content") return;
         activePage = document.querySelector("#app-content > [data-page]");
         activeUrl = currentUrl();
-        if (activePage && ["map", "journal", "news"].includes(activePage.dataset.page)) {
+        if (activePage && ["map", "journal", "news", "countries"].includes(activePage.dataset.page)) {
             // Replace the one remembered Journal screen after in-Journal
             // navigation/save. A saved/deleted record never resurrects its editor.
             remembered.set(activePage.dataset.page, capturePage(activePage, activeUrl));

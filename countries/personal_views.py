@@ -49,6 +49,8 @@ def favorite(request, iso2):
         CountryFavorite.objects.filter(country=country).delete()
     if request.headers.get("Accept") == "application/json":
         return JsonResponse({"country": country.pk, "favorite": value == "1"})
+    if request.POST.get("origin") == "countries":
+        return navigate(request, reverse("countries:index") + f"?country={country.pk}")
     return navigate(request, reverse("core:map") + f"?country={country.pk}")
 
 
@@ -190,15 +192,19 @@ def preset_delete(request, pk):
 @require_http_methods(["GET"])
 def country_notes(request, iso2):
     country = get_object_or_404(Country, pk=iso2.upper())
+    return render(request, "countries/partials/notes.html", country_notes_context(country))
+
+
+def country_notes_context(country):
     profile = CountryProfile.objects.select_related("entry").filter(country=country).first()
     entry = profile.entry if profile else None
     images = list(entry.attachments.filter(section__isnull=True)[:3]) if entry else []
-    return render(request, "countries/partials/notes.html", {
+    return {
         "country": country, "overview": entry, "overview_images": images,
         "overview_preview": render_body(entry.body[:1600], entry.body_format) if entry else "",
         "overview_truncated": bool(entry and len(entry.body) > 1600),
         "recent_entries": Entry.objects.filter(countries=country).only("id", "title", "entry_type", "created_at")[:6],
-    })
+    }
 
 
 @require_http_methods(["GET", "POST"])

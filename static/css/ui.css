@@ -673,6 +673,70 @@ html { scrollbar-width: thin; scrollbar-color: var(--ui-border) var(--bg-primary
 html::-webkit-scrollbar { width: 12px; }
 html::-webkit-scrollbar-track { background: var(--bg-primary); }
 html::-webkit-scrollbar-thumb { background: var(--ui-border); border: 3px solid var(--bg-primary); border-radius: 6px; }
+
+/* Countries: a compact index beside the full country reading surface. */
+.page-countries { max-width: 90rem; margin-inline: auto; }
+.countries-layout { display: grid; grid-template-columns: 18rem minmax(0, 1fr); gap: 2rem; align-items: start; }
+.countries-sidebar { position: sticky; top: calc(var(--header-height) + 1.5rem); display: flex; flex-direction: column; max-height: calc(100svh - var(--header-height) - 4rem); min-width: 0; }
+.countries-sidebar h1 { margin: 0 0 1.15rem; font-size: 1.2rem; font-weight: 650; letter-spacing: -.02em; }
+.countries-sidebar form { flex: 0 0 auto; }
+.countries-sidebar input[type=search] { width: 100%; padding: .7rem .85rem; color: var(--ui-text); background: var(--ui-paper); border: 1px solid var(--ui-border); border-radius: 6px; }
+.directory-sort-fields { display: grid; grid-template-columns: 1fr 1fr; gap: .65rem; margin: .85rem 0 1rem; }
+.directory-sort-fields > div { min-width: 0; }
+.directory-sort-fields label { display: block; margin-bottom: .3rem; color: var(--ui-muted); font-size: .85rem; }
+.directory-sort-fields .select-trigger { min-height: 2.6rem; padding-inline: .65rem; font-size: .9rem; }
+.directory-country-lists { min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; padding-right: .4rem; }
+.directory-country-lists section + section { margin-top: 1.2rem; }
+.directory-country-lists h2 { display: flex; align-items: center; gap: .6rem; margin: .2rem .6rem .55rem; color: var(--ui-muted); font-size: .85rem; font-weight: 600; }
+.directory-country-lists h2 span { font-size: .8rem; font-weight: 400; }
+.directory-country-lists ul { list-style: none; margin: 0; padding: 0; }
+.country-directory-row { display: flex; align-items: center; gap: .8rem; padding: .6rem .7rem; margin-block: .15rem; border-radius: 5px; color: var(--ui-text); text-decoration: none; min-height: 2.85rem; }
+.country-directory-row:hover { background: var(--ui-hover); }
+.country-directory-row[aria-current=true] { background: color-mix(in srgb, var(--ui-accent) 13%, var(--ui-paper)); box-shadow: inset 3px 0 var(--ui-accent); }
+.directory-flag { display: grid; place-items: center; flex: 0 0 2.5rem; width: 2.5rem; height: 1.9rem; line-height: 1; font-size: 1.8rem; }
+.directory-flag img { display: block; width: 100%; max-height: 100%; object-fit: contain; }
+.directory-row-copy { display: grid; min-width: 0; gap: .12rem; line-height: 1.4; }
+.directory-row-copy small { color: var(--ui-muted); font-size: .8rem; }
+.directory-row-copy small:empty { display: none; }
+.countries-detail { min-width: 0; min-height: calc(100svh - var(--header-height) - 5rem); padding: 1.7rem 2rem 2.3rem; border: 1px solid var(--ui-border); border-radius: 8px; background: var(--ui-paper); scroll-margin-top: calc(var(--header-height) + 1rem); }
+.directory-detail-heading { display: flex; align-items: center; justify-content: space-between; gap: 1.2rem; }
+.directory-detail-heading .country-heading { padding-right: 0; min-width: 0; }
+.directory-detail-heading h2 { margin: 0; line-height: 1.25; overflow-wrap: anywhere; }
+.directory-detail-heading h2 a { text-decoration: none; }
+.directory-detail-actions { display: flex; align-items: center; gap: .5rem; flex-shrink: 0; }
+.directory-detail-actions .journal-button { font-size: .9rem; white-space: nowrap; }
+.directory-detail-actions form { margin: 0; }
+.countries-detail .country-identity { margin-top: .75rem; }
+.directory-content-tabs { position: static; display: flex; gap: .3rem; margin: 1.4rem 0 1.3rem; padding: .3rem; border: 1px solid var(--ui-border); border-radius: 6px; background: var(--ui-paper); overflow-x: auto; }
+.directory-content-tabs a { flex: 1; padding: .6rem .8rem; border-radius: 4px; color: var(--ui-muted); text-align: center; text-decoration: none; white-space: nowrap; }
+.directory-content-tabs a:hover { background: var(--ui-hover); color: var(--ui-text); }
+.directory-content-tabs a[aria-current=page] { background: var(--ui-hover); color: var(--ui-text); }
+.directory-content { min-width: 0; }
+.directory-content .country-facts-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 2rem; }
+.directory-content .country-fact-breakdown { grid-column: 1 / -1; }
+.directory-content .country-news-item { padding-block: 1.2rem; }
+.directory-content .country-video-item { grid-template-columns: 11rem minmax(0, 1fr); padding-block: 1.2rem; }
+.directory-content .video-card-copy h4 { font-size: 1.1rem; }
+.directory-content .country-overview-images img { max-width: 100%; }
+.directory-welcome { display: grid; place-items: center; min-height: 60svh; color: var(--ui-muted); }
+.directory-welcome p { font-size: 1.2rem; }
+@media (max-width: 64rem) {
+    .countries-layout { grid-template-columns: 15rem minmax(0, 1fr); gap: 1.2rem; }
+    .countries-detail { padding: 1.4rem; }
+    .directory-detail-heading { align-items: flex-start; flex-direction: column; gap: .6rem; }
+    .directory-content .country-facts-list { grid-template-columns: 1fr; }
+    .directory-content .country-video-item { grid-template-columns: 8rem minmax(0, 1fr); }
+}
+@media (max-width: 46rem) {
+    .countries-layout { grid-template-columns: minmax(0, 1fr); gap: 1.4rem; }
+    .countries-sidebar { position: static; max-height: none; }
+    .directory-country-lists { max-height: 17rem; }
+    .countries-detail { padding: 1.2rem; min-height: 50svh; }
+    .directory-content-tabs { gap: .1rem; padding: .2rem; }
+    .directory-content-tabs a { padding: .6rem .45rem; font-size: .95rem; }
+    .directory-content .country-video-item { grid-template-columns: minmax(0, 1fr); }
+    .directory-welcome { min-height: 12rem; }
+}
 .country-personal-status { margin: .65rem 0; color: var(--ui-favorite); }
 
 /* Journal previews and map color-group editor. */

@@ -6,6 +6,7 @@ import { registerMapPage } from "./pages/map.js";
 import { registerSettingsPage } from "./pages/settings.js";
 import { registerSourceSettings } from "./pages/sources.js";
 import { registerNewsPage } from "./pages/news.js";
+import { registerCountriesPage } from "./pages/countries.js";
 import { initializePlayer } from "./player.js";
 import { registerJournalBookmarks } from "./journal_bookmarks.js";
 import { initializeTheme } from "./theme.js";
@@ -21,6 +22,7 @@ function initializeApplication() {
     registerSettingsPage();
     registerSourceSettings();
     registerNewsPage();
+    registerCountriesPage();
     registerJournalPage();
     registerPresetEditor();
     registerHtmxLifecycle();

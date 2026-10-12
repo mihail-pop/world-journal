@@ -1,0 +1,6 @@
+<li>
+    <a class="country-directory-row" href="{{ row.directory_url }}" data-directory-country="{{ row.iso_a2 }}"{% if options.country == row.iso_a2 %} aria-current="true"{% endif %}>
+        <span class="directory-flag" aria-hidden="true"><img src="https://flagcdn.com/{{ row.iso_a2|lower }}.svg" alt="" width="40" height="30" loading="lazy" decoding="async" referrerpolicy="no-referrer"><span data-flag-fallback hidden>{{ row.flag }}</span></span>
+        <span class="directory-row-copy"><span data-row-name>{{ row.name }}</span><small data-row-value>{% if options.sort == 'population' %}{{ row.population_display|default:'No population figure' }}{% elif options.sort == 'area' %}{% if row.area_display %}{{ row.area_display }} km²{% else %}No area figure{% endif %}{% endif %}</small></span>
+    </a>
+</li>

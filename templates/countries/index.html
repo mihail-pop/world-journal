@@ -1,0 +1,60 @@
+<section class="page page-countries" data-page="countries" data-country-directory
+    data-selected-country="{{ options.country }}" data-selected-tab="{{ options.tab }}"
+    data-country-facts-url-template="{% url 'countries:facts' iso2='COUNTRY_CODE' %}"
+    data-country-news-url-template="{% url 'news:country_news' iso2='COUNTRY_CODE' %}"
+    data-country-videos-url-template="{% url 'news:country_videos' iso2='COUNTRY_CODE' %}"
+    data-country-notes-url-template="{% url 'countries:notes' iso2='COUNTRY_CODE' %}"
+    data-favorite-url-template="{% url 'countries:favorite' iso2='COUNTRY_CODE' %}"
+    data-personal-url="{% url 'countries:personal_data' %}">
+    {{ catalog|json_script:'country-directory-catalog' }}
+    <div class="countries-layout">
+        <aside class="countries-sidebar" aria-label="Country browser">
+            <h1>Countries</h1>
+            <form method="get" action="{% url 'countries:index' %}" data-directory-filters>
+                <input type="hidden" name="country" value="{{ options.country }}"><input type="hidden" name="tab" value="{{ options.tab }}">
+                <label class="visually-hidden" for="directory-search">Search countries</label>
+                <input type="search" id="directory-search" name="q" value="{{ options.q }}" placeholder="Search countries…" autocomplete="off">
+                <div class="directory-sort-fields">
+                    <div><label for="directory-sort">Sort by</label><select id="directory-sort" name="sort"><option value="name"{% if options.sort == 'name' %} selected{% endif %}>Name</option><option value="population"{% if options.sort == 'population' %} selected{% endif %}>Population</option><option value="area"{% if options.sort == 'area' %} selected{% endif %}>Surface area</option></select></div>
+                    <div><label for="directory-order">Order</label><select id="directory-order" name="order"><option value="asc"{% if options.order == 'asc' %} selected{% endif %}>Ascending</option><option value="desc"{% if options.order == 'desc' %} selected{% endif %}>Descending</option></select></div>
+                </div>
+                <button class="journal-button" type="submit" data-directory-apply>Apply</button>
+            </form>
+            <div class="directory-country-lists" data-directory-lists>
+                <section data-directory-favorites{% if not has_favorites %} hidden{% endif %} aria-labelledby="directory-favorites-title">
+                    <h2 id="directory-favorites-title">Favorites</h2>
+                    <ul data-directory-favorite-list>{% for row in favorite_rows %}{% include 'countries/partials/directory_row.html' %}{% endfor %}</ul>
+                    <p class="field-note" data-directory-favorites-empty{% if favorite_rows %} hidden{% endif %}>No favorites match your search.</p>
+                </section>
+                <section aria-labelledby="directory-all-title">
+                    <h2 id="directory-all-title">All countries <span data-directory-count>{{ country_rows|length }}</span></h2>
+                    <ul data-directory-all-list>{% for row in country_rows %}{% include 'countries/partials/directory_row.html' %}{% endfor %}</ul>
+                    <p class="field-note" data-directory-empty{% if country_rows %} hidden{% endif %}>No countries match your search.</p>
+                </section>
+            </div>
+        </aside>
+        <section class="countries-detail" data-directory-detail aria-labelledby="directory-country-name"{% if not selected_country %} hidden{% endif %}>
+            <header class="directory-detail-heading">
+                <div class="country-heading">
+                    <span class="country-flag" aria-hidden="true"><img data-directory-detail-flag{% if selected_country %} src="https://flagcdn.com/{{ selected_country.iso_a2|lower }}.svg"{% endif %} alt="" width="72" height="48" decoding="async" referrerpolicy="no-referrer"><span data-flag-fallback hidden>{{ selected_country.flag }}</span></span>
+                    <h2 id="directory-country-name"><a data-directory-name href="{% url 'core:journal' %}?country={{ options.country }}" hx-boost="true" hx-target="#app-content" hx-push-url="true" title="View saved entries for this country">{{ selected_country.name }}</a></h2>
+                </div>
+                <div class="directory-detail-actions">
+                    <a class="journal-button" data-directory-map-link href="{% url 'core:map' %}?country={{ options.country }}" hx-boost="true" hx-target="#app-content" hx-push-url="true">View on Map</a>
+                    <form method="post" action="{% if selected_country %}{% url 'countries:favorite' options.country %}{% endif %}" data-directory-favorite-form>{% csrf_token %}<input type="hidden" name="origin" value="countries"><input type="hidden" name="favorite" value="{% if selected_favorite %}0{% else %}1{% endif %}"><button class="country-favorite-button" type="submit" data-directory-favorite aria-pressed="{{ selected_favorite|yesno:'true,false' }}" aria-label="{% if selected_favorite %}Remove country from favorites{% else %}Add country to favorites{% endif %}" title="Favorite">{% include 'core/partials/icon.html' with name='heart' %}</button></form>
+                </div>
+            </header>
+            <div class="country-identity"><span data-directory-region>{{ selected_country.region }}</span><span data-directory-subregion>{{ selected_country.subregion }}</span></div>
+            <p class="country-personal-status" data-directory-favorite-status role="status"></p>
+            <nav class="country-content-tabs directory-content-tabs" aria-label="Country details">
+                <a href="?country={{ options.country }}&amp;tab=overview&amp;q={{ options.q|urlencode }}&amp;sort={{ options.sort }}&amp;order={{ options.order }}" data-directory-tab="overview"{% if options.tab == 'overview' %} aria-current="page"{% endif %}>Overview</a>
+                <a href="?country={{ options.country }}&amp;tab=articles&amp;q={{ options.q|urlencode }}&amp;sort={{ options.sort }}&amp;order={{ options.order }}" data-directory-tab="articles"{% if options.tab == 'articles' %} aria-current="page"{% endif %}>Articles</a>
+                <a href="?country={{ options.country }}&amp;tab=videos&amp;q={{ options.q|urlencode }}&amp;sort={{ options.sort }}&amp;order={{ options.order }}" data-directory-tab="videos"{% if options.tab == 'videos' %} aria-current="page"{% endif %}>Videos</a>
+                <a href="?country={{ options.country }}&amp;tab=notes&amp;q={{ options.q|urlencode }}&amp;sort={{ options.sort }}&amp;order={{ options.order }}" data-directory-tab="notes"{% if options.tab == 'notes' %} aria-current="page"{% endif %}>Notes</a>
+            </nav>
+            <div class="directory-content" data-directory-content aria-live="polite" aria-busy="false">{{ country_content }}</div>
+        </section>
+        <div class="directory-welcome" data-directory-welcome{% if selected_country %} hidden{% endif %}><p>Select a country</p></div>
+    </div>
+    <template data-directory-row-template><li><a class="country-directory-row" data-directory-country><span class="directory-flag" aria-hidden="true"><img alt="" width="40" height="30" loading="lazy" decoding="async" referrerpolicy="no-referrer"><span data-flag-fallback hidden></span></span><span class="directory-row-copy"><span data-row-name></span><small data-row-value></small></span></a></li></template>
+</section>
