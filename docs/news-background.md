@@ -1,5 +1,9 @@
 # Background news cache
 
+Feed snapshots now also contribute to a bounded [90-day rolling metadata
+archive](news-archive.md). Current snapshots still replace their previous
+versions; history has independent expiry and size/item limits.
+
 Opening any application page starts a small feed queue inside the running Django
 process. No separate worker, scheduler, new dependency or browser automation is
 required. Two workers prepare feeds; a third lane handles selected countries.

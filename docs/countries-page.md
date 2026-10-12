@@ -20,6 +20,10 @@ until Play is clicked. Country names open the country's assigned Journal entries
 View on Map opens its map deep link. The default tab is Overview, and switching
 countries preserves the current tab.
 
+Articles/Videos also offer [Earlier coverage](news-archive.md), retained for up
+to 90 days with automatic limits and cleanup. It opens automatically when current
+cards are empty, and uses the same bookmarks and player.
+
 Direct links such as `/countries/?country=RO&tab=articles` render the selected
 content on the server. Search/sort fields and country/tab links also work without
 JavaScript; the Apply button is hidden when live filtering is available. The

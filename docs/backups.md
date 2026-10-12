@@ -21,7 +21,8 @@ Included data:
 
 Country identities, map geometry, facts, and built-in source definitions remain bundled
 application configuration. They are not overwritten by an archive. Feed cache,
-sessions, secrets, and browser preferences are excluded. Export explicitly fails
+rolling feed history, sessions, secrets, and browser preferences are excluded.
+Articles/videos explicitly saved to Journal are permanent backup data. Export explicitly fails
 when a referenced image is missing or has changed size rather than silently
 omitting it. Export uses temporary storage, which is closed after the download.
 

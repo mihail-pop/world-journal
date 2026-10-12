@@ -327,6 +327,8 @@ def custom_source_action(request, source_id, action):
         SourcePreference.objects.filter(source_id__in=identities).delete()
         record.delete()
         cache.delete_many(keys)
+        from .services.archive import remove_origins
+        remove_origins(identities)
         messages.success(request, "Custom source removed. Saved journal entries are kept.")
     elif action == "check":
         success = check_custom_source(record)

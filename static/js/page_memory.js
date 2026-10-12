@@ -108,6 +108,12 @@ export function registerPageMemory() {
                     if (current) saved.page.querySelector(selector)?.replaceWith(current);
                 }
                 saved.page.dataset.resultsQuery = incoming.dataset.resultsQuery;
+                const currentArchive = incoming.querySelector("[data-news-archive]");
+                const oldArchive = saved.page.querySelector("[data-news-archive]");
+                if (currentArchive && oldArchive) {
+                    if (["archiveCountry","archiveKind","archiveSource","archiveConfig"].some(key => oldArchive.dataset[key] !== currentArchive.dataset[key])) oldArchive.replaceWith(currentArchive);
+                    else oldArchive.dataset.archiveRevision = currentArchive.dataset.archiveRevision;
+                }
             }
             if (reuse) incoming.replaceWith(saved.page);
             outgoingUrl = null;

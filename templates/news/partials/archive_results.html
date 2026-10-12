@@ -1,0 +1,27 @@
+{% if unavailable %}<p class="country-news-message">Earlier coverage is temporarily unavailable.</p><button class="journal-button" type="button" data-archive-retry>Retry</button>
+{% elif cards %}
+    <p class="news-archive-count">{{ result_page.paginator.count }} retained {{ kind }} · Page {{ result_page.number }} of {{ result_page.paginator.num_pages }}</p>
+    <ol class="{% if kind == 'videos' %}country-video-list{% else %}country-news-list{% endif %}">
+    {% for card in cards %}{% with item=card.item %}
+        {% if kind == 'videos' %}
+            <li class="country-video-item" data-news-item="archive-{{ item.identity }}">
+                <div class="video-thumbnail-frame"><img src="{{ card.thumbnail_url }}" alt="" width="480" height="360" loading="lazy" decoding="async" referrerpolicy="no-referrer" data-video-thumbnail><span class="video-thumbnail-fallback" aria-hidden="true">Video</span></div>
+                <div class="video-card-copy"><h4>{{ item.title }}</h4>
+                    <p class="country-news-byline"><span>{{ item.publisher }}</span>{% if item.published_at %}<time datetime="{{ item.published_at|date:'c' }}">{{ item.published_at|date:'M j, Y, H:i' }}</time>{% else %}<span>First seen {{ item.first_seen_at|date:'M j, Y' }}</span>{% endif %}</p>
+                    <div class="video-card-actions"><button class="video-play-button" type="button" data-video-play data-video-id="{{ item.video_id }}" data-video-title="{{ item.title }}" data-video-channel="{{ item.publisher }}">{% include 'core/partials/icon.html' with name='play' %} Play</button><a href="{{ item.link }}" target="_blank" rel="noopener noreferrer">YouTube</a><a class="news-save-journal" href="{{ card.save_url }}" hx-boost="true" hx-target="#app-content" hx-push-url="true">{% include 'core/partials/icon.html' with name='bookmark' %} Save</a></div>
+                </div>
+            </li>
+        {% else %}
+            <li class="country-news-item"><a class="country-news-link" href="{{ item.link }}" target="_blank" rel="noopener noreferrer">{{ item.title }}</a>
+                <p class="country-news-byline"><span>{{ item.publisher }}</span>{% if item.published_at %}<time datetime="{{ item.published_at|date:'c' }}">{{ item.published_at|date:'M j, Y, H:i' }}</time>{% else %}<span>First seen {{ item.first_seen_at|date:'M j, Y' }}</span>{% endif %}</p>
+                {% if item.summary %}<details class="news-summary-details"><summary>Summary</summary><p class="country-news-summary">{{ item.summary }}</p></details>{% endif %}
+                <a class="news-save-journal" href="{{ card.save_url }}" hx-boost="true" hx-target="#app-content" hx-push-url="true">{% include 'core/partials/icon.html' with name='bookmark' %} Save</a>
+            </li>
+        {% endif %}
+    {% endwith %}{% endfor %}
+    </ol>
+    <nav class="news-archive-pagination" aria-label="Earlier coverage pages">
+        {% if previous_url %}<a class="journal-button" href="{{ previous_url }}" hx-get="{{ previous_url }}" hx-target="closest [data-archive-content]" hx-swap="innerHTML">Previous</a>{% endif %}
+        {% if next_url %}<a class="journal-button" href="{{ next_url }}" hx-get="{{ next_url }}" hx-target="closest [data-archive-content]" hx-swap="innerHTML">Next</a>{% endif %}
+    </nav>
+{% else %}<p class="country-news-message">No earlier coverage has been retained here yet. History builds from feeds the app encounters while running; it does not retrieve missing past editions.</p>{% endif %}

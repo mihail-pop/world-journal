@@ -23,6 +23,7 @@ from .country_news import _countries_by_code, _country_for_code, get_country_new
 from .regional_news import get_fixed_feed
 from .region_routing import eligible_youtube_sources
 from .youtube_news import get_youtube_feed
+from .archive import capture_snapshot, forget_removed_jobs, maintain_archive
 
 logger = logging.getLogger(__name__)
 
@@ -196,6 +197,10 @@ class FeedWarmer:
                 jobs = tuple(feed_jobs(registry))
                 snapshots = cache.get_many([key for _, key in jobs])
                 now = datetime.now(UTC)
+                maintain_archive()
+                forget_removed_jobs(job for job, _key in jobs)
+                for job, key in jobs:
+                    capture_snapshot(job, snapshots.get(key), registry, now)
                 google_paused = google_pause_until(cache, now)
                 for job, key in jobs:
                     if job[0] == "google" and google_paused:
@@ -243,11 +248,17 @@ class FeedWarmer:
         if kind == "rss":
             feed = next((feed for feed in registry.feeds if feed.id == identity), None)
             if feed and feed.enabled_by_default:
-                return not get_fixed_feed(feed, registry.get_provider(feed.provider_id), **options).refresh_failed
+                result = get_fixed_feed(feed, registry.get_provider(feed.provider_id), **options)
+                if not result.refresh_failed:
+                    capture_snapshot(job, cache.get(fixed_feed_cache_key(feed)), registry)
+                return not result.refresh_failed
         elif kind == "youtube":
             source = next((source for source in registry.sources if source.id == identity), None)
             if source and source.enabled_by_default:
-                return not get_youtube_feed(source, **options).refresh_failed
+                result = get_youtube_feed(source, **options)
+                if not result.refresh_failed:
+                    capture_snapshot(job, cache.get(youtube_cache_key(source)), registry)
+                return not result.refresh_failed
         elif registry.get("google_news_country").enabled_by_default:
             # Smooth out the initial 238-country sweep instead of flooding Google.
             with self.google_pacing:
@@ -258,6 +269,8 @@ class FeedWarmer:
                     time.sleep(delay)
                 self.next_google_at = time.monotonic() + settings.NEWS_GOOGLE_REQUEST_SPACING_SECONDS
             result = get_world_news(registry=registry, **options) if identity == "WORLD" else get_country_news(identity, registry=registry, **options)
+            if not result.error and not result.warning:
+                capture_snapshot(job, cache.get(google_cache_key(registry.get("google_news_country"), identity)), registry)
             return not (result.error or result.warning)
 
 

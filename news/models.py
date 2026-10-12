@@ -2,6 +2,50 @@ import uuid
 
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
+from django.utils import timezone
+
+
+class ArchivedNews(models.Model):
+    """Bounded feed history, independent of permanent Journal bookmarks."""
+
+    identity = models.CharField(primary_key=True, max_length=64)
+    fingerprint = models.CharField(max_length=64, db_index=True)
+    kind = models.CharField(max_length=8, choices=(("articles", "Article"), ("videos", "Video")))
+    title = models.CharField(max_length=300)
+    link = models.URLField(max_length=2048)
+    publisher = models.CharField(max_length=200)
+    summary = models.CharField(max_length=2000, blank=True)
+    video_id = models.CharField(max_length=11, blank=True)
+    published_at = models.DateTimeField(null=True, blank=True)
+    first_seen_at = models.DateTimeField(default=timezone.now)
+    sort_date = models.DateTimeField()
+    expires_at = models.DateTimeField(db_index=True)
+    metadata_bytes = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ("-sort_date", "identity")
+        indexes = [
+            models.Index(fields=["kind", "-sort_date", "identity"], name="news_archive_order_idx"),
+            models.Index(fields=["sort_date", "identity"], name="news_archive_trim_idx"),
+        ]
+
+
+class ArchivedNewsSource(models.Model):
+    item = models.ForeignKey(ArchivedNews, on_delete=models.CASCADE, related_name="origins")
+    feed_id = models.CharField(max_length=96, db_index=True)
+    source_id = models.CharField(max_length=80)
+    category = models.CharField(max_length=8)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["item", "feed_id"], name="news_archive_unique_feed")]
+
+
+class ArchivedNewsCountry(models.Model):
+    item = models.ForeignKey(ArchivedNews, on_delete=models.CASCADE, related_name="country_tags")
+    country_code = models.CharField(max_length=2, db_index=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["item", "country_code"], name="news_archive_unique_country")]
 
 
 class SourcePreference(models.Model):

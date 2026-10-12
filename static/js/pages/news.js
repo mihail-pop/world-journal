@@ -20,6 +20,8 @@ async function update(state) {
             if (!response.ok) throw new Error("News updates are temporarily unavailable. Your saved results remain here.");
             const result = await response.json();
             if (controller !== state || !state.page.isConnected) return;
+            const history = state.page.querySelector("[data-news-archive]");
+            if (history && result.archive_revision !== undefined) history.dataset.archiveRevision = result.archive_revision;
             if (result.html) {
                 const container = state.page.querySelector("[data-news-board-results]");
                 const template = document.createElement("template");

@@ -673,6 +673,11 @@ html { scrollbar-width: thin; scrollbar-color: var(--ui-border) var(--bg-primary
 html::-webkit-scrollbar { width: 12px; }
 html::-webkit-scrollbar-track { background: var(--bg-primary); }
 html::-webkit-scrollbar-thumb { background: var(--ui-border); border: 3px solid var(--bg-primary); border-radius: 6px; }
+.news-archive { margin-top: 1.5rem; border-top: 1px solid var(--ui-border); padding-top: .8rem; }
+.news-archive > summary { cursor: pointer; padding-block: .5rem; color: var(--ui-text); font-weight: 600; }
+.news-archive > summary span { margin-left: .5rem; color: var(--ui-muted); font-size: .85rem; font-weight: 400; }
+.news-archive-count { color: var(--ui-muted); font-size: .85rem; }
+.news-archive-pagination { display: flex; gap: .75rem; margin-top: 1rem; }
 
 /* Countries: a compact index beside the full country reading surface. */
 .page-countries { max-width: 90rem; margin-inline: auto; }

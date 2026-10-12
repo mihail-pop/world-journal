@@ -16,4 +16,5 @@
     {% if tab == 'articles' %}<details class="news-board-about"><summary>About the ordering</summary><p class="field-note">Top stories keeps Google's feed order, then balances recent regional articles across publishers. Google does not supply article click counts or a popularity score. Date filters use the items currently retained in feeds; they are not a complete archive of the past week. Automatic refresh follows your source preferences.</p></details>{% endif %}
     <p class="field-note" data-news-board-error role="status" hidden></p>
     <div data-news-board-results aria-live="polite" aria-atomic="false">{% include 'news/partials/board_results.html' %}</div>
+    {% include 'news/partials/archive_section.html' %}
 </section>

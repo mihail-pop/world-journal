@@ -1,0 +1,4 @@
+<details class="news-archive" data-news-archive data-archive-country="{{ archive_country }}" data-archive-kind="{{ archive_kind }}" data-archive-source="{{ archive_source|default:'all' }}" data-archive-config="{{ archive_config }}" data-archive-revision="{{ archive_revision }}"{% if archive_open %} open{% endif %}>
+    <summary>Earlier coverage <span>Up to 90 days</span></summary>
+    <div data-archive-content hx-get="{% url 'news:archive' %}?country={{ archive_country }}&amp;kind={{ archive_kind }}&amp;source={{ archive_source|default:'all'|urlencode }}" hx-trigger="archive-open" hx-target="this" hx-swap="innerHTML" hx-sync="closest [data-archive-content]:replace" aria-live="polite"><p class="country-news-message">Open to browse retained coverage.</p></div>
+</details>

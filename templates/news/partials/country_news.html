@@ -92,4 +92,5 @@
         {% endif %}
     </section>{% endif %}
     {% if not feed_pending and not news_page.google.items and not news_page.regional_items and not news_page.google.warning and not news_page.google.error and not news_page.regional_warning %}<p class="country-news-message">No matching headlines in the current enabled feeds.</p>{% endif %}
+    {% include 'news/partials/archive_section.html' %}
 </div>

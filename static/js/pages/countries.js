@@ -1,4 +1,5 @@
 import { getCountryFeed, prioritizeCountryFeed, rememberCountryFeed } from "../news_cache.js";
+import { replaceCountryMarkup } from "../news_archive.js";
 
 let controller = null;
 let registered = false;
@@ -94,7 +95,7 @@ function renderContent(state, entry) {
     }
     const scroll = state.content.scrollTop;
     const filter = state.content.querySelector('[data-news-filter][aria-pressed="true"]')?.dataset.newsFilter || "all";
-    state.content.innerHTML = entry.markup;
+    replaceCountryMarkup(state.content,entry.markup);
     state.renderedKey = key;
     state.renderedMarkup = entry.markup;
     state.content.setAttribute("aria-busy",String(Boolean(entry.pending)));

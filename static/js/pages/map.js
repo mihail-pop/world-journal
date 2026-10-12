@@ -1,6 +1,7 @@
 import { countryFillExpression } from "./country_paint.js";
 import { adventurePalette, prepareAdventure, updateAdventure } from "./adventure_map.js";
 import { getCountryFeed, prioritizeCountryFeed, rememberCountryFeed } from "../news_cache.js";
+import { replaceCountryMarkup } from "../news_archive.js";
 import { basemapFeaturePreferences } from "./basemap_features.js";
 import { factsSelectionChanged, initializeCountryFacts, loadCountryOverview } from "./map_facts.js";
 import { applyPersonalLayers, initializePersonalMap, loadCountryNotes, loadPersonalData, personalSelectionChanged } from "./map_personal.js";
@@ -310,7 +311,7 @@ function renderCachedNews(controller, code, entry) {
     let filter = controller.newsContent.dataset.loadedCountry === code
         ? controller.newsContent.querySelector('[data-news-filter][aria-pressed="true"]')?.dataset.newsFilter || "all"
         : "all";
-    controller.newsContent.innerHTML = entry.markup;
+    replaceCountryMarkup(controller.newsContent, entry.markup);
     controller.newsContent.dataset.loadedCountry = code;
     controller.newsContent.setAttribute("aria-busy", String(entry.pending));
     window.htmx?.process(controller.newsContent);
@@ -322,7 +323,7 @@ function renderCachedNews(controller, code, entry) {
 
 function renderCachedVideos(controller, code, entry) {
     if (!entry) return;
-    controller.videoContent.innerHTML = entry.markup;
+    replaceCountryMarkup(controller.videoContent, entry.markup);
     controller.videoContent.dataset.loadedCountry = code;
     controller.videoContent.setAttribute("aria-busy", String(entry.pending));
     window.htmx?.process(controller.videoContent);

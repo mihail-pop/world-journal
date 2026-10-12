@@ -29,6 +29,8 @@ class CachedDrawers:
             self.keys[code] = (google_key, video_keys)
         all_keys = self.regional_keys + [key for google_key, video_keys in self.keys.values() for key in ([google_key] if google_key else []) + video_keys]
         self.snapshots = cache.get_many(all_keys)
+        from .archive import country_revisions
+        self.archive_revisions = country_revisions(self.keys)
 
     def get(self, key, default=None):
         return self.snapshots.get(key, default)
@@ -47,7 +49,7 @@ class CachedDrawers:
     def version(self, code):
         google_key, video_keys = self.keys[code]
         keys = self.regional_keys + ([google_key] if google_key else []) + video_keys
-        stamp = [self.interval, int(self.now.timestamp()) // self.interval, self.google.enabled_by_default]
+        stamp = [self.interval, int(self.now.timestamp()) // self.interval, self.google.enabled_by_default, self.archive_revisions.get(code, "")]
         for key in keys:
             snapshot = self.snapshots.get(key)
             snapshot = snapshot if isinstance(snapshot, dict) else {}
@@ -56,13 +58,17 @@ class CachedDrawers:
 
     def render(self, code, kind):
         options = {"registry": self.registry, "cache_backend": self, "cache_only": True, "fresh_seconds": self.interval, "now": self.now}
-        context = {"feed_pending": self.pending(code, kind)}
+        signature = [feed.id for feed in self.registry.feeds if feed.enabled_by_default] + [source.id for source in self.registry.sources if source.enabled_by_default]
+        context = {"feed_pending": self.pending(code, kind), "archive_country":code, "archive_kind":kind,
+                   "archive_revision":self.archive_revisions.get(code, ""), "archive_config":sha256(repr(signature).encode()).hexdigest()[:16]}
         if kind == "articles":
             context["news_page"] = get_country_news_page(code, **options)
+            context["archive_open"] = not (context["news_page"].google.items or context["news_page"].regional_items)
             google_key, _ = self.keys[code]
             context["google_pending"] = bool(google_key and self._pending(google_key))
             template = "news/partials/country_news.html"
         else:
             context["video_page"] = get_country_videos(code, **options)
+            context["archive_open"] = not context["video_page"].items
             template = "news/partials/country_videos.html"
         return render_to_string(template, context)
