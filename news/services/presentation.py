@@ -49,7 +49,7 @@ class CachedDrawers:
     def version(self, code):
         google_key, video_keys = self.keys[code]
         keys = self.regional_keys + ([google_key] if google_key else []) + video_keys
-        stamp = [self.interval, int(self.now.timestamp()) // self.interval, self.google.enabled_by_default, self.archive_revisions.get(code, "")]
+        stamp = ["article-text-v2", self.interval, int(self.now.timestamp()) // self.interval, self.google.enabled_by_default, self.archive_revisions.get(code, "")]
         for key in keys:
             snapshot = self.snapshots.get(key)
             snapshot = snapshot if isinstance(snapshot, dict) else {}

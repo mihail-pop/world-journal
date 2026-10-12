@@ -16,6 +16,8 @@ Views and browser code never construct remote feed URLs. Source settings can dis
 
 Shared source choices, bounded freshness, retained-cache health, and manual refresh are documented in [News-source settings](news-settings.md).
 
+Article headlines omit a trailing publisher label only when it exactly matches the separately displayed publisher, following a dash or pipe separator. Google RSS description snippets are headline links or related-story clusters, so they are omitted rather than presented as article summaries. The app does not fetch publisher pages or generate substitute summaries. Other feeds keep their supplied summaries unless the text only repeats the headline and publisher. The same normalization applies to existing cached items and retained archive cards; saved Journal entries are not rewritten. Presentation versions change independently of feed-cache keys, so already loaded boards/drawers receive the cleaned cards without refetching publishers.
+
 YouTube feed URLs are derived from trusted registry channel IDs as `https://www.youtube.com/feeds/videos.xml?channel_id=<CHANNEL_ID>`. Channel IDs are unique and match `UC[A-Za-z0-9_-]{22}`. Enabled records require complete audit metadata, the exact `www.youtube.com/channel/<CHANNEL_ID>` homepage, and only `www.youtube.com` in the feed-host allowlist. Disabled records remain visible in configuration but are never fetched.
 
 ## Background preparation

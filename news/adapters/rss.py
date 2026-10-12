@@ -7,7 +7,7 @@ from urllib.parse import urldefrag, urlsplit, urlunsplit
 
 import feedparser
 
-from news.types import NewsFeed, NewsItem, NewsProvider, NewsSource, NormalizedFeed
+from news.types import NewsFeed, NewsItem, NewsProvider, NewsSource, NormalizedFeed, SourceKind
 
 
 class FeedParseError(ValueError):
@@ -80,6 +80,36 @@ def _publisher(entry: dict, source: NewsSource | NewsProvider) -> str:
     return source.display_name
 
 
+def is_google_news_link(link: str) -> bool:
+    try:
+        return urlsplit(link).hostname == "news.google.com"
+    except ValueError:
+        return False
+
+
+def clean_article_text(title: str, publisher: str, summary: str, *, google: bool = False) -> tuple[str, str]:
+    """Keep publisher attribution separate and omit descriptions that aren't abstracts."""
+    original_title = title
+    if publisher.strip():
+        # Match the actual byline, not any arbitrary text after a headline dash.
+        suffix = r"(?:\s+[-–—]\s*|\s*\|\s*)" + re.escape(publisher.strip()) + r"\s*$"
+        headline = re.sub(suffix, "", title, flags=re.IGNORECASE).strip()
+        if headline:
+            title = headline
+    if google:
+        # Google's RSS descriptions are headline links/related-story clusters.
+        # They aren't publisher summaries; don't label them as article abstracts.
+        return title, ""
+
+    def comparable(value):
+        return re.sub(r"[\W_]+", "", value.casefold())
+
+    repeated = {comparable(value) for value in (title, original_title, title + publisher, original_title + publisher)}
+    if comparable(summary) in repeated:
+        summary = ""
+    return title, summary
+
+
 def _deduplicate(items: list[NewsItem]) -> tuple[NewsItem, ...]:
     links: set[str] = set()
     identities: set[tuple[str, str]] = set()
@@ -123,8 +153,11 @@ def normalize_feed(
             continue
         publisher = _publisher(entry, source)
         summary = _plain_text(entry.get("summary") or entry.get("description"))
-        if summary.casefold() in {title.casefold(), f"{title} {publisher}".casefold()}:
-            summary = ""
+        title, summary = clean_article_text(
+            title, publisher, summary,
+            google=(isinstance(source, NewsSource) and source.kind is SourceKind.DYNAMIC_COUNTRY_RSS)
+            or is_google_news_link(link),
+        )
         items.append(
             NewsItem(
                 title=title,

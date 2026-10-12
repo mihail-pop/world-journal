@@ -5,6 +5,7 @@ from hashlib import blake2b
 from threading import Lock
 
 from django.conf import settings
+from news.adapters.rss import clean_article_text, is_google_news_link
 from news.types import NewsItem, NewsSource, VideoItem
 
 
@@ -140,6 +141,11 @@ def deserialize_items(snapshot: dict) -> tuple[NewsItem, ...] | None:
         published_at = parse_datetime(value.get("published_at"))
         if value.get("published_at") is not None and published_at is None:
             return None
+        # Normalize existing snapshots too, without invalidating or refetching feeds.
+        title, summary = clean_article_text(
+            title, publisher, summary,
+            google=provider_id == "google_news_country" or is_google_news_link(link),
+        )
         items.append(NewsItem(
             title=title,
             link=link,

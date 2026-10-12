@@ -11,6 +11,7 @@ from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_GET
 
 from .adapters.youtube import build_thumbnail_url
+from .adapters.rss import clean_article_text, is_google_news_link
 from .services.archive import archived_items
 from .services.cache import deserialize_items, deserialize_video_items, fixed_feed_cache_key, google_cache_key, youtube_cache_key
 from .services.country_news import _countries_by_code, get_country_news_page
@@ -63,6 +64,12 @@ def earlier_coverage(request):
         result_page = Paginator(rows, settings.NEWS_ARCHIVE_PAGE_SIZE).get_page(request.GET.get("page", "1"))
         cards = []
         for item in result_page:
+            if kind == "articles":
+                # Display old retained metadata consistently; leave saved Journal
+                # entries and the archive's stored identity/fingerprint untouched.
+                item.title, item.summary = clean_article_text(
+                    item.title, item.publisher, item.summary, google=is_google_news_link(item.link),
+                )
             initial = {"type":"youtube" if kind == "videos" else "article", "title":item.title, "source":item.publisher}
             initial["video" if kind == "videos" else "url"] = item.video_id if kind == "videos" else item.link
             if code != "WORLD":

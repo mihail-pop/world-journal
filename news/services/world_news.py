@@ -104,7 +104,7 @@ class CachedNews:
 
     def version(self):
         # Include time so rolling date filters age out even without a feed change.
-        stamp = [self.options, self.interval, int(self.now.timestamp()) // 60]
+        stamp = ["article-text-v2", self.options, self.interval, int(self.now.timestamp()) // 60]
         for key in self.keys:
             snapshot = self.get(key)
             snapshot = snapshot if isinstance(snapshot, dict) else {}
