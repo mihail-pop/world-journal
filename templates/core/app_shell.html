@@ -35,6 +35,7 @@
         </nav>
         <div class="header-actions">
             <a class="settings-link" data-nav-page="settings" href="{% url 'core:settings' %}"{% if active_page == 'settings' %} aria-current="page"{% endif %} hx-boost="true" hx-target="#app-content" hx-push-url="true" hx-swap="innerHTML show:top">Settings</a>
+            {% if request.user.is_authenticated %}<form class="logout-form" method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="logout-button" type="submit">Logout</button></form>{% endif %}
             <button class="player-toggle" type="button" data-player-toggle aria-controls="persistent-player" aria-expanded="false" aria-label="Restore video player" title="Restore player" hidden>Player</button>
         </div>
     </header>

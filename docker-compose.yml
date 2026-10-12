@@ -1,0 +1,30 @@
+services:
+  world-journal:
+    build: .
+    image: ghcr.io/mihail-pop/world-journal:latest
+    container_name: world-journal
+    restart: on-failure
+    ports:
+      - "8091:8000"
+    environment:
+      - PYTHONDONTWRITEBYTECODE=1
+      - PYTHONUNBUFFERED=1
+      - WORLD_JOURNAL_DATA_DIR=/app/runtime
+      # Add your timezone, otherwise it will default to UTC
+      # - TZ=Europe/Bucharest
+      # Use a unique value before exposing the app remotely
+      # - SECRET_KEY=replace-this-with-a-long-random-value
+      # Add trusted origins if needed
+      # - CSRF_TRUSTED_ORIGINS=https://your-domain.com
+      # Enable authentication to secure your app
+      # - REQUIRE_LOGIN=True
+    volumes:
+      - ./runtime:/app/runtime
+      - ./media:/app/media
+    security_opt:
+      - no-new-privileges:true
+    command: >
+      sh -c "python manage.py migrate &&
+             python manage.py createcachetable world_journal_cache &&
+             python manage.py collectstatic --noinput &&
+             python -m waitress --listen=0.0.0.0:8000 --threads=8 config.wsgi:application"

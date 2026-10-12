@@ -20,13 +20,28 @@ Follow the setup guide for your operating system, then install the development r
 
 Run Django from the repository root. The app uses direct source files and does not have a frontend build step.
 
+Enable Django's development mode in the terminal used to run the server:
+
+=== "Windows"
+
+    ```powershell
+    $env:WJ_DEV="True"
+    ```
+
+=== "Mac and Linux"
+
+    ```sh
+    export WJ_DEV=True
+    ```
+
 ## Project Rules
 
 Keep changes consistent with the existing architecture:
 
 - use Django templates, HTMX, CSS and small vanilla JavaScript modules;
 - preserve direct URL loads and progressive enhancement;
-- do not add accounts, a separate frontend framework, Redis, Celery or required Docker infrastructure without an explicit project decision;
+- keep authentication as an optional installation-wide gate unless the shared-data model is deliberately redesigned;
+- do not add a separate frontend framework, Redis or Celery without an explicit project decision;
 - keep dependencies minimal;
 - preserve the shell-owned video player and notification system;
 - preserve retained page state when changing top-level navigation;

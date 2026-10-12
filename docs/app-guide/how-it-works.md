@@ -18,7 +18,9 @@ The app stores normalized metadata from those feeds. It does not scrape full art
 
 Personal data is saved in a local SQLite database. Uploaded journal images are stored in the local `media/` folder.
 
-This includes entries, collections, country tags, favorites, map presets, source preferences and custom territory edits. There is no account or external personal-data service involved.
+This includes entries, collections, country tags, favorites, map presets, source preferences and custom territory edits. No external personal-data service is involved.
+
+Optional authentication uses a Django administrator account as one gate around the whole installation. It does not create separate data for each account. Everyone who is allowed into one installation shares the same journal and settings.
 
 Some presentation choices belong only to the current browser. Themes, the home country, map display settings and player position use browser storage so two browsers can keep different layouts while sharing the same journal.
 

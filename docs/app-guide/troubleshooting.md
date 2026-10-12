@@ -2,6 +2,56 @@
 
 ---
 
+### The Page Has No Styling
+
+**The Problem:**
+
+The app loads through runserver or Waitress but CSS, JavaScript or map assets return errors.
+
+**The Cause:**
+
+Static files were not collected after installation or an update.
+
+**The Solution:**
+
+=== "Windows"
+
+    ```powershell
+    .\.venv\Scripts\python.exe manage.py collectstatic --noinput
+    ```
+
+=== "Mac and Linux"
+
+    ```sh
+    .venv/bin/python manage.py collectstatic --noinput
+    ```
+
+Restart the server and hard refresh the browser.
+
+---
+
+### Login Keeps Rejecting the Account
+
+**The Problem:**
+
+Authentication is enabled but the login page rejects the username or password.
+
+**The Cause:**
+
+The administrator account may not exist in the same SQLite database used by the running process. This is common when `createsuperuser` was run outside the container or with a different `WORLD_JOURNAL_DATA_DIR`.
+
+**The Solution:**
+
+For Docker, create the account inside the running container:
+
+```sh
+docker exec -it world-journal python manage.py createsuperuser
+```
+
+For a native install, use the project's `.venv` interpreter from the project folder. Confirm that the server and the command use the same environment variables.
+
+---
+
 ### The Cache Table Does Not Exist
 
 **The Problem:**

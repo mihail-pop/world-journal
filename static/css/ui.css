@@ -75,6 +75,9 @@ button:disabled { cursor: default; opacity: .5; }
 .primary-nav a:hover, .settings-link:hover { background: var(--ui-hover); color: var(--ui-text); }
 .primary-nav a[aria-current="page"], .settings-link[aria-current="page"] { color: var(--ui-text); background: var(--ui-hover); text-decoration: none; }
 .header-actions { gap: .5rem; }
+.logout-form { display: flex; margin: 0; }
+.logout-button { min-height: 2.5rem; padding: .5rem .9rem; border: 0; border-radius: 5px; background: transparent; color: var(--ui-muted); font-size: 1rem; }
+.logout-button:hover { background: var(--ui-hover); color: var(--ui-text); }
 #app-content { padding: 1.8rem clamp(1rem, 3vw, 3rem) 4rem; min-height: calc(100svh - var(--header-height)); }
 .page { animation: none; }
 .page-standard { width: 100%; max-width: 76rem; margin-inline: auto; }
@@ -425,6 +428,7 @@ details[open] > summary { margin-bottom: .9rem; color: var(--ui-text); }
     .primary-nav { grid-row: 2; grid-column: 1 / -1; justify-content: flex-start; border-top: 0; gap: .5rem; }
     .primary-nav a { padding: .35rem .7rem; min-height: 2.2rem; }
     .settings-link { padding: .35rem .5rem; }
+    .logout-button { min-height: 2rem; padding: .35rem .5rem; }
     .header-actions .player-toggle { font-size: .9rem; padding: .35rem .5rem; min-height: 2rem; }
     #app-content { padding: 1.15rem .9rem 3rem; }
     .page-standard h1 { font-size: 1.25rem; }

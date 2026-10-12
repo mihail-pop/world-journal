@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="icon" href="data:,">
+    <title>Login | World Journal</title>
+    <style>
+        :root { color-scheme: dark; }
+        * { box-sizing: border-box; }
+        body {
+            display: grid;
+            min-height: 100vh;
+            margin: 0;
+            place-items: center;
+            background: #0b1622;
+            color: #a8b5c4;
+            font-family: Inter, system-ui, sans-serif;
+        }
+        .login-panel {
+            width: min(100% - 2rem, 22rem);
+            padding: 2rem;
+            border: 1px solid #475a6d;
+            border-radius: 6px;
+            background: #151f2e;
+            box-shadow: 0 1rem 2.5rem rgb(0 0 0 / 30%);
+        }
+        h1 { margin: 0 0 1.5rem; color: #faeee7; font-size: 1.5rem; text-align: center; }
+        label { display: block; margin-top: 1rem; font-size: .95rem; }
+        input {
+            width: 100%;
+            min-height: 2.7rem;
+            margin-top: .4rem;
+            padding: .6rem .75rem;
+            border: 1px solid #475a6d;
+            border-radius: 4px;
+            background: #101820;
+            color: #faeee7;
+            font: inherit;
+        }
+        input:focus-visible, button:focus-visible { outline: 2px solid #57d5ff; outline-offset: 3px; }
+        button {
+            display: block;
+            min-width: 6rem;
+            min-height: 2.7rem;
+            margin: 1.5rem auto 0;
+            padding: .6rem 1rem;
+            border: 1px solid #475a6d;
+            border-radius: 4px;
+            background: #32445b;
+            color: #faeee7;
+            cursor: pointer;
+            font: inherit;
+            font-weight: 600;
+        }
+        button:hover { background: #475a6d; }
+        .login-error { margin: 0 0 1rem; color: #ff8e7f; text-align: center; }
+    </style>
+</head>
+<body>
+    <main class="login-panel">
+        <h1>World Journal</h1>
+        {% if form.errors %}<p class="login-error">Invalid username or password.</p>{% endif %}
+        <form method="post" action="{% url 'login' %}">
+            {% csrf_token %}
+            <label for="id_username">Username</label>
+            <input id="id_username" name="username" type="text" autocomplete="username" required autofocus>
+            <label for="id_password">Password</label>
+            <input id="id_password" name="password" type="password" autocomplete="current-password" required>
+            {% if next %}<input name="next" type="hidden" value="{{ next }}">{% endif %}
+            <button type="submit">Login</button>
+        </form>
+    </main>
+</body>
+</html>

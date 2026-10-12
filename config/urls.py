@@ -15,18 +15,18 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.conf import settings
-from django.conf.urls.static import static
 from django.contrib import admin
-from django.urls import include, path
+from django.contrib.auth import views as auth_views
+from django.urls import include, path, re_path
+from django.views.static import serve
 
 urlpatterns = [
+    path("login/", auth_views.LoginView.as_view(template_name="core/login.html", redirect_authenticated_user=True), name="login"),
+    path("logout/", auth_views.LogoutView.as_view(next_page="login"), name="logout"),
     path('admin/', admin.site.urls),
     path('', include('news.urls')),
     path('', include('countries.urls')),
     path('journal/', include('journal.urls')),
     path('', include('core.urls')),
+    re_path(r"^media/(?P<path>.*)$", serve, {"document_root": settings.MEDIA_ROOT}),
 ]
-
-# Local journal images are served by Django during development.
-if settings.DEBUG:
-    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

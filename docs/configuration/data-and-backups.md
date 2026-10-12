@@ -1,10 +1,10 @@
 # Data and Backups
 
-World Journal keeps personal data on the machine running the app. There is no account or cloud copy to restore from, so backups matter.
+World Journal keeps personal data on the machine running the app. There is no cloud copy to restore from, so backups matter.
 
 ## Where Data Is Stored
 
-- `db.sqlite3` contains journal entries, collections, country relationships, favorites, presets, source choices, the news archive and custom territory edits.
+- `db.sqlite3` contains journal entries, collections, country relationships, favorites, presets, source choices, the news archive and custom territory edits. Docker stores this file under `runtime/`.
 - `media/` contains uploaded journal images.
 - Browser preferences such as the theme, home country, map type, player position and retained page state are stored in that browser.
 - `world_journal_cache` is a table inside SQLite used for feed snapshots. Cached news can be downloaded again and does not need to be treated as permanent data.
@@ -19,7 +19,7 @@ Import always starts with a preview. Review what will be added, kept or reused b
 
 ## Manual Backup
 
-For a complete manual copy:
+For a complete native-install copy:
 
 1. Stop the Django server.
 2. Copy `db.sqlite3` and the entire `media/` folder together.
@@ -27,3 +27,5 @@ For a complete manual copy:
 4. Start the server again.
 
 Copying the database while the app is actively writing can produce an inconsistent backup, so stop the server first.
+
+For Docker, stop the container with `docker compose down`, then copy `runtime/db.sqlite3` and `media/`. Start it again with `docker compose up -d`.

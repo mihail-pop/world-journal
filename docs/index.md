@@ -18,7 +18,8 @@ I use the app myself and plan to keep improving it. It is not trying to become a
 
 <div markdown="1" style="display: flex; justify-content: left; gap: 12px; margin-top: 20px; flex-wrap: wrap;">
 
-[Windows Setup](setup/windows.md){ .md-button .md-button--primary }
+[Docker Setup](setup/docker.md){ .md-button .md-button--primary }
+[Windows Setup](setup/windows.md){ .md-button }
 [Mac Setup](setup/mac.md){ .md-button }
 [Linux Setup](setup/linux.md){ .md-button }
 

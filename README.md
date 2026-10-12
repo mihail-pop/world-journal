@@ -3,9 +3,9 @@
   <a href="https://mihail-pop.github.io/world-journal/">Documentation</a>
 </p>
 
-World Journal is the local, self-hosted app I wanted for following world news and keeping my research in one place. It combines an interactive world map, attributed news feeds and a personal journal without requiring accounts, API keys or a cloud service.
+This is the self-hosted world news and research app I wanted to have. It combines an interactive map, attributed news feeds and a personal journal without requiring paid APIs or a cloud service. I use it myself and plan to keep maintaining it.
 
-> **Note:** World Journal is licensed under the GNU Affero General Public License v3.0. It is free software and its source must remain available when modified versions are offered over a network.
+> **Note:** I added the open source AGPL license to make contributing easier and to keep modified network versions open as well.
 
 ## Features
 
@@ -24,9 +24,10 @@ World Journal is the local, self-hosted app I wanted for following world news an
 
 ## Setup
 
-World Journal runs natively on a personal computer. The repository does not currently include Docker or public deployment configuration.
+You can run World Journal either with Docker or natively on your personal computer. If you have not used Docker before and do not need it, follow the guide for your operating system.
 
 <p align="center">
+  <a href="https://mihail-pop.github.io/world-journal/setup/docker/"><strong>Docker Setup</strong></a> &nbsp;&nbsp;|&nbsp;&nbsp;
   <a href="https://mihail-pop.github.io/world-journal/setup/windows/"><strong>Windows Setup</strong></a> &nbsp;&nbsp;|&nbsp;&nbsp;
   <a href="https://mihail-pop.github.io/world-journal/setup/mac/"><strong>Mac Setup</strong></a> &nbsp;&nbsp;|&nbsp;&nbsp;
   <a href="https://mihail-pop.github.io/world-journal/setup/linux/"><strong>Linux Setup</strong></a>

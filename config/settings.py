@@ -10,10 +10,12 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
+import os
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+RUNTIME_ROOT = Path(os.environ.get("WORLD_JOURNAL_DATA_DIR", BASE_DIR))
 APP_DISPLAY_NAME = 'World Journal'
 MAP_STYLE_URL = 'https://tiles.openfreemap.org/styles/liberty'
 MAP_GLYPHS_URL = 'https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf'
@@ -66,12 +68,23 @@ NEWS_USER_AGENT = 'WorldJournal/0.1 (+local self-hosted RSS reader)'
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-r-r(+b$0#gb0&@kp9*$bcmnvixj_+)ztogp3hy#s!)@qro2e@2'
+SECRET_KEY = os.environ.get(
+    "SECRET_KEY",
+    'django-insecure-r-r(+b$0#gb0&@kp9*$bcmnvixj_+)ztogp3hy#s!)@qro2e@2',
+)
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.environ.get("WJ_DEV") == "True"
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["*"]
+
+trusted_origins = os.environ.get("CSRF_TRUSTED_ORIGINS")
+CSRF_TRUSTED_ORIGINS = [origin.strip() for origin in trusted_origins.split(",") if origin.strip()] if trusted_origins else []
+
+# Optional whole-app login gate. It stays off for normal local use.
+REQUIRE_LOGIN = os.environ.get("REQUIRE_LOGIN", "False").lower() in ("true", "1", "t")
+LOGIN_URL = "login"
+LOGIN_REDIRECT_URL = "core:map"
 
 
 # Application definition
@@ -97,6 +110,8 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'core.middleware.GlobalLoginRequiredMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
 ]
 
 ROOT_URLCONF = 'config.urls'
@@ -125,7 +140,7 @@ WSGI_APPLICATION = 'config.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'NAME': RUNTIME_ROOT / 'db.sqlite3',
     }
 }
 
@@ -164,7 +179,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = os.environ.get("TZ", "UTC")
 
 USE_I18N = True
 
@@ -174,8 +189,23 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
+STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_DIRS = [BASE_DIR / 'static']
+
+STORAGES = {
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
+    "staticfiles": {
+        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+    },
+}
+
+if not DEBUG:
+    STORAGES["staticfiles"] = {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    }
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
@@ -187,7 +217,7 @@ MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 JOURNAL_IMAGE_MAX_BYTES = 10 * 1024 * 1024
 BACKUP_MAX_BYTES = 512 * 1024 * 1024
-BACKUP_STAGING_ROOT = BASE_DIR / ".backup-imports"
+BACKUP_STAGING_ROOT = RUNTIME_ROOT / ".backup-imports"
 
 # Country facts ship as a dated local Wikidata snapshot; no API calls on browsing.
 COUNTRY_FACTS_PATH = BASE_DIR / "data" / "country_facts.json"

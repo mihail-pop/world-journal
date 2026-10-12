@@ -1,21 +1,88 @@
 # Remote Access
 
-World Journal currently supports local use on the computer running Django. The setup guides bind the server to `127.0.0.1`, which keeps it unavailable to other devices by default.
+To access World Journal away from home, you have two main options.
 
-## Trusted Local Networks
+## Option 1: Private Access with Tailscale
 
-Django can be bound to a LAN address, but World Journal has no accounts and uses plain HTTP by default. Anyone who can reach that address can access and modify all shared data.
+[Tailscale](https://tailscale.com/) creates an encrypted private connection between your devices. Install it on the machine running World Journal and on each device that needs access.
 
-I do not recommend changing the bind address unless every device and person on that network is trusted. Firewall rules, host configuration and HTTPS are the responsibility of the person running the server.
+- **Pros:** Private, simple and does not require opening a public port.
+- **Cons:** Tailscale must be installed on every device.
 
-## Public Internet
+Authentication is still recommended if more than one person or device can reach the server.
 
-Do not forward the port, bind it publicly or place it behind a public tunnel. The app currently has:
+## Option 2: Public Access with a Tunnel
 
-- no login requirement;
-- no separation between users;
-- a development secret key;
-- debug mode enabled;
-- no documented production web server or reverse proxy configuration.
+A service such as [Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/get-started/create-local-tunnel/) can expose the app through an HTTPS domain without forwarding a router port.
 
-Remote hosting needs a dedicated security and deployment pass. This page is ready for those instructions later, but public access is not supported now.
+Before doing this:
+
+1. enable [Authentication](authentication.md);
+2. set a unique `SECRET_KEY`;
+3. configure `CSRF_TRUSTED_ORIGINS` with the public HTTPS address;
+4. use Waitress rather than Django's development server.
+
+## Configuring a Domain
+
+`CSRF_TRUSTED_ORIGINS` accepts one or more comma-separated origins. Include the `https://` prefix.
+
+=== "Docker"
+
+	```yaml
+	environment:
+	  - REQUIRE_LOGIN=True
+	  - SECRET_KEY=replace-this-with-a-long-random-value
+	  - CSRF_TRUSTED_ORIGINS=https://your-domain.com
+	```
+
+	```sh
+	docker compose up -d
+	```
+
+=== "Windows"
+
+	**PowerShell:**
+
+	```powershell
+	$env:REQUIRE_LOGIN="True"
+	$env:SECRET_KEY="replace-this-with-a-long-random-value"
+	$env:CSRF_TRUSTED_ORIGINS="https://your-domain.com"
+	.\.venv\Scripts\python.exe -m waitress --listen=0.0.0.0:8000 --threads=8 config.wsgi:application
+	```
+
+	**Command Prompt or a `.bat` file:**
+
+	```bat
+	set REQUIRE_LOGIN=True
+	set SECRET_KEY=replace-this-with-a-long-random-value
+	set CSRF_TRUSTED_ORIGINS=https://your-domain.com
+	.venv\Scripts\python.exe -m waitress --listen=0.0.0.0:8000 --threads=8 config.wsgi:application
+	```
+
+=== "Mac"
+
+	```sh
+	export REQUIRE_LOGIN=True
+	export SECRET_KEY=replace-this-with-a-long-random-value
+	export CSRF_TRUSTED_ORIGINS=https://your-domain.com
+	.venv/bin/python -m waitress --listen=0.0.0.0:8000 --threads=8 config.wsgi:application
+	```
+
+=== "Linux"
+
+	Add the variables to the systemd service:
+
+	```ini
+	Environment="REQUIRE_LOGIN=True"
+	Environment="SECRET_KEY=replace-this-with-a-long-random-value"
+	Environment="CSRF_TRUSTED_ORIGINS=https://your-domain.com"
+	```
+
+	Then restart it:
+
+	```sh
+	sudo systemctl daemon-reload
+	sudo systemctl restart worldjournal
+	```
+
+World Journal does not provide HTTPS itself. The tunnel or reverse proxy must terminate HTTPS before forwarding requests to Waitress.
