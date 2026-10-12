@@ -63,6 +63,8 @@ No fictional countries or islands are added.
 
 ## Behavior and implementation
 
+Adventure hover and selection borders use separate line layers above ordinary country borders and artwork, with selection drawn last. This prevents a neighboring country's thin dark stroke from leaving a hollow center in a bright shared edge. Existing theme-specific highlight colors and widths are preserved. The layers reuse the bundled country source and update through feature state, without per-hover filters, sorting, or geometry changes. Terrain and Simple keep their existing border styling.
+
 `static/js/pages/adventure_map.js` owns the palettes, artwork and extra
 layers. They are installed lazily when Adventure is first selected and reuse
 the current MapLibre map. Their textures/sprites are generated once per theme,

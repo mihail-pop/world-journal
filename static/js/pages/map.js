@@ -30,6 +30,8 @@ const LAYERS = {
     simpleBackground: "world-journal-simple-background",
     fill: "world-journal-country-fill",
     outline: "world-journal-country-outline",
+    hoverOutline: "world-journal-country-hover-outline",
+    selectedOutline: "world-journal-country-selected-outline",
     favoriteMarkers: "world-journal-country-favorites",
     smallMarker: "world-journal-country-small-marker",
     hitTarget: "world-journal-country-hit-target",
@@ -96,9 +98,16 @@ function updateLayerTheme(controller) {
     const hovered = ["boolean", ["feature-state", "hover"], false];
     const selectedState = ["boolean", ["feature-state", "selected"], false];
     map.setPaintProperty(LAYERS.simpleBackground, "background-color", art?.sea || getThemeColor("--bg-tertiary"));
-    map.setPaintProperty(LAYERS.outline, "line-color", ["case", selectedState, selected, hovered, hover, countryOutline]);
-    map.setPaintProperty(LAYERS.outline, "line-width", ["case", selectedState, 3.5, hovered, 2, adventure ? 1 : .8]);
-    map.setPaintProperty(LAYERS.outline, "line-opacity", ["case", ["any", selectedState, hovered], 1, .62]);
+    // Shared edges are drawn once per neighboring polygon. In Adventure, a
+    // later country's dark ordinary stroke must not cut through a bright one.
+    // Keep ordinary borders below separate, paint-only interaction passes.
+    map.setPaintProperty(LAYERS.outline, "line-color", adventure ? countryOutline : ["case", selectedState, selected, hovered, hover, countryOutline]);
+    map.setPaintProperty(LAYERS.outline, "line-width", adventure ? 1 : ["case", selectedState, 3.5, hovered, 2, .8]);
+    map.setPaintProperty(LAYERS.outline, "line-opacity", adventure ? .62 : ["case", ["any", selectedState, hovered], 1, .62]);
+    map.setPaintProperty(LAYERS.hoverOutline, "line-color", hover);
+    map.setPaintProperty(LAYERS.hoverOutline, "line-opacity", adventure ? ["case", ["all", hovered, ["!", selectedState]], 1, 0] : 0);
+    map.setPaintProperty(LAYERS.selectedOutline, "line-color", selected);
+    map.setPaintProperty(LAYERS.selectedOutline, "line-opacity", adventure ? ["case", selectedState, 1, 0] : 0);
     map.setPaintProperty(LAYERS.smallMarker, "circle-color", ["coalesce", ["feature-state", "presetColor"], hover]);
     map.setPaintProperty(LAYERS.smallMarker, "circle-stroke-color", selected);
     map.setPaintProperty(LAYERS.countryNames, "text-color", selected);
@@ -818,6 +827,16 @@ function installCountryLayers(controller) {
         },
         paint: { "text-color": "#a8b5c4", "text-halo-color": "#0b1622", "text-halo-width": 1.2 },
     });
+    // Adventure artwork is inserted below these strokes, while names remain
+    // above them. Selection has priority over an adjacent hovered country.
+    addLayer(controller, {
+        id: LAYERS.hoverOutline, type: "line", source: SOURCE_ID,
+        paint: {"line-color": "#efbf75", "line-width": 2, "line-opacity": 0},
+    }, LAYERS.countryNames);
+    addLayer(controller, {
+        id: LAYERS.selectedOutline, type: "line", source: SOURCE_ID,
+        paint: {"line-color": "#fae8bf", "line-width": 3.5, "line-opacity": 0},
+    }, LAYERS.countryNames);
     controller.layersInstalled = true;
     if (controller.hoveredCode) {
         // A replacement basemap can recreate the source and lose feature state.
