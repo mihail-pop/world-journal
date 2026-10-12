@@ -653,6 +653,15 @@ function updateControls(controller) {
 
 function applyPreferences(controller) {
     updateControls(controller);
+    if (controller.map && controller.preferences.terrain && !controller.providerStyleRequested) {
+        // Simple/Adventure start immediately from bundled geometry. Load the
+        // external provider only when Terrain is actually requested.
+        controller.providerStyleRequested = true;
+        controller.layersInstalled = false;
+        controller.map.setStyle(controller.providerStyleUrl);
+        controller.fallbackTimer = window.setTimeout(() => applyProviderFallback(controller), 8000);
+        return;
+    }
     if (!controller.layersInstalled) {
         return;
     }
@@ -714,6 +723,7 @@ function installCountryLayers(controller) {
     // A style can recreate layers while retaining the GeoJSON source itself.
     controller.appliedFavorites = null;
     controller.countryLabelAdventure = null;
+    controller.adventureMarkerKey = null;
     // Capture provider definitions once per style, before adding our GeoJSON.
     // Preference toggles only need these IDs/label rules, not whole style copies.
     controller.basemapLayers = (map.getStyle().layers ?? []).filter(layer => !isApplicationLayer(layer));
@@ -746,7 +756,7 @@ function installCountryLayers(controller) {
             id: LAYERS.favoriteMarkers, type: "symbol", source: CENTROID_SOURCE_ID,
             filter: ["in", ["get", "iso_a2"], ["literal", []]],
             layout: {
-                "icon-image": FAVORITE_ICON_ID, "icon-size": .9, "icon-offset": [0, -12],
+                "icon-image": FAVORITE_ICON_ID, "icon-size": .9, "icon-anchor": "center", "icon-offset": [0, 0],
                 "icon-allow-overlap": true, "icon-ignore-placement": true,
             },
         });
@@ -818,12 +828,24 @@ function installCountryLayers(controller) {
 }
 
 function createCentroids(countries) {
+    // Country labels wrap at seven ems. Estimate their lines conservatively so
+    // favorite hearts clear both short names and multi-line country labels.
+    const labelRows = name => {
+        let rows = 1, width = 0;
+        for (const word of name.split(/\s+/)) {
+            const length = [...word].reduce((total,char) => total+(/[MWmw]/.test(char) ? .85 : /[ilIjt.,]/.test(char) ? .3 : .6),0);
+            if (width && width+.3+length > 7) { rows++; width = 0; }
+            rows += Math.max(0,Math.ceil(length/7)-1);
+            width = (width ? width+.3 : 0)+length;
+        }
+        return rows;
+    };
     return {
         type: "FeatureCollection",
         features: countries.map((country) => ({
             type: "Feature",
             id: country.iso_a2,
-            properties: { iso_a2: country.iso_a2, name: country.name, small: country.small },
+            properties: { iso_a2: country.iso_a2, name: country.name, small: country.small, label_rows: labelRows(country.name.toUpperCase()) },
             geometry: { type: "Point", coordinates: country.centroid },
         })),
     };
@@ -849,12 +871,16 @@ function applyProviderFallback(controller) {
     controller.usingFallbackStyle = true;
     controller.layersInstalled = false;
     controller.status.textContent = "Map provider unavailable. Showing bundled country boundaries.";
-    controller.map.setStyle({
+    controller.map.setStyle(bundledMapStyle(controller));
+}
+
+function bundledMapStyle(controller) {
+    return {
         version: 8,
         glyphs: controller.glyphsUrl,
         sources: {},
         layers: [{ id: "world-journal-background", type: "background", paint: { "background-color": "#0b1622" } }],
-    });
+    };
 }
 
 function createMap(controller, styleUrl) {
@@ -876,9 +902,11 @@ function createMap(controller, styleUrl) {
                 ? "saved-viewport"
                 : "world";
     const camera = initialCamera(selectedCountry, homeCountry, savedViewport);
+    controller.providerStyleUrl = styleUrl;
+    controller.providerStyleRequested = controller.preferences.terrain;
     const map = new MapLibreMap({
         container: controller.container,
-        style: styleUrl,
+        style: controller.providerStyleRequested ? styleUrl : bundledMapStyle(controller),
         center: camera.center,
         zoom: camera.zoom,
         renderWorldCopies: true,
@@ -1236,11 +1264,12 @@ async function initializeMapPage() {
     }, {signal: abortController.signal});
 
     try {
-        const [metadata, geometry, capitals, favoriteIcon] = await Promise.all([
+        const [metadata, geometry, capitals, favoriteIcon, adventureData] = await Promise.all([
             loadJson(page.dataset.countryMetadataUrl, abortController.signal),
             loadJson(page.dataset.countryGeometryUrl, abortController.signal),
             loadJson(page.dataset.capitalGeometryUrl, abortController.signal),
             loadFavoriteIcon(page.dataset.favoriteIconUrl, abortController.signal),
+            loadJson(page.dataset.adventureDataUrl, abortController.signal),
         ]);
         if (activeController !== controller) {
             return;
@@ -1249,6 +1278,8 @@ async function initializeMapPage() {
             !Array.isArray(metadata.countries)
             || geometry.type !== "FeatureCollection"
             || capitals.type !== "FeatureCollection"
+            || adventureData.version !== 1
+            || !adventureData.colors || typeof adventureData.colors !== "object"
         ) {
             throw new Error("Bundled map data has an invalid schema");
         }
@@ -1256,6 +1287,7 @@ async function initializeMapPage() {
         controller.countryCodes = new Set(controller.countriesByCode.keys());
         controller.preferences = readMapPreferences(controller.countryCodes);
         controller.geometry = geometry;
+        controller.adventureTopology = {colors:new Map(Object.entries(adventureData.colors))};
         controller.centroids = createCentroids(metadata.countries);
         controller.capitals = capitals;
         controller.favoriteIcon = favoriteIcon;
@@ -1271,7 +1303,7 @@ async function initializeMapPage() {
             },
         });
         initializeControls(controller);
-        controller.status.textContent = "Loading map provider…";
+        controller.status.textContent = "Loading map…";
         controller.mapReady = true;
         if (!controller.suspended && page.isConnected) createMap(controller, page.dataset.mapStyleUrl);
     } catch (error) {

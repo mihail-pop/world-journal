@@ -2,7 +2,7 @@
 
 World Journal uses the configurable OpenFreeMap Liberty style as its initial external basemap and keeps country interaction independent through bundled Natural Earth geometry.
 
-The style URL and fallback glyph URL are configured through `MAP_STYLE_URL` and `MAP_GLYPHS_URL` in Django settings. The glyph endpoint is used only for application-owned country and capital labels when the provider style itself cannot be loaded; country geometry, hit targets, fills, and outlines remain bundled.
+The style URL and bundled-style glyph URL are configured through `MAP_STYLE_URL` and `MAP_GLYPHS_URL` in Django settings. The glyph endpoint serves application-owned labels in Simple/Adventure and when the provider style cannot be loaded; country geometry, hit targets, fills, and outlines remain bundled. Starting in Simple/Adventure uses a local style and defers the external Terrain style until Terrain is first selected.
 
 ## Browser preferences
 

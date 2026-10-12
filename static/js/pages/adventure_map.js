@@ -19,68 +19,6 @@ export function adventurePalette() {
     return {name: theme in palettes ? theme : "dark", ...(palettes[theme] || palettes.dark)};
 }
 
-function hash(text) {
-    let value = 2166136261;
-    for (const char of text) value = Math.imul(value ^ char.charCodeAt(0), 16777619);
-    return value >>> 0;
-}
-
-function topology(geometry) {
-    const edges = new Map();
-    const rings = [];
-    const neighbors = new Map();
-    const key = (a, b) => {
-        const first = a.join(","), second = b.join(",");
-        return first < second ? `${first}/${second}` : `${second}/${first}`;
-    };
-    for (const feature of geometry.features) {
-        const code = feature.properties.iso_a2;
-        neighbors.set(code, new Set());
-        const polygons = feature.geometry.type === "Polygon" ? [feature.geometry.coordinates] : feature.geometry.coordinates;
-        for (const polygon of polygons) for (const ring of polygon) {
-            rings.push(ring);
-            for (let index = 1; index < ring.length; index++) {
-                const id = key(ring[index - 1], ring[index]);
-                if (!edges.has(id)) edges.set(id, new Set());
-                edges.get(id).add(code);
-            }
-        }
-    }
-    for (const owners of edges.values()) if (owners.size > 1) {
-        for (const first of owners) for (const second of owners) if (first !== second) neighbors.get(first).add(second);
-    }
-    const coast = [];
-    for (const ring of rings) {
-        // Classify the complete ring, not a short shared-border fragment. Small
-        // islands keep their actual ink outline without a broad offshore halo.
-        let west = Infinity, east = -Infinity, south = Infinity, north = -Infinity;
-        for (const [x,y] of ring) { west = Math.min(west,x); east = Math.max(east,x); south = Math.min(south,y); north = Math.max(north,y); }
-        const span = Math.max(east-west,north-south);
-        const size = span >= 2 ? "large" : span >= .3 ? "medium" : "small";
-        let run = [];
-        for (let index = 1; index < ring.length; index++) {
-            const a = ring[index - 1], b = ring[index];
-            const seam = Math.abs(a[0] - b[0]) > 180 || Math.abs(a[0]) === 180 && Math.abs(b[0]) === 180;
-            if (!seam && edges.get(key(a, b)).size === 1) {
-                if (!run.length) run.push(a);
-                run.push(b);
-            } else if (run.length) { coast.push({size, coordinates: run}); run = []; }
-        }
-        if (run.length) coast.push({size, coordinates: run});
-    }
-    // Greedy graph coloring gives shared-border neighbors different paper hues.
-    const colors = new Map();
-    const codes = [...neighbors.keys()].sort((a, b) => neighbors.get(b).size - neighbors.get(a).size || a.localeCompare(b));
-    for (const code of codes) {
-        const used = new Set([...neighbors.get(code)].map(other => colors.get(other)));
-        const preferred = hash(code) % 8;
-        const index = Array.from({length: 8}, (_, offset) => (preferred + offset) % 8).find(candidate => !used.has(candidate));
-        colors.set(code, index ?? preferred);
-    }
-    return {colors, coast: {type: "FeatureCollection", features: ["large", "medium"].map(size => ({
-        type: "Feature", properties: {size}, geometry: {type: "MultiLineString", coordinates: coast.filter(run => run.size === size).map(run => run.coordinates)},
-    })).filter(feature => feature.geometry.coordinates.length)}};
-}
 
 function drawing(size, paint) {
     const canvas = document.createElement("canvas");
@@ -205,8 +143,6 @@ function desert(palette) {
         for (let index = 0; index < 6; index++) {
             context.beginPath(); context.moveTo(78+index*4,59+index*4); context.quadraticCurveTo(82+index*4,77+index*3,95+index*3,85+index*3); context.stroke();
         }
-        context.globalAlpha = .7; context.lineWidth = 1.3;
-        context.beginPath(); context.arc(99,29,8,0,Math.PI*2); context.stroke();
     });
 }
 
@@ -293,6 +229,151 @@ function dragon(palette) {
     });
 }
 
+function unicorn(palette) {
+    return drawing(128, context => {
+        context.lineJoin = "round"; context.lineCap = "round"; context.lineWidth = 1.5;
+        context.fillStyle = palette.shadow; context.globalAlpha = .12;
+        context.beginPath(); context.ellipse(65,108,47,7,0,0,Math.PI*2); context.fill(); context.globalAlpha = 1;
+        context.strokeStyle = palette.border; context.fillStyle = palette.paper;
+        context.beginPath(); context.moveTo(29,65); context.bezierCurveTo(43,53,64,62,74,53);
+        context.lineTo(83,34); context.lineTo(94,30); context.lineTo(111,42); context.lineTo(106,51);
+        context.lineTo(93,48); context.lineTo(87,72); context.lineTo(91,103); context.lineTo(81,104);
+        context.lineTo(77,81); context.lineTo(68,82); context.lineTo(58,102); context.lineTo(47,104);
+        context.lineTo(55,82); context.lineTo(39,83); context.lineTo(34,105); context.lineTo(23,105);
+        context.lineTo(28,79); context.quadraticCurveTo(20,72,29,65); context.closePath(); context.fill(); context.stroke();
+        path(context, [[96,33],[103,13],[104,38]], palette.land[4], palette.border);
+        path(context, [[87,34],[84,23],[91,30]], palette.paper, palette.border);
+        context.fillStyle = palette.land[2];
+        context.beginPath(); context.moveTo(88,33); context.quadraticCurveTo(70,39,67,65);
+        context.quadraticCurveTo(81,56,87,42); context.closePath(); context.fill(); context.stroke();
+        context.beginPath(); context.moveTo(28,68); context.bezierCurveTo(9,68,23,86,10,92);
+        context.bezierCurveTo(33,86,24,80,31,75); context.closePath(); context.fill(); context.stroke();
+        context.fillStyle = palette.border; context.beginPath(); context.arc(97,40,1.6,0,Math.PI*2); context.fill();
+        for (const [x,y] of [[24,105],[48,104],[81,104]]) { context.beginPath(); context.moveTo(x,y); context.lineTo(x+9,y); context.stroke(); }
+        context.globalAlpha = .35;
+        for (let offset = 0; offset < 4; offset++) { context.beginPath(); context.moveTo(36+offset*5,71); context.lineTo(40+offset*5,77); context.stroke(); }
+    });
+}
+
+function golem(palette) {
+    return drawing(128, context => {
+        context.lineJoin = "round"; context.lineCap = "round"; context.lineWidth = 1.5;
+        context.fillStyle = palette.shadow; context.globalAlpha = .12;
+        context.beginPath(); context.ellipse(65,110,44,6,0,0,Math.PI*2); context.fill(); context.globalAlpha = 1;
+        for (const points of [
+            [[24,56],[42,50],[44,73],[33,84],[20,76]], [[83,51],[101,57],[108,77],[93,86],[82,73]],
+            [[43,84],[61,88],[59,109],[38,109],[36,101]], [[67,87],[83,83],[91,104],[85,109],[66,109]],
+            [[41,47],[64,41],[85,49],[87,79],[69,94],[42,80]], [[48,23],[72,20],[83,33],[78,52],[51,53],[43,37]],
+        ]) path(context, points, palette.land[5], palette.border);
+        context.strokeStyle = palette.border;
+        for (const points of [[[47,61],[58,66],[54,81]],[[73,53],[67,70],[83,77]],[[53,24],[62,33],[59,44]]]) {
+            context.beginPath(); points.forEach(([x,y],index) => index ? context.lineTo(x,y) : context.moveTo(x,y)); context.stroke();
+        }
+        context.fillStyle = palette.border;
+        for (const x of [56,70]) { context.beginPath(); context.ellipse(x,37,3.5,2.5,0,0,Math.PI*2); context.fill(); }
+        context.beginPath(); context.moveTo(58,46); context.lineTo(69,46); context.stroke();
+        path(context, [[42,51],[35,45],[44,40],[51,43]], palette.vegetation, palette.border);
+        path(context, [[70,24],[72,14],[79,10],[81,21]], palette.vegetation, palette.border);
+        context.strokeStyle = palette.paper; context.globalAlpha = .35;
+        context.beginPath(); context.moveTo(46,59); context.lineTo(45,75); context.moveTo(50,29); context.lineTo(48,39); context.stroke();
+    });
+}
+
+function spiritFox(palette) {
+    return drawing(128, context => {
+        context.lineJoin = "round"; context.lineCap = "round"; context.lineWidth = 1.5;
+        context.fillStyle = palette.shadow; context.globalAlpha = .12;
+        context.beginPath(); context.ellipse(66,107,48,6,0,0,Math.PI*2); context.fill(); context.globalAlpha = 1;
+        context.fillStyle = palette.paper; context.strokeStyle = palette.border;
+        context.beginPath(); context.moveTo(57,78); context.bezierCurveTo(22,80,14,49,18,30);
+        context.bezierCurveTo(36,38,59,51,59,77); context.closePath(); context.fill(); context.stroke();
+        context.beginPath(); context.moveTo(38,78); context.quadraticCurveTo(65,66,80,80);
+        context.lineTo(85,103); context.lineTo(73,104); context.lineTo(67,88); context.lineTo(57,90);
+        context.lineTo(51,104); context.lineTo(36,104); context.quadraticCurveTo(28,90,38,78); context.closePath(); context.fill(); context.stroke();
+        path(context, [[68,72],[70,33],[84,49],[95,31],[107,61],[104,74],[86,87]], palette.paper, palette.border);
+        path(context, [[73,41],[80,52],[73,56]], palette.land[2], null);
+        path(context, [[95,39],[101,56],[94,52]], palette.land[2], null);
+        context.strokeStyle = palette.vegetation; context.globalAlpha = .65;
+        context.beginPath(); context.moveTo(39,89); context.quadraticCurveTo(36,65,26,53); context.stroke();
+        context.globalAlpha = 1; context.strokeStyle = palette.border;
+        context.beginPath(); context.moveTo(77,66); context.lineTo(82,68); context.moveTo(93,68); context.lineTo(98,66); context.stroke();
+        path(context, [[85,75],[89,75],[87,78]], palette.border, null);
+        context.strokeStyle = palette.paper; context.globalAlpha = .5;
+        context.beginPath(); context.moveTo(41,53); context.lineTo(48,65); context.stroke();
+    });
+}
+
+function volcano(palette) {
+    return drawing(128, context => {
+        context.lineJoin = "round"; context.lineCap = "round"; context.lineWidth = 1.5;
+        context.fillStyle = palette.shadow; context.globalAlpha = .12;
+        context.beginPath(); context.ellipse(64,107,53,7,0,0,Math.PI*2); context.fill(); context.globalAlpha = 1;
+        // Broad cone, open crater and a narrow lava seam echo the mountain art.
+        path(context, [[10,105],[40,62],[49,47],[76,47],[87,69],[119,106]], palette.land[1], palette.border);
+        path(context, [[66,51],[76,47],[87,69],[119,106],[68,107]], palette.land[2], null);
+        context.fillStyle = palette.border;
+        context.beginPath(); context.ellipse(63,48,14,4,0,0,Math.PI*2); context.fill();
+        context.strokeStyle = palette.accent; context.lineWidth = 3;
+        context.beginPath(); context.moveTo(59,50); context.quadraticCurveTo(54,62,64,72);
+        context.quadraticCurveTo(68,81,60,88); context.lineTo(63,103); context.stroke();
+        context.fillStyle = palette.paper; context.strokeStyle = palette.border; context.lineWidth = 1.2;
+        context.beginPath(); context.moveTo(58,43); context.bezierCurveTo(42,34,54,31,50,24);
+        context.bezierCurveTo(38,20,49,10,58,15); context.bezierCurveTo(63,4,77,11,75,18);
+        context.bezierCurveTo(94,16,93,31,79,32); context.quadraticCurveTo(68,33,67,43);
+        context.closePath(); context.fill(); context.stroke();
+        context.globalAlpha = .35;
+        for (let y = 69; y < 102; y += 7) {
+            context.beginPath(); context.moveTo(79,y); context.lineTo(84+(y-69)*.55,y+5); context.stroke();
+        }
+        context.strokeStyle = palette.paper; context.globalAlpha = .6;
+        context.beginPath(); context.moveTo(17,102); context.lineTo(43,65); context.stroke();
+    });
+}
+
+function tornado(palette) {
+    return drawing(128, context => {
+        context.lineJoin = "round"; context.lineCap = "round"; context.lineWidth = 1.4;
+        context.fillStyle = palette.shadow; context.globalAlpha = .12;
+        context.beginPath(); context.ellipse(69,111,31,5,0,0,Math.PI*2); context.fill(); context.globalAlpha = 1;
+        context.fillStyle = palette.land[5]; context.strokeStyle = palette.border;
+        context.beginPath(); context.moveTo(25,36); context.bezierCurveTo(44,52,53,77,66,108);
+        context.quadraticCurveTo(74,99,77,88); context.bezierCurveTo(72,67,95,52,104,36);
+        context.closePath(); context.fill(); context.stroke();
+        context.fillStyle = palette.paper;
+        context.beginPath(); context.moveTo(19,34); context.bezierCurveTo(6,21,25,15,34,20);
+        context.bezierCurveTo(35,7,56,7,61,17); context.bezierCurveTo(73,6,95,13,91,24);
+        context.bezierCurveTo(113,14,124,30,111,37); context.quadraticCurveTo(67,45,19,34);
+        context.closePath(); context.fill(); context.stroke();
+        for (const [y,left,right] of [[49,35,95],[61,43,85],[73,51,78],[85,57,75],[97,62,71]]) {
+            context.strokeStyle = palette.border; context.globalAlpha = .7;
+            context.beginPath(); context.moveTo(left,y); context.quadraticCurveTo((left+right)/2,y+8,right,y+1); context.stroke();
+            context.strokeStyle = palette.paper; context.globalAlpha = .55;
+            context.beginPath(); context.moveTo(left+3,y+2); context.quadraticCurveTo((left+right)/2,y+6,right-3,y+3); context.stroke();
+        }
+        context.globalAlpha = .6; context.strokeStyle = palette.ink;
+        context.beginPath(); context.moveTo(42,96); context.quadraticCurveTo(23,101,39,106);
+        context.moveTo(89,91); context.quadraticCurveTo(103,99,88,104); context.stroke();
+    });
+}
+
+function fantasyHeart(palette) {
+    // The bundled Heroicons v2.2.0 solid heart silhouette (MIT), with original
+    // pigment wash and engraved paper texture inside its existing path.
+    const silhouette = new Path2D("m11.645 20.91-.007-.003-.022-.012a15.247 15.247 0 0 1-.383-.218 25.18 25.18 0 0 1-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0 1 12 5.052 5.5 5.5 0 0 1 16.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 0 1-4.244 3.17 15.247 15.247 0 0 1-.383.219l-.022.012-.007.004-.003.001a.752.752 0 0 1-.704 0l-.003-.001Z");
+    return drawing(48, context => {
+        context.scale(2,2); context.save();
+        const wash = context.createLinearGradient(4,3,18,22);
+        wash.addColorStop(0,"#d97572"); wash.addColorStop(.55,"#ba4654"); wash.addColorStop(1,"#913342");
+        context.fillStyle = wash; context.fill(silhouette); context.clip(silhouette);
+        context.strokeStyle = palette.paper; context.globalAlpha = .23; context.lineWidth = .25;
+        for (let x = -20; x < 40; x += 2) { context.beginPath(); context.moveTo(x,0); context.lineTo(x+24,24); context.stroke(); }
+        context.fillStyle = palette.paper; context.globalAlpha = .16;
+        for (let index = 0; index < 240; index++) context.fillRect((index*37%229)/10,(index*67%227)/10,.18,.28);
+        context.restore(); context.strokeStyle = palette.border; context.lineWidth = .7; context.stroke(silhouette);
+        context.strokeStyle = palette.paper; context.globalAlpha = .65; context.lineWidth = .25; context.stroke(silhouette);
+    });
+}
+
 function compass(canvas, palette, bearing) {
     const context = canvas.getContext("2d");
     context.clearRect(0,0,256,256);
@@ -317,17 +398,41 @@ function compass(canvas, palette, bearing) {
     context.restore();
 }
 
-function illustrationData() {
+function illustrationData(geometry) {
     const points = [];
-    const chain = (kind, coordinates) => coordinates.forEach(coordinate => points.push({type: "Feature", properties: {kind}, geometry: {type: "Point", coordinates: coordinate}}));
-    chain("mountain", [[-109,39],[-104,31],[-74,7],[-77,-3],[-75,-12],[-70,-22],[-69,-33],[22,46],[-5,31],[37,10],[39,-3],[43,-18],[68,37],[99,34],[105,39],[118,48],[137,36],[145,-6]]);
-    chain("snow-mountain", [[-150,63],[-124,58],[-119,52],[-114,46],[-72,-44],[8,46],[13,47],[8,61],[-18,65],[-44,65],[45,42],[76,34],[83,29],[91,29],[95,53],[171,-43]]);
-    chain("forest", [[-131,58],[-102,57],[-87,54],[-69,51],[20,62],[31,63],[57,60],[76,61],[106,59],[121,57]]);
-    chain("grove", [[-63,-3],[-55,-6],[-70,-8],[-58,-15],[18,0],[24,-4],[31,1],[102,16],[114,1],[132,-4],[146,-18]]);
-    chain("desert", [[-8,23],[8,25],[20,23],[45,22],[15,-23],[-69,-24],[103,42],[124,-25]]);
+    const polygons = geometry.features.flatMap(feature => feature.geometry.type === "Polygon" ? [feature.geometry.coordinates] : feature.geometry.coordinates).map(polygon => {
+        let west = Infinity, east = -Infinity, south = Infinity, north = -Infinity;
+        for (const [x,y] of polygon[0]) { west = Math.min(west,x); east = Math.max(east,x); south = Math.min(south,y); north = Math.max(north,y); }
+        return {rings:polygon,west,east,south,north};
+    });
+    function insideRing([x,y],ring) {
+        let inside = false;
+        for (let i = 0, j = ring.length-1; i < ring.length; j = i++) {
+            const [xi,yi] = ring[i], [xj,yj] = ring[j];
+            if ((yi > y) !== (yj > y) && x < (xj-xi)*(y-yi)/(yj-yi)+xi) inside = !inside;
+        }
+        return inside;
+    }
+    // Reject most polygons by bounds before the finer habitat check.
+    const onLand = point => polygons.some(({rings,west,east,south,north}) => point[0] >= west && point[0] <= east && point[1] >= south && point[1] <= north && insideRing(point,rings[0]) && !rings.slice(1).some(ring => insideRing(point,ring)));
+    const chain = (kind, coordinates, habitat = "any") => coordinates.forEach(coordinate => {
+        if (habitat !== "any" && onLand(coordinate) !== (habitat === "land")) return;
+        points.push({type: "Feature", properties: {kind}, geometry: {type: "Point", coordinates: coordinate}});
+    });
+    chain("mountain", [[-109,39],[-104,31],[-74,7],[-77,-3],[-75,-12],[-70,-22],[22,46],[-5,31],[37,10],[47,-20],[68,37],[99,34],[105,39],[118,48],[145,-6]],"land");
+    chain("snow-mountain", [[-150,63],[-124,58],[-119,52],[-114,46],[-72,-44],[8,46],[13,47],[8,61],[-44,65],[45,42],[76,34],[83,29],[91,29],[95,53],[171,-43]],"land");
+    chain("forest", [[-131,58],[-102,57],[-87,54],[-69,51],[20,62],[31,63],[57,60],[76,61],[106,59],[121,57]],"land");
+    chain("grove", [[-63,-3],[-55,-6],[-70,-8],[-58,-15],[18,0],[24,-4],[31,1],[102,16],[114,1],[132,-4],[146,-18]],"land");
+    chain("desert", [[-8,23],[8,25],[20,23],[45,22],[15,-23],[-69,-24],[103,42],[124,-25]],"land");
     chain("ship", [[-36,27],[-27,-24],[68,-24],[156,18],[-143,-27]]);
-    chain("sea-monster", [[-16,-16],[-158,47]]);
-    chain("dragon", [[151,38],[-24,49]]);
+    chain("sea-monster", [[-16,-16],[-158,47]],"sea");
+    chain("dragon", [[110,31],[27,-27]],"land");
+    chain("unicorn", [[10,50],[-108,51]],"land");
+    chain("golem", [[-111,35],[96,46]],"land");
+    chain("spirit-fox", [[28,67],[125,63]],"land");
+    // Decorative volcanic belts, not an inventory or current eruption report.
+    chain("volcano", [[-19,65],[-98.6,19],[-69,-33],[37.3,-3.1],[140,39],[110.4,-7.5],[159,56]],"land");
+    chain("tornado", [[-98,38],[-63,-32]],"land");
     return {type: "FeatureCollection", features: points};
 }
 
@@ -366,20 +471,22 @@ function chartData() {
 export function prepareAdventure(controller, addLayer) {
     const {map} = controller;
     controller.adventurePaintKey = null;
-    controller.adventureTopology ||= topology(controller.geometry);
+    controller.adventureMarkerKey = null;
     const source = (name, data, options = {}) => { if (!map.getSource(PREFIX+name)) map.addSource(PREFIX+name,{type:"geojson",data,...options}); };
-    source("coast",controller.adventureTopology.coast,{buffer:32});
-    source("illustrations",illustrationData(),{maxzoom:6});
+    controller.adventureIllustrations ||= illustrationData(controller.geometry);
+    source("illustrations",controller.adventureIllustrations,{maxzoom:6});
     source("chart",chartData(),{maxzoom:6});
     source("oceans",{type:"FeatureCollection",features:[[-143,29,"NORTH PACIFIC"],[-128,-30,"SOUTH PACIFIC"],[-36,9,"ATLANTIC OCEAN"],[80,-36,"INDIAN OCEAN"]].map(([x,y,name]) => ({type:"Feature",properties:{name},geometry:{type:"Point",coordinates:[x,y]}}))},{maxzoom:5});
     const layer = (name,definition,before = FILL_LAYER) => addLayer(controller,{...definition,id:PREFIX+name,layout:{visibility:"none",...definition.layout}},before);
-    // All sea detail and coast strokes sit beneath opaque country paint.
+    // Sea detail sits beneath opaque country paint.
     layer("waves",{type:"background",paint:{"background-opacity":1}});
     layer("grid",{type:"line",source:PREFIX+"chart",maxzoom:6,filter:["==",["get","kind"],"grid"],paint:{"line-width":.65,"line-dasharray":[2,7],"line-opacity":["interpolate",["linear"],["zoom"],1,.13,4,.07,6,0]}});
     layer("routes",{type:"line",source:PREFIX+"chart",maxzoom:5,filter:["==",["get","kind"],"route"],layout:{"line-cap":"round","line-join":"round"},paint:{"line-width":1.1,"line-dasharray":[3,5],"line-opacity":["interpolate",["linear"],["zoom"],1,.3,3,.2,5,0]}});
-    layer("coast-halo",{type:"line",source:PREFIX+"coast",layout:{"line-cap":"butt","line-join":"round"},paint:{"line-width":["interpolate",["linear"],["zoom"],1,9,5,17],"line-opacity":["interpolate",["linear"],["zoom"],1,["case",["==",["get","size"],"large"],.18,0],3,["case",["==",["get","size"],"large"],.18,.06],5,.18],"line-blur":2}});
     layer("paper",{type:"fill",source:COUNTRY_SOURCE,paint:{"fill-opacity":1}},OUTLINE_LAYER);
-    layer("illustrations",{type:"symbol",source:PREFIX+"illustrations",minzoom:1.2,maxzoom:6,layout:{"icon-size":["interpolate",["linear"],["zoom"],1,.38,3,.6,5,.75],"icon-padding":8,"icon-anchor":"center"},paint:{"icon-opacity":["interpolate",["linear"],["zoom"],1,.75,3,.72,4,.4,6,0]}},LABEL_LAYER);
+    const illustrationLayout = {"icon-size":["interpolate",["linear"],["zoom"],0,.26,1,.38,3,.6,5,.75],"icon-padding":2,"icon-anchor":"center","icon-allow-overlap":true,"icon-ignore-placement":true};
+    const waterArtwork = ["in",["get","kind"],["literal",["ship","sea-monster"]]];
+    layer("illustrations",{type:"symbol",source:PREFIX+"illustrations",filter:waterArtwork,layout:illustrationLayout,paint:{"icon-opacity":1}},LABEL_LAYER);
+    layer("land-illustrations",{type:"symbol",source:PREFIX+"illustrations",minzoom:3.2,maxzoom:6.5,filter:["!",waterArtwork],layout:illustrationLayout,paint:{"icon-opacity":["interpolate",["linear"],["zoom"],3.2,0,3.8,1,5.3,1,6.5,0]}},LABEL_LAYER);
     layer("ocean-names",{type:"symbol",source:PREFIX+"oceans",maxzoom:5,layout:{"text-field":["get","name"],"text-font":["Noto Sans Regular"],"text-size":["interpolate",["linear"],["zoom"],1,11,3,16],"text-letter-spacing":.22,"text-max-width":20},paint:{"text-opacity":["interpolate",["linear"],["zoom"],1,.65,3,.6,5,0]}},LABEL_LAYER);
 }
 
@@ -387,28 +494,57 @@ export function updateAdventure(controller, active, palette = adventurePalette()
     const {map} = controller;
     controller.page.dataset.mapType = controller.preferences.mapType;
     controller.container.setAttribute("aria-label", active ? "Interactive adventure world map" : "Interactive world map");
-    for (const name of ["waves","grid","routes","coast-halo","paper","illustrations","ocean-names"]) {
+    for (const name of ["waves","grid","routes","paper","illustrations","land-illustrations","ocean-names"]) {
         const id = PREFIX+name;
         if (!map.getLayer(id)) continue;
         const visible = active && (name !== "ocean-names" || controller.preferences.countryNames);
         if (map.getLayoutProperty(id,"visibility") !== (visible ? "visible" : "none")) map.setLayoutProperty(id,"visibility",visible ? "visible" : "none");
     }
-    if (!active) return;
+    if (!active) { updateAdventureMarkers(controller,false,palette); return; }
     if (controller.adventurePaintKey !== palette.name || !map.hasImage(PREFIX+"paper-"+palette.name)) {
         controller.adventurePaintKey = palette.name;
-        for (const [name, painter] of Object.entries({paper,waves,mountain,forest,ship,desert,grove,"snow-mountain": palette => mountain(palette,true),"sea-monster":seaMonster,dragon})) {
+        controller.adventureImages ||= new Map();
+        for (const [name, painter] of Object.entries({paper,waves,mountain,forest,ship,desert,grove,volcano,tornado,"snow-mountain": palette => mountain(palette,true),"sea-monster":seaMonster,dragon,unicorn,golem,"spirit-fox":spiritFox,"favorite-heart":fantasyHeart})) {
             const id = PREFIX+name+"-"+palette.name;
-            if (!map.hasImage(id)) map.addImage(id,painter(palette),{pixelRatio:2});
+            if (!map.hasImage(id)) {
+                const image = controller.adventureImages.get(id) || painter(palette);
+                controller.adventureImages.set(id,image);
+                map.addImage(id,image,{pixelRatio:2});
+            }
         }
         map.setPaintProperty(PREFIX+"waves","background-pattern",PREFIX+"waves-"+palette.name);
         map.setPaintProperty(PREFIX+"paper","fill-pattern",PREFIX+"paper-"+palette.name);
         map.setLayoutProperty(PREFIX+"illustrations","icon-image",["concat",PREFIX,["get","kind"],"-"+palette.name]);
-        for (const name of ["grid","routes","coast-halo"]) map.setPaintProperty(PREFIX+name,"line-color",name === "coast-halo" ? palette.shadow : palette.ink);
+        map.setLayoutProperty(PREFIX+"land-illustrations","icon-image",["concat",PREFIX,["get","kind"],"-"+palette.name]);
+        for (const name of ["grid","routes"]) map.setPaintProperty(PREFIX+name,"line-color",palette.ink);
         map.setPaintProperty(PREFIX+"ocean-names","text-color",palette.ink);
         map.setPaintProperty(PREFIX+"ocean-names","text-halo-color",palette.sea);
         map.setPaintProperty(PREFIX+"ocean-names","text-halo-width",1);
     }
+    updateAdventureMarkers(controller,true,palette);
     const canvas = controller.page.querySelector("[data-adventure-compass]");
     const key = `${palette.name}:${map.getBearing()}`;
     if (canvas.dataset.paintKey !== key) { compass(canvas,palette,map.getBearing()); canvas.dataset.paintKey = key; }
+}
+
+function updateAdventureMarkers(controller, active, palette) {
+    const {map} = controller;
+    const favoriteLayer = "world-journal-country-favorites";
+    const markerKey = active ? palette.name : "standard";
+    if (controller.adventureMarkerKey === markerKey) return;
+    controller.adventureMarkerKey = markerKey;
+    if (map.getLayer(favoriteLayer)) {
+        const image = active ? PREFIX+"favorite-heart-"+palette.name : "world-journal-favorite-heart";
+        if (map.hasImage(image)) map.setLayoutProperty(favoriteLayer,"icon-image",image);
+        // Clear the label's upper half and the heart's visible lower half,
+        // leaving about two pixels of space. Keep one position at every zoom.
+        // Offsets use unscaled icon pixels (icon-size is .9).
+        const labelOffset = fontSize => ["case",
+            [">=",["get","label_rows"],4],["literal",[0,-(4*fontSize*.6+6)/.9]],
+            [">=",["get","label_rows"],3],["literal",[0,-(3*fontSize*.6+6)/.9]],
+            [">=",["get","label_rows"],2],["literal",[0,-(2*fontSize*.6+6)/.9]],
+            ["literal",[0,-(fontSize*.6+6)/.9]]];
+        map.setLayoutProperty(favoriteLayer,"icon-anchor","center");
+        map.setLayoutProperty(favoriteLayer,"icon-offset",labelOffset(active ? 16 : 14));
+    }
 }

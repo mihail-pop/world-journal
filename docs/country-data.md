@@ -27,6 +27,10 @@ The script uses optional, pinned Shapely/NumPy maintainer dependencies for geome
 - `data/countries.json`
 - `static/data/countries.geojson`
 
+After regenerating country geometry, also regenerate Adventure's derived
+color asset with `.\.venv\Scripts\python.exe tools\build_adventure_data.py`.
+See [Adventure](adventure-map.md) for the precomputed hues and provenance.
+
 Generation fails unless it produces exactly 238 unique ISO-backed metadata and geometry records with an exact join. Before simplification, GEOS repairs invalid polygon structure already present in the pinned source: a self-crossing ring in Egypt and touching/overlapping same-country parts after merging Brazil/Kazakhstan records. It refuses to export source polygons still invalid after repair, mismatched source edges, invalid simplified/rounded coverage, missing countries, or removed island components. Country names, ISO identities, bounds, centroids, microstate hit targets and the source's territorial policy remain unchanged. This addresses gaps/overlaps introduced by independent simplification; it does not align the geometry to the separate external basemap or fill deliberately excluded territories.
 
 The regenerated browser asset contains 141,626 coordinate points and is 2,683,598 bytes, versus 148,304 points and 2,807,966 bytes previously (about 4.5% fewer points and 4.4% smaller). No simplification runs in the browser. Browser performance and visual acceptance remain manual checks, not measured results. After Ctrl+F5, inspect shared borders at several zoom levels (especially the locations where seams were visible), enclaves such as Lesotho, islands/microstates, hover/selection and presets. A separate provider's coastlines/boundaries can still differ, and deliberately excluded territories remain unfilled.
