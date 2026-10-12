@@ -1,9 +1,19 @@
 import json
 
+import httpx
 from django.conf import settings
 from django.contrib.messages import get_messages
-from django.http import HttpRequest, HttpResponse
+from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import render
+
+from config.version import (
+    APP_VERSION,
+    CURRENT_RELEASE_URL,
+    DISCUSSIONS_URL,
+    ISSUES_URL,
+    LATEST_RELEASE_API_URL,
+    RELEASES_URL,
+)
 
 
 def render_page(request: HttpRequest, page: str, *, page_template: str | None = None, context: dict | None = None) -> HttpResponse:
@@ -43,5 +53,48 @@ def journal_page(request: HttpRequest) -> HttpResponse:
 
 def settings_page(request: HttpRequest) -> HttpResponse:
     if request.GET.get("section") == "information":
-        return render_page(request, "settings", page_template="core/partials/information.html")
+        return render_page(
+            request,
+            "settings",
+            page_template="core/partials/information.html",
+            context={
+                "app_version": APP_VERSION,
+                "current_release_url": CURRENT_RELEASE_URL,
+                "releases_url": RELEASES_URL,
+                "issues_url": ISSUES_URL,
+                "discussions_url": DISCUSSIONS_URL,
+            },
+        )
     return render_page(request, "settings")
+
+
+def version_info(request: HttpRequest) -> JsonResponse:
+    try:
+        response = httpx.get(
+            LATEST_RELEASE_API_URL,
+            headers={"Accept": "application/vnd.github+json", "User-Agent": settings.NEWS_USER_AGENT},
+            timeout=5,
+        )
+        response.raise_for_status()
+        release = response.json()
+        latest_version = str(release.get("tag_name") or "").strip()
+        if not latest_version:
+            raise ValueError("The latest GitHub release has no tag")
+        latest_url = str(release.get("html_url") or f"{RELEASES_URL}/tag/{latest_version}")
+        return JsonResponse({
+            "current_version": APP_VERSION,
+            "current_url": CURRENT_RELEASE_URL,
+            "latest_version": latest_version,
+            "latest_url": latest_url,
+            "releases_url": RELEASES_URL,
+            "is_latest": APP_VERSION.lstrip("v") == latest_version.lstrip("v"),
+        })
+    except (httpx.HTTPError, TypeError, ValueError):
+        return JsonResponse({
+            "current_version": APP_VERSION,
+            "current_url": CURRENT_RELEASE_URL,
+            "latest_version": None,
+            "latest_url": RELEASES_URL,
+            "releases_url": RELEASES_URL,
+            "is_latest": None,
+        })

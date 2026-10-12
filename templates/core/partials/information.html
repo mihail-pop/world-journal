@@ -3,6 +3,18 @@
     <div class="settings-grid">
         <section class="settings-card"><h2>{{ app_display_name }}</h2><dl class="compact-definition-list"><div><dt>Edition</dt><dd>Local</dd></div><div><dt>Storage</dt><dd>SQLite &amp; local images</dd></div></dl><p class="field-note">Journal content and source choices are shared. Appearance is saved per browser.</p></section>
         <section class="settings-card"><h2>Data &amp; sources</h2><div class="information-links"><a href="https://www.wikidata.org/" target="_blank" rel="noopener noreferrer"><strong>Country facts</strong><span>Wikidata · bundled snapshot</span>{% include 'core/partials/icon.html' with name='external' %}</a><a href="https://www.naturalearthdata.com/downloads/10m-cultural-vectors/10m-admin-0-countries/" target="_blank" rel="noopener noreferrer"><strong>Map boundaries</strong><span>Natural Earth v5.1.1 · de facto boundaries</span>{% include 'core/partials/icon.html' with name='external' %}</a><a href="{% url 'news:settings' %}" hx-boost="true" hx-target="#app-content" hx-push-url="true"><strong>News &amp; videos</strong><span>Public RSS and channel feeds</span>{% include 'core/partials/icon.html' with name='feed' %}</a></div></section>
-        <details class="settings-card settings-card-full information-details"><summary>Using your local copy</summary><p>Keep the server on localhost or a trusted network: this app has no accounts. Anyone with access can read and edit the shared journal.</p><p>News feeds show recent items, not a complete archive. Country figures come from a bundled snapshot.</p><p>Map and Journal resume when switching pages. Clicking the active header link returns to its main screen. Journal edits save about every minute; check the Saved indicator before closing the tab. Use Backup for a portable copy of saved research.</p></details>
+        <section class="settings-card" data-version-information data-version-info-url="{% url 'core:version_info' %}">
+            <h2>Version Information</h2>
+            <dl class="compact-definition-list">
+                <div><dt>Your Release</dt><dd><a href="{{ current_release_url }}" target="_blank" rel="noopener noreferrer">{{ app_version }}</a></dd></div>
+                <div><dt>Latest Release</dt><dd><a href="{{ releases_url }}" target="_blank" rel="noopener noreferrer" data-latest-release>Checking...</a></dd></div>
+            </dl>
+            <p class="version-status"><a href="{{ releases_url }}" target="_blank" rel="noopener noreferrer" data-version-status>Checking for updates...</a></p>
+            <div class="information-links version-support-links">
+                <a href="{{ issues_url }}" target="_blank" rel="noopener noreferrer"><strong>Report an issue</strong><span>GitHub Issues</span>{% include 'core/partials/icon.html' with name='external' %}</a>
+                <a href="{{ discussions_url }}" target="_blank" rel="noopener noreferrer"><strong>Ask a question</strong><span>GitHub Discussions</span>{% include 'core/partials/icon.html' with name='external' %}</a>
+            </div>
+        </section>
+        <details class="settings-card settings-card-full information-details"><summary>Using your local copy</summary><p>Keep the server on localhost or a trusted network unless the optional login gate and suitable HTTPS access are configured. When login is disabled, anyone with access can read and edit the shared journal.</p><p>News feeds show recent items, not a complete archive. Country figures come from a bundled snapshot.</p><p>Map and Journal resume when switching pages. Clicking the active header link returns to its main screen. Journal edits save about every minute; check the Saved indicator before closing the tab. Use Backup for a portable copy of saved research.</p></details>
     </div>
 </section>

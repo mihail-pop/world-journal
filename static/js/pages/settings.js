@@ -8,6 +8,7 @@ import {
 
 let lifecycleRegistered = false;
 let activeController = null;
+let activeInformationController = null;
 
 async function loadCountries(url, signal) {
     const response = await fetch(url, { signal });
@@ -110,12 +111,45 @@ async function initializeSettingsPage() {
     }
 }
 
-export function cleanupSettingsPage() {
-    if (!activeController) {
-        return;
+async function initializeInformationPage() {
+    const page = document.querySelector('[data-page="settings"]');
+    const section = page?.querySelector("[data-version-information]");
+    if (!section || activeInformationController?.page === page) return;
+    activeInformationController?.abortController.abort();
+    const controller = {page, abortController: new AbortController()};
+    activeInformationController = controller;
+    const latest = section.querySelector("[data-latest-release]");
+    const status = section.querySelector("[data-version-status]");
+    try {
+        const response = await fetch(section.dataset.versionInfoUrl, {signal: controller.abortController.signal});
+        if (!response.ok) throw new Error(`Version information returned HTTP ${response.status}`);
+        const data = await response.json();
+        if (activeInformationController !== controller) return;
+        latest.textContent = data.latest_version || "Unable to check";
+        latest.href = data.latest_url;
+        status.href = data.latest_url;
+        status.textContent = data.is_latest === true
+            ? "You have the latest version"
+            : data.is_latest === false ? "Update available" : "View releases";
+        status.classList.toggle("is-current", data.is_latest === true);
+        status.classList.toggle("is-update", data.is_latest === false);
+    } catch (error) {
+        if (error.name === "AbortError") return;
+        latest.textContent = "Unable to check";
+        status.textContent = "View releases";
+        console.error("World Journal version check failed", error);
     }
-    activeController.abortController.abort();
-    activeController = null;
+}
+
+export function cleanupSettingsPage() {
+    if (activeController) {
+        activeController.abortController.abort();
+        activeController = null;
+    }
+    if (activeInformationController) {
+        activeInformationController.abortController.abort();
+        activeInformationController = null;
+    }
 }
 
 export function registerSettingsPage() {
@@ -126,6 +160,7 @@ export function registerSettingsPage() {
     document.addEventListener("world-journal:page-ready", (event) => {
         if (event.detail.page === "settings") {
             initializeSettingsPage();
+            initializeInformationPage();
         }
     });
     document.addEventListener("world-journal:page-cleanup", cleanupSettingsPage);

@@ -152,6 +152,11 @@ details[open] > summary { margin-bottom: .9rem; color: var(--ui-text); }
 .compact-definition-list dd { margin: 0; text-align: right; }
 .information-links { display: grid; gap: .75rem; }
 .information-links a { display: flex; gap: .6rem; align-items: center; text-decoration: none; padding: .6rem 0; }
+.version-status { margin-bottom: .5rem; }
+.version-status a { color: var(--ui-muted); text-decoration: none; }
+.version-status a.is-current { color: #22c55e; }
+.version-status a.is-update { color: #f59e0b; }
+.version-support-links { border-top: 1px solid var(--ui-border); padding-top: .35rem; }
 .settings-help { padding: .5rem 0 1rem; color: var(--ui-muted); max-width: 52rem; }
 .settings-help p, .information-details p { font-size: .95rem; }
 .source-preferences-form { margin-top: 0; justify-content: space-between; }

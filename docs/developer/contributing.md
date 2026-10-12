@@ -98,6 +98,12 @@ python -m mkdocs gh-deploy
 
 That command builds the site and writes the generated files to the `gh-pages` branch. Do not commit the local `site/` build directory.
 
+## Preparing a Release
+
+Release information is maintained in `config/version.py`. Before publishing a release, update `APP_VERSION` to the new tag. The Information page uses that value for **Your Release** and checks the configured GitHub repository for **Latest Release**.
+
+`REPOSITORY_URL` and `LATEST_RELEASE_API_URL` in the same file contain the repository placeholders. Update them if the final GitHub owner or repository name changes.
+
 ## Pull Requests
 
 Keep a pull request focused on one problem. Explain what changed, mention any migrations or generated assets and include the manual checks that matter for the affected workflow.
