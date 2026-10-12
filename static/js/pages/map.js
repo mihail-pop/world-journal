@@ -535,7 +535,7 @@ function renderSelection(controller, code, { fit = true, focusDrawer = false } =
     selectCountrySection(controller, "articles");
     const flagImage = controller.page.querySelector("[data-country-flag]");
     const flagFallback = controller.page.querySelector("[data-country-flag-fallback]");
-    flagImage.parentElement.hidden = Boolean(country.is_custom);
+    flagImage.parentElement.hidden = false;
     flagFallback.textContent = country.flag;
     flagFallback.hidden = false;
     flagImage.hidden = true;
