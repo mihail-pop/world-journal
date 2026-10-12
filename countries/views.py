@@ -2,13 +2,12 @@ from decimal import Decimal
 import unicodedata
 from urllib.parse import urlencode
 
-from django.conf import settings
-from django.http import FileResponse, Http404, HttpRequest, HttpResponse
+from django.http import Http404, HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, render
 from django.template.loader import render_to_string
 from django.urls import reverse
 from django.utils.safestring import mark_safe
-from django.views.decorators.cache import cache_control
+from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_http_methods
 
 from core.views import render_page
@@ -44,6 +43,7 @@ def index(request):
     for code, metadata in catalog.items():
         record = snapshot.get(code, {})
         row = {key: metadata[key] for key in ("iso_a2", "iso_a3", "name", "flag", "region", "subregion")}
+        row["is_custom"] = metadata.get("is_custom", False)
         row["favorite"] = code in favorites
         for field in ("population", "area"):
             values = quantity_values(record, field)
@@ -84,12 +84,18 @@ def index(request):
     })
 
 
-@cache_control(public=True, max_age=86400)
+@never_cache
 def country_metadata(request: HttpRequest) -> HttpResponse:
-    return FileResponse(
-        (settings.BASE_DIR / "data" / "countries.json").open("rb"),
-        content_type="application/json",
-    )
+    catalog, source = bundled_catalog()
+    snapshot = local_snapshot()["countries"]
+    for code, row in catalog.items():
+        if not row.get("is_custom"):
+            continue
+        for field in ("population", "area"):
+            values = quantity_values(snapshot.get(code, {}), field)
+            row[field] = float(Decimal(values[0]["amount"])) if values else None
+            row[field + "_display"] = values[0]["display"] if values else ""
+    return JsonResponse({"schema_version": 1, "source": source, "countries": list(catalog.values())})
 
 
 @require_http_methods(["GET"])

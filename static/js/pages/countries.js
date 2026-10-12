@@ -33,7 +33,8 @@ function countryRow(state, country, favorite) {
         const link = node.querySelector("a");
         link.dataset.directoryCountry = country.iso_a2;
         node.querySelector("[data-row-name]").textContent = country.name;
-        node.querySelector("img").src = `https://flagcdn.com/${country.iso_a2.toLowerCase()}.svg`;
+        node.querySelector(".directory-flag").hidden = Boolean(country.is_custom);
+        if (!country.is_custom) node.querySelector("img").src = `https://flagcdn.com/${country.iso_a2.toLowerCase()}.svg`;
         node.querySelector("[data-flag-fallback]").textContent = country.flag;
         state.rows.set(key,node);
     }
@@ -206,7 +207,9 @@ function select(state, code, tab = state.tab, {historyChange = true} = {}) {
         flag.hidden = false;
         flag.parentElement.querySelector("[data-flag-fallback]").hidden = true;
         flag.parentElement.querySelector("[data-flag-fallback]").textContent = country.flag;
-        flag.src = `https://flagcdn.com/${code.toLowerCase()}.svg`;
+        flag.parentElement.hidden = Boolean(country.is_custom);
+        if (country.is_custom) flag.removeAttribute("src");
+        else flag.src = `https://flagcdn.com/${code.toLowerCase()}.svg`;
         state.favoriteForm.action = state.page.dataset.favoriteUrlTemplate.replace("COUNTRY_CODE",code);
     }
     if (changed) {
@@ -339,6 +342,19 @@ function initialize() {
         }
         if (path.endsWith("/favorite/") || path.startsWith("/settings/backups/")) refreshFavorites(state);
     },{signal});
+    document.addEventListener("world-journal:country-metadata-changed", event => {
+        for (const country of event.detail.countries) {
+            const row = state.byCode.get(country.iso_a2);
+            if (row && country.is_custom) Object.assign(row, country);
+        }
+        for (const node of state.rows.values()) node.querySelector("[data-row-name]").textContent = state.byCode.get(node.querySelector("a").dataset.directoryCountry).name;
+        for (const key of state.cache.keys()) if (key.endsWith(":overview")) state.cache.delete(key);
+        if (state.tab === "overview") state.renderedKey = "";
+        if (alive(state)) {
+            select(state, state.code, state.tab, {historyChange:false});
+            if (state.tab === "overview") loadContent(state);
+        } else renderLists(state);
+    }, {signal});
     select(state,state.code,state.tab,{historyChange:false});
     refreshFavorites(state);
 }

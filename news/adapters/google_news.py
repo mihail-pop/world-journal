@@ -4,6 +4,11 @@ from news.types import NewsSource, SourceKind
 
 
 QUERY_OVERRIDES = {
+    "XI": '"Siachen Glacier" OR "Siachen"',
+    "XP": '"Southern Patagonian Ice Field"',
+    "XD": '"Dhekelia"',
+    "XA": '"Akrotiri" "Cyprus"',
+    "XG": '"Guantanamo Bay"',
     "CI": '"Ivory Coast" OR "Cote d\'Ivoire"',
     "CZ": '"Czech Republic" OR "Czechia"',
     "GE": '"Georgia" country',

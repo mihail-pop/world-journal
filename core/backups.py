@@ -20,13 +20,13 @@ from django.db import models, transaction
 from django.utils import timezone
 from PIL import Image
 
-from countries.models import Country, CountryFavorite, CountryProfile, MapPersonalState, MapPreset, PresetColorGroup, PresetCountry
+from countries.models import Country, CountryFavorite, CountryProfile, MapPersonalState, MapPreset, PresetColorGroup, PresetCountry, TerritoryDetails
 from journal.models import Attachment, Collection, Entry, EntrySection
 from news.models import CustomSource, NewsPreferences, SourcePreference
 
 
 FORMAT = "world-journal-backup"
-VERSION = 4
+VERSION = 5
 MANIFEST_LIMIT = 32 * 1024 * 1024
 RECORD_LIMIT = 100_000
 IMAGE_TYPES = {"image/jpeg": (".jpg", "JPEG"), "image/png": (".png", "PNG"), "image/webp": (".webp", "WEBP"), "image/gif": (".gif", "GIF")}
@@ -39,9 +39,11 @@ DATASETS = {
     "sections": EntrySection, "attachments": Attachment,
     "favorites": CountryFavorite, "preset_groups": PresetColorGroup, "preset_colors": PresetCountry,
     "country_profiles": CountryProfile, "custom_sources": CustomSource, "source_preferences": SourcePreference,
+    "territory_details": TerritoryDetails,
     "news_preferences": NewsPreferences, "map_state": MapPersonalState,
 }
 LABELS = {
+    "territory_details": "Custom territory details",
     "collections": "Collections", "presets": "Map presets", "entries": "Journal entries",
     "sections": "Subsections", "attachments": "Images", "favorites": "Country favorites",
     "preset_colors": "Preset country colors", "country_profiles": "Country overview notes",
@@ -55,6 +57,7 @@ LABELS = {
 # Version 2 adds preset_groups; all version 1 datasets remain unchanged.
 # Version 3 adds custom_sources; older archives import with no custom sources.
 # Version 4 adds parent_id for grouped custom article feeds.
+# Version 5 adds user-edited custom territory details.
 # New backup versions must retain a reader for older archive versions.
 CONTENT_FIELDS = "title body body_format entry_type source_url source_name source_published_at youtube_video_id youtube_start_seconds"
 SCHEMA_FIELDS = {
@@ -67,6 +70,7 @@ SCHEMA_FIELDS = {
     PresetCountry: "preset_id country_id color",
     PresetColorGroup: "id preset_id color title position",
     CountryProfile: "country_id entry_id updated_at",
+    TerritoryDetails: "country_id name population area capital languages currency government notes updated_at",
     SourcePreference: "source_id enabled updated_at",
     NewsPreferences: "id freshness_minutes updated_at",
     MapPersonalState: "id active_preset_id",
@@ -151,16 +155,18 @@ def _read_archive(archive):
     if total > settings.BACKUP_MAX_BYTES:
         raise BackupError("The expanded backup exceeds the configured size limit.")
     manifest = json.loads(archive.read("manifest.json"))
-    if not isinstance(manifest, dict) or manifest.get("format") != FORMAT or type(manifest.get("version")) is not int or manifest["version"] not in {1, 2, 3, VERSION}:
-        raise BackupError("Unsupported backup format or version. Use a World Journal version 1–4 archive.")
+    if not isinstance(manifest, dict) or manifest.get("format") != FORMAT or type(manifest.get("version")) is not int or manifest["version"] not in {1, 2, 3, 4, VERSION}:
+        raise BackupError("Unsupported backup format or version. Use a World Journal version 1–5 archive.")
     records, media = manifest.get("records"), manifest.get("media")
-    expected_datasets = set(DATASETS) - ({"preset_groups"} if manifest["version"] == 1 else set()) - ({"custom_sources"} if manifest["version"] < 3 else set())
+    expected_datasets = set(DATASETS) - ({"preset_groups"} if manifest["version"] == 1 else set()) - ({"custom_sources"} if manifest["version"] < 3 else set()) - ({"territory_details"} if manifest["version"] < 5 else set())
     if not isinstance(records, dict) or set(records) != expected_datasets or not isinstance(media, dict):
         raise BackupError("The backup manifest has missing or unrecognized datasets.")
     if manifest["version"] == 1:
         records["preset_groups"] = []
     if manifest["version"] < 3:
         records["custom_sources"] = []
+    if manifest["version"] < 5:
+        records["territory_details"] = []
     if set(names) != {"manifest.json", *media}:
         raise BackupError("The attachment list does not match the files in the archive.")
     if any(not isinstance(items, list) for items in records.values()) or sum(map(len, records.values())) > RECORD_LIMIT:

@@ -535,6 +535,7 @@ function renderSelection(controller, code, { fit = true, focusDrawer = false } =
     selectCountrySection(controller, "articles");
     const flagImage = controller.page.querySelector("[data-country-flag]");
     const flagFallback = controller.page.querySelector("[data-country-flag-fallback]");
+    flagImage.parentElement.hidden = Boolean(country.is_custom);
     flagFallback.textContent = country.flag;
     flagFallback.hidden = false;
     flagImage.hidden = true;
@@ -546,7 +547,10 @@ function renderSelection(controller, code, { fit = true, focusDrawer = false } =
         flagImage.hidden = true;
         flagFallback.hidden = false;
     };
-    flagImage.src = `https://flagcdn.com/${country.iso_a2.toLowerCase()}.svg`;
+    if (country.is_custom) {
+        flagImage.onload = flagImage.onerror = null;
+        flagImage.removeAttribute("src");
+    } else flagImage.src = `https://flagcdn.com/${country.iso_a2.toLowerCase()}.svg`;
     controller.page.querySelector("[data-country-name]").textContent = country.name;
     controller.page.querySelector("[data-country-journal-link]").href = `/journal/?country=${encodeURIComponent(code)}`;
     controller.page.querySelector("[data-country-region]").textContent = country.region;
@@ -1282,6 +1286,22 @@ async function initializeMapPage() {
         if (path.startsWith("/journal/") || path.startsWith("/countries/") || path.startsWith("/settings/backups/")) controller.notesDirty = true;
         if (path.startsWith("/settings/news/") || path.startsWith("/settings/backups/")) controller.feedsDirty = true;
         if (path.startsWith("/countries/") || path.startsWith("/map-presets/") || path.startsWith("/settings/backups/")) controller.personalDirty = true;
+    }, {signal: abortController.signal});
+    document.addEventListener("world-journal:country-metadata-changed", event => {
+        if (!controller.countriesByCode) return;
+        for (const country of event.detail.countries) {
+            if (country.is_custom && controller.countryCodes.has(country.iso_a2)) controller.countriesByCode.set(country.iso_a2, country);
+        }
+        controller.centroids = createCentroids([...controller.countriesByCode.values()]);
+        controller.map?.getSource(CENTROID_SOURCE_ID)?.setData(controller.centroids);
+        const country = controller.countriesByCode.get(controller.selectedCode);
+        if (country?.is_custom) {
+            controller.page.querySelector("[data-country-name]").textContent = country.name;
+            factsSelectionChanged(controller);
+            if (!controller.suspended && controller.page.querySelector('[data-country-section="overview"]').getAttribute("aria-selected") === "true") loadCountryOverview(controller);
+        }
+        if (controller.personal) loadPersonalData(controller);
+        if (controller.mapReady) updateHomeControls(controller);
     }, {signal: abortController.signal});
 
     try {

@@ -80,20 +80,29 @@ def validate_country_data(metadata: dict, geometry: dict) -> None:
     if metadata.get("schema_version") != 1 or not isinstance(metadata.get("source"), dict):
         raise CountryDataError("Country metadata has an unsupported or missing schema")
     countries = metadata.get("countries")
-    if not isinstance(countries, list) or len(countries) != EXPECTED_COUNTRY_COUNT:
-        raise CountryDataError(f"Country metadata must contain {EXPECTED_COUNTRY_COUNT} countries")
+    definitions = _read_json(settings.BASE_DIR / "data" / "custom_territories.json")["territories"]
+    custom_codes = {row["code"] for row in definitions}
+    custom_definitions = {row["code"]: row for row in definitions}
+    if not isinstance(countries, list) or len(countries) != EXPECTED_COUNTRY_COUNT + len(custom_codes):
+        raise CountryDataError(f"Country metadata must contain {EXPECTED_COUNTRY_COUNT} ISO countries and {len(custom_codes)} custom territories")
 
     metadata_codes = []
     for index, country in enumerate(countries):
-        if not isinstance(country, dict) or set(country) != COUNTRY_FIELDS:
+        custom = isinstance(country, dict) and country.get("is_custom") is True
+        fields = COUNTRY_FIELDS | {"is_custom", "source_id", "qid"} if custom else COUNTRY_FIELDS
+        if not isinstance(country, dict) or set(country) != fields:
             raise CountryDataError(f"Country metadata item {index} has invalid fields")
         alpha_2 = country["iso_a2"]
         alpha_3 = country["iso_a3"]
         if not isinstance(alpha_2, str) or not ALPHA_2_PATTERN.fullmatch(alpha_2):
             raise CountryDataError(f"Country metadata item {index} has invalid ISO alpha-2")
-        if not isinstance(alpha_3, str) or not ALPHA_3_PATTERN.fullmatch(alpha_3):
+        if custom and (alpha_2 not in custom_codes or alpha_3 != "" or country["flag"] != ""):
+            raise CountryDataError(f"Custom territory {alpha_2} must not claim an ISO identity or flag")
+        if custom and (country["source_id"] != custom_definitions[alpha_2]["ne_id"] or country["qid"] != custom_definitions[alpha_2]["qid"]):
+            raise CountryDataError(f"Custom territory {alpha_2} does not match its reviewed source identity")
+        if not custom and (alpha_2 in custom_codes or not isinstance(alpha_3, str) or not ALPHA_3_PATTERN.fullmatch(alpha_3)):
             raise CountryDataError(f"Country {alpha_2} has invalid ISO alpha-3")
-        if not all(isinstance(country[field], str) and country[field] for field in ("name", "region", "subregion", "flag")):
+        if not all(isinstance(country[field], str) and country[field] for field in (("name", "region", "subregion") if custom else ("name", "region", "subregion", "flag"))):
             raise CountryDataError(f"Country {alpha_2} has invalid identity text")
         if not _valid_position(country["centroid"]):
             raise CountryDataError(f"Country {alpha_2} has an invalid centroid")
@@ -114,6 +123,8 @@ def validate_country_data(metadata: dict, geometry: dict) -> None:
 
     if len(metadata_codes) != len(set(metadata_codes)):
         raise CountryDataError("Country metadata ISO alpha-2 codes must be unique")
+    if {row["iso_a2"] for row in countries if row.get("is_custom")} != custom_codes:
+        raise CountryDataError("Custom territory catalog does not match the reviewed definitions")
     if not {"VA", "MC", "NR"}.issubset(
         {country["iso_a2"] for country in countries if country["small"]}
     ):

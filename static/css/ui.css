@@ -801,3 +801,6 @@ html::-webkit-scrollbar-thumb { background: var(--ui-border); border: 3px solid 
 .preset-summary-group summary { cursor: pointer; overflow-wrap: anywhere; }
 .preset-summary-group summary i { display: inline-block; vertical-align: -.1em; margin-right: .35rem; }
 .preset-summary-group p { max-width: 32rem; padding: .5rem 0; margin: 0; font-size: .95rem; color: var(--ui-muted); overflow-wrap: anywhere; }
+.custom-territory-notice { display: flex; align-items: center; justify-content: space-between; gap: .75rem; margin-bottom: .5rem; }
+.custom-territory-notice > span { padding: .25rem .6rem; border: 1px solid var(--ui-border); border-radius: 999px; color: var(--ui-muted); font-size: .9rem; }
+.custom-territory-notes { margin-top: 1rem; line-height: 1.6; overflow-wrap: anywhere; }

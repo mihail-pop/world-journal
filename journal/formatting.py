@@ -98,11 +98,15 @@ def normalize_name(value):
 def country_aliases():
     metadata = json.loads((settings.BASE_DIR / "data/countries.json").read_text(encoding="utf-8"))
     config = json.loads(settings.NEWS_COUNTRY_ALIASES_PATH.read_text(encoding="utf-8"))
+    from countries.models import Country
+    local_names = dict(Country.objects.filter(is_custom=True).values_list("pk", "name"))
     aliases = {}
     for country in metadata["countries"]:
         code = country["iso_a2"]
         # Explicit [[...]] references allow names that are ambiguous in ordinary news.
         names = [country["name"], code, *config["countries"].get(code, {}).get("name_aliases", [])]
+        if code in local_names:
+            names.append(local_names[code])
         for name in names:
             key = normalize_name(name)
             aliases.setdefault(key, set()).add(code)

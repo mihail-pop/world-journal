@@ -14,8 +14,8 @@ from journal.forms import default_collection
 from journal.models import Entry
 from journal.views import ConfirmationForm, navigate
 
-from .forms import ColorGroups, CountryProfileForm, DuplicatePresetForm, PresetForm
-from .models import Country, CountryFavorite, CountryProfile, MapPersonalState, MapPreset, PresetColorGroup, PresetCountry
+from .forms import ColorGroups, CountryProfileForm, DuplicatePresetForm, PresetForm, TerritoryDetailsForm
+from .models import Country, CountryFavorite, CountryProfile, MapPersonalState, MapPreset, PresetColorGroup, PresetCountry, TerritoryDetails
 
 
 def personal_snapshot():
@@ -30,6 +30,23 @@ def personal_snapshot():
         "default_color": active.default_color if active else "",
         "colors": dict(active.country_colors.values_list("country_id", "color")) if active else {},
     }
+
+
+@require_http_methods(["GET", "POST"])
+def territory_edit(request, iso2):
+    country = get_object_or_404(Country, pk=iso2.upper(), is_custom=True)
+    details = TerritoryDetails.objects.filter(country=country).first() or TerritoryDetails(country=country, name=country.name)
+    form = TerritoryDetailsForm(request.POST if request.method == "POST" else None, instance=details)
+    origin = request.POST.get("origin") or request.GET.get("origin")
+    if origin not in {"map", "countries"}:
+        from urllib.parse import urlsplit
+        origin = "map" if urlsplit(request.headers.get("HX-Current-URL", "")).path == "/" else "countries"
+    cancel_url = reverse("core:map") + f"?country={country.pk}&section=overview" if origin == "map" else reverse("countries:index") + f"?country={country.pk}&tab=overview"
+    if request.method == "POST" and form.is_valid():
+        form.save()
+        messages.success(request, "Territory details saved.")
+        return navigate(request, cancel_url)
+    return render_page(request, "settings", page_template="countries/territory_edit.html", context={"form":form, "country":country, "origin":origin, "cancel_url":cancel_url})
 
 
 @never_cache
@@ -100,7 +117,7 @@ def preset_edit(request, pk=None):
     adding = request.method == "POST" and request.POST.get("action") == "add_group"
     if adding:
         try:
-            rows["colors-TOTAL_FORMS"] = str(min(238, max(0, int(rows.get("colors-TOTAL_FORMS", "0"))) + 1))
+            rows["colors-TOTAL_FORMS"] = str(min(252, max(0, int(rows.get("colors-TOTAL_FORMS", "0"))) + 1))
         except ValueError:
             pass
     colors = ColorGroups(rows, initial=preset_groups(preset), prefix="colors")
@@ -122,7 +139,7 @@ def preset_data(request, pk=None):
     if request.method == "POST":
         try:
             payload = json.loads(request.body)
-            if not isinstance(payload, dict) or not isinstance(payload.get("groups"), list) or len(payload["groups"]) > 238:
+            if not isinstance(payload, dict) or not isinstance(payload.get("groups"), list) or len(payload["groups"]) > 252:
                 raise ValueError
             if not all(isinstance(payload.get(key, ""), str) for key in ("name", "description", "default_color", "updated_at")):
                 raise ValueError
@@ -131,7 +148,7 @@ def preset_data(request, pk=None):
             for index, group in enumerate(payload["groups"]):
                 if not isinstance(group, dict) or not isinstance(group.get("countries"), list):
                     raise ValueError
-                if not isinstance(group.get("color", ""), str) or not isinstance(group.get("title", ""), str) or len(group["countries"]) > 238 or not all(isinstance(code, str) for code in group["countries"]):
+                if not isinstance(group.get("color", ""), str) or not isinstance(group.get("title", ""), str) or len(group["countries"]) > 252 or not all(isinstance(code, str) for code in group["countries"]):
                     raise ValueError
                 rows[f"colors-{index}-color"] = group.get("color", "")
                 rows[f"colors-{index}-title"] = group.get("title", "")

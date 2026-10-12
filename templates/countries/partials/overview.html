@@ -1,4 +1,5 @@
 <div class="country-overview" data-country-overview-result="{{ facts.country.iso_a2 }}" hx-boost="true" hx-target="#app-content" hx-push-url="true">
+    {% if facts.country.is_custom %}<div class="custom-territory-notice"><span>Custom territory</span><a class="journal-button" href="{% url 'countries:territory_edit' facts.country.iso_a2 %}">{% include 'core/partials/icon.html' with name='edit' %} Edit details</a></div><p class="field-note">Local map entry using Natural Earth boundaries.</p>{% endif %}
     {% if facts.population or facts.area %}<div class="country-stat-grid">
         {% if facts.population %}<div class="country-stat"><span>Population</span>{% for item in facts.population %}<strong>{{ item.display }}</strong>{% endfor %}{% if facts.population|length > 1 %}<small>Multiple source figures</small>{% endif %}</div>{% endif %}
         {% if facts.area %}<div class="country-stat"><span>Surface area</span>{% for item in facts.area %}<strong>{{ item.display }} <small>km²</small></strong>{% endfor %}{% if facts.area|length > 1 %}<small>Multiple source definitions</small>{% endif %}</div>{% endif %}
@@ -11,6 +12,7 @@
         {% if facts.ethnic_groups %}<div class="country-fact-breakdown"><dt>Ethnic groups</dt><dd>{% include 'countries/partials/demographics.html' with groups=facts.ethnic_groups %}</dd></div>{% endif %}
         {% if facts.religions %}<div class="country-fact-breakdown"><dt>Religion</dt><dd>{% include 'countries/partials/demographics.html' with groups=facts.religions %}</dd></div>{% endif %}
     </dl>
-    {% if not facts.identity_verified %}<p class="country-news-message">Country facts are unavailable: the source identity could not be verified.</p>{% endif %}
+    {% if facts.notes %}<p class="custom-territory-notes">{{ facts.notes|linebreaksbr }}</p>{% endif %}
+    {% if not facts.identity_verified and not facts.country.is_custom %}<p class="country-news-message">Country facts are unavailable: the source identity could not be verified.</p>{% endif %}
     {% if facts.wikipedia_url %}<a class="wikipedia-link" href="{{ facts.wikipedia_url }}" target="_blank" rel="noopener noreferrer">Read on Wikipedia {% include 'core/partials/icon.html' with name='external' %}</a>{% endif %}
 </div>

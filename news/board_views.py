@@ -7,10 +7,10 @@ from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_GET
 
 from core.views import render_page
+from countries.facts import bundled_catalog
 from news.preferences import effective_registry
 
 from .services.background import feed_warmer
-from .services.country_news import _countries_by_code
 from .services.world_news import CachedNews, news_url, page_options
 from .services.archive import revision
 
@@ -28,7 +28,7 @@ def index(request):
     options, board = _board(request)
     context = board.context()
     context.update({
-        "options": options, "countries": sorted(_countries_by_code().values(), key=lambda country: country["name"]),
+        "options": options, "countries": sorted(bundled_catalog()[0].values(), key=lambda country: country["name"]),
         "results_query": urlencode({key: options[key] for key in ("tab", "source", "country", "period", "sort", "page")}),
         "articles_url": news_url(options, tab="articles", source="all", sort="top", page=1),
         "videos_url": news_url(options, tab="videos", source="all", sort="newest", page=1),

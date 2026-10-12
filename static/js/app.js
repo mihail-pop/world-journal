@@ -13,10 +13,12 @@ import { registerJournalBookmarks } from "./journal_bookmarks.js";
 import { initializeTheme } from "./theme.js";
 import { registerUiControls } from "./ui_controls.js";
 import { registerNotifications } from "./notifications.js";
+import { registerCountryMetadata } from "./country_metadata.js";
 
 function initializeApplication() {
     initializeTheme();
     registerNotifications();
+    registerCountryMetadata();
     registerUiControls();
     initializePlayer();
     registerJournalBookmarks();

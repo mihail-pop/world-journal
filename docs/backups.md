@@ -6,7 +6,7 @@ dependencies, accounts, or background service are needed.
 ## Portable export
 
 Download backup ZIP after saving open editors. The archive contains a UTF-8
-`manifest.json` identifying format `world-journal-backup`, version `4`, export
+`manifest.json` identifying format `world-journal-backup`, version `5`, export
 time, record datasets, and SHA-256 image checksums. Image files use generated
 archive paths under `media/`; original display filenames remain in metadata.
 
@@ -18,13 +18,16 @@ Included data:
 - Country favorites, map presets/colors, ordered group titles, the shared active preset, and country
   overview-to-journal links.
 - Shared source choices, refresh interval and custom RSS/YouTube sources.
+- Locally edited custom territory names, population, area, other facts and notes.
 
-Country identities, map geometry, facts, and built-in source definitions remain bundled
+Country identities, map geometry, bundled facts, and built-in source definitions remain bundled
 application configuration. They are not overwritten by an archive. Feed cache,
 rolling feed history, sessions, secrets, and browser preferences are excluded.
 Articles/videos explicitly saved to Journal are permanent backup data. Export explicitly fails
 when a referenced image is missing or has changed size rather than silently
 omitting it. Export uses temporary storage, which is closed after the download.
+
+Formats 1–4 remain importable; they supply no custom territory detail records.
 
 ## Preview and confirmation
 

@@ -3,7 +3,7 @@ from django.forms import BaseFormSet, formset_factory
 
 from journal.models import Entry
 
-from .models import Country, CountryProfile, MapPreset, validate_map_color
+from .models import Country, CountryProfile, MapPreset, TerritoryDetails, validate_map_color
 
 
 class PresetForm(forms.ModelForm):
@@ -59,7 +59,14 @@ class ColorGroupFormSet(BaseFormSet):
         return [{"color": group["color"], "title": " / ".join(group["titles"]), "countries": group["countries"]} for group in grouped.values()]
 
 
-ColorGroups = formset_factory(ColorGroupForm, formset=ColorGroupFormSet, extra=1, can_delete=True, max_num=238, validate_max=True, absolute_max=238)
+ColorGroups = formset_factory(ColorGroupForm, formset=ColorGroupFormSet, extra=1, can_delete=True, max_num=252, validate_max=True, absolute_max=252)
+
+
+class TerritoryDetailsForm(forms.ModelForm):
+    class Meta:
+        model = TerritoryDetails
+        fields = ("name", "population", "area", "capital", "languages", "currency", "government", "notes")
+        labels = {"area": "Surface area (km²)", "languages": "Languages", "capital": "Capital / administrative center"}
 
 
 class DuplicatePresetForm(forms.ModelForm):

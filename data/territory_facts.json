@@ -1,0 +1,241 @@
+{
+  "schema_version": 1,
+  "source": {
+    "name": "Wikidata",
+    "license": "CC0",
+    "retrieved_at": "2026-10-12T15:05:27.444539+00:00",
+    "identity_mapping_source": "Reviewed Kosovo, Northern Cyprus and Somaliland QIDs; no claim of ISO membership"
+  },
+  "countries": {
+    "XL": {
+      "qid": "Q34754",
+      "scope_note": "Figures refer to the named territory entity; map boundaries follow the bundled Natural Earth snapshot.",
+      "identity_verified": true,
+      "wikipedia_url": "https://en.wikipedia.org/wiki/Somaliland",
+      "population": [
+        {
+          "amount": "6500000",
+          "year": 2024,
+          "date": "2024-01-01T00:00:00Z",
+          "rank": 0,
+          "statement": "Q34754-12a892cc-45aa-9f80-3c24-515c64fff690",
+          "source_url": "https://www.wikidata.org/wiki/Q34754#P1082"
+        }
+      ],
+      "area": [
+        {
+          "amount": "177000",
+          "year": null,
+          "date": null,
+          "rank": 0,
+          "statement": "Q34754-7C09F545-9644-4AE9-AB40-56171F40F7EC",
+          "source_url": "https://www.wikidata.org/wiki/Q34754#P2046"
+        }
+      ],
+      "capitals": [
+        {
+          "id": "Q168652",
+          "name": "Hargeisa",
+          "rank": 0,
+          "scope": "",
+          "source_url": "https://www.wikidata.org/wiki/Q168652"
+        }
+      ],
+      "currencies": [
+        {
+          "id": "Q737384",
+          "name": "Somaliland shilling",
+          "rank": 1,
+          "scope": "",
+          "source_url": "https://www.wikidata.org/wiki/Q737384"
+        }
+      ],
+      "languages": [
+        {
+          "id": "Q13955",
+          "name": "Arabic",
+          "rank": 0,
+          "scope": "",
+          "source_url": "https://www.wikidata.org/wiki/Q13955"
+        },
+        {
+          "id": "Q1860",
+          "name": "English",
+          "rank": 0,
+          "scope": "",
+          "source_url": "https://www.wikidata.org/wiki/Q1860"
+        },
+        {
+          "id": "Q13275",
+          "name": "Somali",
+          "rank": 0,
+          "scope": "",
+          "source_url": "https://www.wikidata.org/wiki/Q13275"
+        }
+      ],
+      "government": [],
+      "ethnic_groups": [],
+      "religions": [],
+      "identity_method": "reviewed_non_iso_entity"
+    },
+    "XK": {
+      "qid": "Q1246",
+      "scope_note": "Figures refer to the named territory entity; map boundaries follow the bundled Natural Earth snapshot.",
+      "identity_verified": true,
+      "wikipedia_url": "https://en.wikipedia.org/wiki/Kosovo",
+      "population": [
+        {
+          "amount": "1586659",
+          "year": 2024,
+          "date": "2024-01-01T00:00:00Z",
+          "rank": 0,
+          "statement": "Q1246-8a50e67c-4d9d-c525-7d55-542c1f089e2a",
+          "source_url": "https://www.wikidata.org/wiki/Q1246#P1082"
+        }
+      ],
+      "area": [
+        {
+          "amount": "10909",
+          "year": null,
+          "date": null,
+          "rank": 0,
+          "statement": "Q1246-3C81A361-0DB2-4F05-8DAA-0404EFDBDCDF",
+          "source_url": "https://www.wikidata.org/wiki/Q1246#P2046"
+        }
+      ],
+      "capitals": [
+        {
+          "id": "Q25270",
+          "name": "Pristina",
+          "rank": 0,
+          "scope": "",
+          "source_url": "https://www.wikidata.org/wiki/Q25270"
+        }
+      ],
+      "currencies": [
+        {
+          "id": "Q4916",
+          "name": "euro",
+          "rank": 0,
+          "scope": "",
+          "source_url": "https://www.wikidata.org/wiki/Q4916"
+        }
+      ],
+      "languages": [
+        {
+          "id": "Q8748",
+          "name": "Albanian",
+          "rank": 0,
+          "scope": "",
+          "source_url": "https://www.wikidata.org/wiki/Q8748"
+        },
+        {
+          "id": "Q9299",
+          "name": "Serbian",
+          "rank": 0,
+          "scope": "",
+          "source_url": "https://www.wikidata.org/wiki/Q9299"
+        }
+      ],
+      "government": [
+        {
+          "id": "Q4198907",
+          "name": "parliamentary republic",
+          "rank": 0,
+          "scope": "",
+          "source_url": "https://www.wikidata.org/wiki/Q4198907",
+          "date": null,
+          "year": null,
+          "start_year": null,
+          "statement": "Q1246-e1f8f8f1-4ab7-c55f-0c45-4850264266da",
+          "statement_source_url": "https://www.wikidata.org/wiki/Q1246#P122"
+        }
+      ],
+      "ethnic_groups": [],
+      "religions": [],
+      "identity_method": "reviewed_non_iso_entity"
+    },
+    "XC": {
+      "qid": "Q23681",
+      "scope_note": "Figures refer to the named territory entity; map boundaries follow the bundled Natural Earth snapshot.",
+      "identity_verified": true,
+      "wikipedia_url": "https://en.wikipedia.org/wiki/Northern_Cyprus",
+      "population": [
+        {
+          "amount": "489308",
+          "year": 2024,
+          "date": "2024-01-01T00:00:00Z",
+          "rank": 1,
+          "statement": "Q23681-75bb106c-46d7-892b-f9eb-52e354dc3d62",
+          "source_url": "https://www.wikidata.org/wiki/Q23681#P1082"
+        }
+      ],
+      "area": [
+        {
+          "amount": "3355",
+          "year": null,
+          "date": null,
+          "rank": 0,
+          "statement": "Q23681-3ECEB352-E95A-4091-A5B0-9D65A7F2ACF0",
+          "source_url": "https://www.wikidata.org/wiki/Q23681#P2046"
+        }
+      ],
+      "capitals": [
+        {
+          "id": "Q2762100",
+          "name": "North Nicosia",
+          "rank": 0,
+          "scope": "",
+          "source_url": "https://www.wikidata.org/wiki/Q2762100"
+        }
+      ],
+      "currencies": [
+        {
+          "id": "Q172872",
+          "name": "Turkish lira",
+          "rank": 0,
+          "scope": "",
+          "source_url": "https://www.wikidata.org/wiki/Q172872"
+        }
+      ],
+      "languages": [
+        {
+          "id": "Q256",
+          "name": "Turkish",
+          "rank": 0,
+          "scope": "",
+          "source_url": "https://www.wikidata.org/wiki/Q256"
+        }
+      ],
+      "government": [
+        {
+          "id": "Q49890",
+          "name": "semi-presidential system",
+          "rank": 0,
+          "scope": "",
+          "source_url": "https://www.wikidata.org/wiki/Q49890",
+          "date": null,
+          "year": null,
+          "start_year": null,
+          "statement": "Q23681-fe1ae0cb-4389-89c0-93a3-a62e64df1330",
+          "statement_source_url": "https://www.wikidata.org/wiki/Q23681#P122"
+        },
+        {
+          "id": "Q179164",
+          "name": "unitary state",
+          "rank": 0,
+          "scope": "",
+          "source_url": "https://www.wikidata.org/wiki/Q179164",
+          "date": null,
+          "year": null,
+          "start_year": null,
+          "statement": "Q23681-6a847568-4e02-0b55-ff7c-de727fc97416",
+          "statement_source_url": "https://www.wikidata.org/wiki/Q23681#P122"
+        }
+      ],
+      "ethnic_groups": [],
+      "religions": [],
+      "identity_method": "reviewed_non_iso_entity"
+    }
+  }
+}

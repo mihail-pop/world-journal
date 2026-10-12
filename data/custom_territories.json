@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "territories": [
+    {"code":"XD","ne_id":"1159320709","adm0_a3":"ESB","name":"Dhekelia Sovereign Base Area","qid":"Q9206745"},
+    {"code":"XL","ne_id":"1159321259","adm0_a3":"SOL","name":"Somaliland","qid":"Q34754","facts_enabled":true},
+    {"code":"XK","ne_id":"1159321007","adm0_a3":"KOS","name":"Kosovo","qid":"Q1246","facts_enabled":true},
+    {"code":"XG","ne_id":"1159320529","adm0_a3":"USG","name":"Guantanamo Bay Naval Base","qid":"Q762570"},
+    {"code":"XC","ne_id":"1159320531","adm0_a3":"CYN","name":"Northern Cyprus","qid":"Q23681","facts_enabled":true},
+    {"code":"XU","ne_id":"1159320511","adm0_a3":"CNM","name":"United Nations Buffer Zone in Cyprus","qid":"Q116970"},
+    {"code":"XI","ne_id":"1159320963","adm0_a3":"KAS","name":"Siachen Glacier","qid":"Q333946"},
+    {"code":"XA","ne_id":"1159320741","adm0_a3":"WSB","name":"Akrotiri Sovereign Base Area","qid":"Q9143535"},
+    {"code":"XP","ne_id":"1729635141","adm0_a3":"SPI","name":"Southern Patagonian Ice Field (disputed section)","qid":"Q1031467"},
+    {"code":"XB","ne_id":"1729635091","adm0_a3":"BRT","name":"Bir Tawil","qid":"Q620634"},
+    {"code":"XV","ne_id":"1159321165","adm0_a3":"PGA","name":"Spratly Islands","qid":""},
+    {"code":"XN","ne_id":"1159320425","adm0_a3":"BJN","name":"Bajo Nuevo Bank","qid":"Q1257783"},
+    {"code":"XE","ne_id":"1159321245","adm0_a3":"SER","name":"Serranilla Bank","qid":"Q1169008"},
+    {"code":"XR","ne_id":"1159321227","adm0_a3":"SCR","name":"Scarborough Shoal","qid":"Q628716"}
+  ]
+}

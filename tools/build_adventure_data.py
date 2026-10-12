@@ -13,6 +13,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 SOURCE = ROOT / "static/data/countries.geojson"
 OUTPUT = ROOT / "static/data/adventure-map.json"
+COLOR_SEED = ROOT / "data/adventure-country-colors.json"
 
 
 def country_colors(features):
@@ -31,8 +32,11 @@ def country_colors(features):
     for owners in edges.values():
         for code in owners:
             neighbors[code].update(owners - {code})
-    colors = {}
+    seeds = json.loads(COLOR_SEED.read_text(encoding="utf-8")) if COLOR_SEED.exists() else {}
+    colors = {code: index for code, index in seeds.items() if code in neighbors}
     for code in sorted(neighbors, key=lambda value: (-len(neighbors[value]), value)):
+        if code in colors:
+            continue
         value = 2166136261
         for char in code:
             value = ((value ^ ord(char)) * 16777619) & 0xFFFFFFFF

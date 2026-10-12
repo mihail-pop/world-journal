@@ -44,11 +44,12 @@ EXPECTED_CAPITAL_EXCLUSIONS = {"1159149757", "1159151189"}
 # Coverage simplification uses triangle area, not the old per-ring distance
 # tolerance. This value keeps the browser asset near its prior point budget.
 SIMPLIFY_TOLERANCE = 0.03
-COORDINATE_PRECISION = 4
+COORDINATE_PRECISION = 5
 USER_AGENT = "world-journal-country-data-builder/1.0"
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 METADATA_PATH = PROJECT_ROOT / "data" / "countries.json"
 GEOMETRY_PATH = PROJECT_ROOT / "static" / "data" / "countries.geojson"
+CUSTOM_TERRITORIES_PATH = PROJECT_ROOT / "data" / "custom_territories.json"
 CAPITALS_PATH = PROJECT_ROOT / "static" / "data" / "capitals.geojson"
 
 
@@ -316,24 +317,26 @@ def build_outputs(
     grouped_polygons = defaultdict(list)
     grouped_points = defaultdict(list)
     exclusions = []
+    custom = json.loads(CUSTOM_TERRITORIES_PATH.read_text(encoding="utf-8"))["territories"]
+    by_source = {row["ne_id"]: row for row in custom}
+    by_code = {row["code"]: row for row in custom}
+    if len(by_source) != 14 or len(by_code) != 14 or any(len(code) != 2 or not code.startswith("X") for code in by_code):
+        raise ValueError("Custom territory identities must be 14 unique local X-prefixed keys")
     for record, rings in zip(records, shapes):
         if not is_iso_backed(record):
-            exclusions.append(
-                {
-                    "name": record["ADMIN"],
-                    "type": record["TYPE"],
-                    "adm0_a3": record["ADM0_A3"],
-                    "iso_a2_eh": record["ISO_A2_EH"],
-                    "reason": "No complete ISO 3166 alpha-2, alpha-3, and numeric identity",
-                }
-            )
-            continue
-        alpha_2 = record["ISO_A2_EH"]
+            definition = by_source.get(record["NE_ID"])
+            if not definition or definition["adm0_a3"] != record["ADM0_A3"]:
+                raise ValueError(f"Unreviewed non-ISO source record: {record['ADMIN']}")
+            alpha_2 = definition["code"]
+        else:
+            alpha_2 = record["ISO_A2_EH"]
+            if alpha_2 in by_code:
+                raise ValueError("A local territory key conflicts with an official ISO identity")
         grouped_records[alpha_2].append(record)
         grouped_polygons[alpha_2].extend(rings_to_polygons(rings))
         grouped_points[alpha_2].extend(point for ring in rings for point in ring)
 
-    if len(grouped_records) != EXPECTED_COUNTRIES:
+    if len(grouped_records) != EXPECTED_COUNTRIES + len(custom) or not set(by_code).issubset(grouped_records):
         raise ValueError(
             f"Expected {EXPECTED_COUNTRIES} unique ISO countries, got {len(grouped_records)}"
         )
@@ -349,8 +352,8 @@ def build_outputs(
         small = record["TINY"] != "-99"
         country = {
             "iso_a2": alpha_2,
-            "iso_a3": record["ISO_A3_EH"],
-            "name": record["NAME_EN"],
+            "iso_a3": "" if alpha_2 in by_code else record["ISO_A3_EH"],
+            "name": by_code[alpha_2]["name"] if alpha_2 in by_code else record["NAME_EN"],
             "region": record["REGION_UN"],
             "subregion": record["SUBREGION"],
             "centroid": [float(record["LABEL_X"]), float(record["LABEL_Y"])],
@@ -358,9 +361,11 @@ def build_outputs(
                 [round(west, COORDINATE_PRECISION), round(south, COORDINATE_PRECISION)],
                 [round(east, COORDINATE_PRECISION), round(north, COORDINATE_PRECISION)],
             ],
-            "flag": flag_for(alpha_2),
+            "flag": "" if alpha_2 in by_code else flag_for(alpha_2),
             "small": small,
         }
+        if alpha_2 in by_code:
+            country.update(is_custom=True, source_id=record["NE_ID"], qid=by_code[alpha_2]["qid"])
         countries.append(country)
         features.append(
             {
@@ -392,6 +397,15 @@ def build_outputs(
     }
     geometry = {"type": "FeatureCollection", "features": features}
     simplify_country_coverage(geometry)
+    # Some source label coordinates are offshore. A tiny territory's enlarged
+    # hit target belongs on its actual land, not on a nearby unrelated country.
+    from shapely.geometry import Point, shape
+    for country, feature in zip(countries, features):
+        if country.get("is_custom"):
+            polygon = shape(feature["geometry"])
+            if not polygon.covers(Point(country["centroid"])):
+                point = polygon.representative_point()
+                country["centroid"] = [round(point.x, COORDINATE_PRECISION), round(point.y, COORDINATE_PRECISION)]
     return metadata, geometry, exclusions
 
 
@@ -399,7 +413,7 @@ def validate_outputs(metadata: dict, geometry: dict) -> None:
     countries = metadata["countries"]
     metadata_codes = [country["iso_a2"] for country in countries]
     geometry_codes = [feature["properties"]["iso_a2"] for feature in geometry["features"]]
-    if len(metadata_codes) != EXPECTED_COUNTRIES:
+    if sum(not country.get("is_custom", False) for country in countries) != EXPECTED_COUNTRIES or sum(bool(country.get("is_custom")) for country in countries) != 14:
         raise ValueError(f"Expected {EXPECTED_COUNTRIES} metadata countries")
     if len(metadata_codes) != len(set(metadata_codes)):
         raise ValueError("Country metadata contains duplicate ISO alpha-2 codes")

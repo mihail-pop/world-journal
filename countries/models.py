@@ -1,14 +1,16 @@
 import uuid
 
-from django.core.validators import RegexValidator
-from django.db import models
+from django.core.exceptions import ValidationError
+from django.core.validators import MinValueValidator, MaxValueValidator, RegexValidator
+from django.db import models, transaction
 
 
 class Country(models.Model):
-    """Stable journal identity; map geometry and metadata remain in bundled JSON."""
+    """Stable ISO or explicitly local territory identity; geometry stays bundled."""
 
     code = models.CharField(primary_key=True, max_length=2)
     name = models.CharField(max_length=160)
+    is_custom = models.BooleanField(default=False)
 
     class Meta:
         ordering = ("name",)
@@ -16,6 +18,30 @@ class Country(models.Model):
 
     def __str__(self):
         return self.name
+
+
+class TerritoryDetails(models.Model):
+    country = models.OneToOneField(Country, primary_key=True, on_delete=models.CASCADE, related_name="territory_details")
+    name = models.CharField(max_length=160)
+    population = models.BigIntegerField(null=True, blank=True, validators=[MinValueValidator(0), MaxValueValidator(9_223_372_036_854_775_807)])
+    area = models.DecimalField(max_digits=18, decimal_places=2, null=True, blank=True, validators=[MinValueValidator(0)])
+    capital = models.CharField(max_length=160, blank=True)
+    languages = models.CharField(max_length=300, blank=True)
+    currency = models.CharField(max_length=160, blank=True)
+    government = models.CharField(max_length=300, blank=True)
+    notes = models.TextField(max_length=4000, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def clean(self):
+        if not Country.objects.filter(pk=self.country_id, is_custom=True).exists():
+            raise ValidationError("Local territory details can only belong to a custom territory.")
+
+    def save(self, *args, **kwargs):
+        with transaction.atomic():
+            super().save(*args, **kwargs)
+            Country.objects.filter(pk=self.country_id, is_custom=True).update(name=self.name)
+        from journal.formatting import country_aliases
+        transaction.on_commit(country_aliases.cache_clear)
 
 
 validate_map_color = RegexValidator(r"\A#[0-9A-Fa-f]{6}\Z", "Use a six-digit color such as #4a90e2.")

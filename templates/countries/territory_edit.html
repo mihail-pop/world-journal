@@ -1,0 +1,9 @@
+<section class="page page-standard journal-page" data-page="settings" hx-boost="true" hx-target="#app-content" hx-push-url="true" aria-labelledby="territory-edit-title">
+    <a class="journal-back-link" href="{{ cancel_url }}">{% include 'core/partials/icon.html' with name='arrow-left' %} {{ country.name }}</a>
+    <div class="page-copy"><h1 id="territory-edit-title">Edit territory</h1><p class="field-note">Local details for this custom map area. Leave a fact blank to use its bundled value, where available.</p></div>
+    <form method="post" class="journal-editor" data-task-label="Saving territory details…">
+        {% csrf_token %}<input type="hidden" name="origin" value="{{ origin }}">{{ form.non_field_errors }}
+        {% for field in form %}{% include 'journal/_field.html' %}{% endfor %}
+        <div class="journal-save-bar"><button class="journal-button is-primary" type="submit">Save details</button><a href="{{ cancel_url }}">Cancel</a></div>
+    </form>
+</section>

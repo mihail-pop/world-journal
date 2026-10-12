@@ -28,7 +28,9 @@ same edge ownership, FNV-1a preference and greedy ordering; country hues remain
 unchanged. Decorative coast lines and halos are removed entirely. Actual
 country borders, coast geometry and click targets remain unchanged.
 
-The world geometry, ISO identities, accuracy and detail are unchanged. The
+The original ISO identities and eight-color palette are preserved. The map also
+fills all 14 reviewed [custom territories](custom-territories.md), and their hues
+are chosen without recoloring the original 238 countries. The
 mountains/trees are sparse illustrations around approximate broad regions, not
 a terrain/forest dataset. Snowy peaks are placed in Alaska, Greenland, Iceland,
 the Rockies, Alps, Scandinavia, Himalayas and southern mountain ranges. Dunes

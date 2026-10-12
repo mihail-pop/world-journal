@@ -4,7 +4,7 @@ One shared journal, with optional collections for grouping entries and ordered s
 
 ## Stored structure
 
-- `countries.Country`: ISO alpha-2 primary key and display name. A frozen migration seeds the 238 bundled identities. Map geometry remains in the existing JSON files. Renaming a country does not change its identity or journal relationships.
+- `countries.Country`: stable two-character primary key and display name. Frozen migrations seed 238 ISO-backed identities and 14 explicitly marked custom territory keys. Map geometry remains bundled. Local territory renaming preserves IDs, tags and Journal relationships; canonical and locally edited names work in explicit country references.
 - `journal.Collection`: UUID, unique name, description, ordering position, creation/update times. An entry belongs to zero or one collection. Deleting a collection moves its entries to Unfiled rather than deleting research.
 - `journal.Entry`: UUID, title, unbounded text body, explicit body format, entry type (note/article/bookmark/YouTube), source URL/name/publication timestamp, optional validated YouTube ID and integer start seconds, optional event date, favorite/pinned flags, creation/update timestamps, collection foreign key, and many-to-many country associations.
 - `journal.EntrySection`: UUID, parent entry, position, independent title/body/body format/type and reference fields, creation/update times. The main body remains on Entry; adding/removing subsections does not change its identity. Equal positions have stable creation-time/UUID tie breakers, allowing inexpensive portable reordering without temporary uniqueness violations.

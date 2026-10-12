@@ -96,6 +96,27 @@
       "name_aliases": ["United States", "United States of America"],
       "related_terms": ["American", "Americans"],
       "acronyms": ["US", "U.S.", "USA", "U.S.A."]
+    },
+    "XA": {
+      "name_aliases": ["RAF Akrotiri"], "related_terms": [], "acronyms": []
+    },
+    "XD": {
+      "name_aliases": ["Dhekelia", "Dhekelia Cantonment"], "related_terms": [], "acronyms": []
+    },
+    "XG": {
+      "name_aliases": ["Guantanamo Bay", "Guantánamo Bay"], "related_terms": [], "acronyms": []
+    },
+    "XI": {
+      "name_aliases": ["Siachen"], "related_terms": [], "acronyms": []
+    },
+    "XP": {
+      "name_aliases": ["Southern Patagonian Ice Field"], "related_terms": [], "acronyms": []
+    },
+    "XR": {
+      "name_aliases": ["Scarborough Reef"], "related_terms": [], "acronyms": []
+    },
+    "XU": {
+      "name_aliases": ["Cyprus buffer zone", "UN buffer zone in Cyprus"], "related_terms": [], "acronyms": []
     }
   }
 }

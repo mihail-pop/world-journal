@@ -36,7 +36,7 @@
         <section class="countries-detail" data-directory-detail aria-labelledby="directory-country-name"{% if not selected_country %} hidden{% endif %}>
             <header class="directory-detail-heading">
                 <div class="country-heading">
-                    <span class="country-flag" aria-hidden="true"><img data-directory-detail-flag{% if selected_country %} src="https://flagcdn.com/{{ selected_country.iso_a2|lower }}.svg"{% endif %} alt="" width="72" height="48" decoding="async" referrerpolicy="no-referrer"><span data-flag-fallback hidden>{{ selected_country.flag }}</span></span>
+                    <span class="country-flag" aria-hidden="true"{% if selected_country.is_custom %} hidden{% endif %}><img data-directory-detail-flag{% if selected_country.flag %} src="https://flagcdn.com/{{ selected_country.iso_a2|lower }}.svg"{% endif %} alt="" width="72" height="48" decoding="async" referrerpolicy="no-referrer"><span data-flag-fallback hidden>{{ selected_country.flag }}</span></span>
                     <h2 id="directory-country-name"><a data-directory-name href="{% url 'core:journal' %}?country={{ options.country }}" hx-boost="true" hx-target="#app-content" hx-push-url="true" title="View saved entries for this country">{{ selected_country.name }}</a></h2>
                 </div>
                 <div class="directory-detail-actions">

@@ -64,6 +64,8 @@ def country_mapping():
             grouped[row["ISO_A2_EH"]].append(row)
     result = {}
     for country in metadata["countries"]:
+        if country.get("is_custom"):
+            continue  # Custom identities use the separate reviewed territory snapshot.
         row = choose_metadata_record(grouped[country["iso_a2"]])
         qid = row.get("WIKIDATAID", "")
         result[country["iso_a2"]] = {"iso3": country["iso_a3"], "qid": qid if QID.fullmatch(qid) else None}
@@ -71,7 +73,7 @@ def country_mapping():
     return result
 
 
-def query_batch(batch):
+def query_batch(batch, *, verify_iso=True):
     values = " ".join(f'(wd:{item["qid"]} "{code}" "{item["iso3"]}")' for code, item in batch)
     query = """SELECT ?item ?iso ?iso3 ?kind ?property ?statement ?rank ?amount ?unit ?date ?start ?end ?related ?label ?part ?partLabel ?share ?shareUnit ?reference ?article WHERE {
       VALUES (?item ?iso ?iso3) { VALUES_HERE }
@@ -129,6 +131,8 @@ def query_batch(batch):
         BIND("entity" AS ?kind)
       }
     }""".replace("VALUES_HERE", values)
+    if not verify_iso:
+        query = query.replace("?item wdt:P297 ?iso; wdt:P298 ?iso3.", "")
     url = "https://query.wikidata.org/sparql?" + urllib.parse.urlencode({"query": query, "format": "json"})
     payload = json.loads(download(url, accept="application/sparql-results+json"))
     rows = payload.get("results", {}).get("bindings")
