@@ -2,6 +2,7 @@ import json
 from datetime import UTC
 
 from django import forms
+from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.core.paginator import Paginator
 from django.db import transaction
@@ -237,6 +238,7 @@ def edit(request, pk=None):
         form_valid, sections_valid = form.is_valid(), sections.is_valid()
         if form_valid and sections_valid:
             entry = save_entry(form, sections)
+            messages.success(request, "Entry saved.")
             return navigate(request, entry.get_absolute_url())
     return page(request, "journal/edit.html", {"entry": entry, "form": form, "section_formset": sections, "is_new": entry._state.adding})
 
@@ -254,6 +256,7 @@ def delete_entry(request, pk):
     if request.method == "POST" and form.is_valid():
         with transaction.atomic():
             entry.delete()
+        messages.success(request, "Entry deleted, including its sections and local images.")
         return navigate(request, reverse("core:journal"))
     return page(request, "journal/confirm_delete.html", {"form": form, "title": f"Delete {entry.title}?", "description": "This deletes the entry, its subsections and its local images.", "cancel_url": entry.get_absolute_url()})
 
@@ -264,6 +267,7 @@ def collection_edit(request, pk=None):
     form = CollectionForm(request.POST if request.method == "POST" else None, instance=collection)
     if request.method == "POST" and form.is_valid():
         collection = form.save()
+        messages.success(request, "Collection saved.")
         return navigate(request, reverse("core:journal") + f"?collection={collection.pk}")
     return page(request, "journal/collection_edit.html", {"form": form, "collection": collection, "is_new": pk is None})
 
@@ -274,6 +278,7 @@ def collection_delete(request, pk):
     form = ConfirmationForm(request.POST if request.method == "POST" else None)
     if request.method == "POST" and form.is_valid():
         collection.delete()
+        messages.success(request, "Collection deleted. Its entries are kept in the journal.")
         return navigate(request, reverse("core:journal"))
     return page(request, "journal/confirm_delete.html", {"form": form, "title": f"Delete collection {collection.name}?", "description": "Entries are kept and moved to Unfiled. Only the collection is removed.", "cancel_url": reverse("core:journal") + f"?collection={collection.pk}"})
 
@@ -284,6 +289,7 @@ def upload_attachment(request, pk):
     form = AttachmentForm(request.POST, request.FILES, entry=entry)
     if form.is_valid():
         form.save()
+        messages.success(request, "Image added to the entry.")
         return navigate(request, entry.get_absolute_url())
     return page(request, "journal/detail.html", {"entry": entry, "main_attachments": entry.attachments.filter(section__isnull=True), "attachment_form": form})
 
@@ -296,6 +302,7 @@ def delete_attachment(request, pk, attachment_pk):
     if request.method == "POST" and form.is_valid():
         with transaction.atomic():
             attachment.delete()
+        messages.success(request, "Image deleted.")
         return navigate(request, url)
     return page(request, "journal/confirm_delete.html", {"form": form, "title": "Delete this image?", "description": "The uploaded image will be removed from local storage.", "cancel_url": url})
 

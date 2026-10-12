@@ -1,6 +1,5 @@
 <section class="page page-standard backup-page settings-page" data-page="settings" hx-boost="true" hx-target="#app-content" hx-push-url="true" aria-labelledby="backups-title">
     {% include 'core/partials/settings_nav.html' with section='backup' heading_id='backups-title' %}
-    {% for message in messages %}<p class="source-settings-message {% if message.tags == 'error' or message.tags == 'warning' %}is-warning{% endif %}" role="status">{{ message }}</p>{% endfor %}
     {% if page_error %}<p class="source-settings-message is-warning" role="alert">{{ page_error }}</p>{% endif %}
 
     <div class="settings-grid"><section class="backup-section settings-card" aria-labelledby="export-title">

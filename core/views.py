@@ -1,4 +1,7 @@
+import json
+
 from django.conf import settings
+from django.contrib.messages import get_messages
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import render
 
@@ -16,8 +19,17 @@ def render_page(request: HttpRequest, page: str, *, page_template: str | None = 
         "page_template": page_template or f"core/partials/{page}.html",
     }
     page_context.update(context or {})
+    notices = [{"kind": message.level_tag, "message": str(message)} for message in get_messages(request)]
+    if page_context.get("page_error"):
+        notices.append({"kind": "error", "message": page_context["page_error"]})
+    # The shell owns messages, including responses rendered during HTMX navigation.
+    page_context["messages"] = []
+    page_context["app_notices"] = notices
     template_name = page_context["page_template"] if request.headers.get("HX-Request") == "true" else "core/app_shell.html"
-    return render(request, template_name, page_context)
+    response = render(request, template_name, page_context)
+    if notices and request.headers.get("HX-Request") == "true":
+        response.headers["HX-Trigger"] = json.dumps({"world-journal:server-notices": {"notices": notices}}, ensure_ascii=True)
+    return response
 
 
 def map_page(request: HttpRequest) -> HttpResponse:

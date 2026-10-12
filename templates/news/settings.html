@@ -1,6 +1,5 @@
 <section class="page page-standard source-settings-page settings-page" data-page="settings" data-source-settings data-save-url="{% url 'news:save_preference' %}" data-refresh-status-url="{% url 'news:refresh_status' %}" hx-boost="true" hx-target="#app-content" hx-push-url="true" aria-labelledby="sources-title">
     {% include 'core/partials/settings_nav.html' with section='sources' heading_id='sources-title' %}
-    {% for message in messages %}<p class="source-settings-message {% if message.tags == 'warning' %}is-warning{% endif %}" role="status">{{ message }}</p>{% endfor %}
     <div class="settings-grid source-overview-grid">
         <form id="news-preferences" class="settings-card source-preferences-form" method="post" action="{% url 'news:settings' %}">
             {% csrf_token %}<input type="hidden" name="country" value="{{ country.pk }}">

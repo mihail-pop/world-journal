@@ -2,6 +2,7 @@ import { countryFillExpression } from "./country_paint.js";
 import { adventurePalette, prepareAdventure, updateAdventure } from "./adventure_map.js";
 import { getCountryFeed, prioritizeCountryFeed, rememberCountryFeed } from "../news_cache.js";
 import { replaceCountryMarkup } from "../news_archive.js";
+import { notify } from "../notifications.js";
 import { basemapFeaturePreferences } from "./basemap_features.js";
 import { factsSelectionChanged, initializeCountryFacts, loadCountryOverview } from "./map_facts.js";
 import { applyPersonalLayers, initializePersonalMap, loadCountryNotes, loadPersonalData, personalSelectionChanged } from "./map_personal.js";
@@ -1313,6 +1314,7 @@ async function initializeMapPage() {
         }
         controller.status.textContent = "The bundled country map could not be loaded.";
         controller.status.classList.add("is-error");
+        notify({id: "map-load-error", kind: "error", title: "The map could not be opened", message: "Reload the page when the server is available. Journal, News and Countries remain available."});
         console.error("World Journal map initialization failed", error);
     }
 }

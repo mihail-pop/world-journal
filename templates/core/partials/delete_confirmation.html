@@ -1,0 +1,6 @@
+<div class="page-copy"><h1 id="delete-title">{{ title }}</h1><p data-confirm-description>{{ description }}</p></div>
+<form method="post" class="journal-editor" data-task-label="Deleting…">
+    {% csrf_token %}{{ form.non_field_errors }}
+    <label>{{ form.confirm }} {{ form.confirm.label }}</label>{{ form.confirm.errors }}
+    <div class="journal-actions"><button class="journal-button" type="submit">Delete</button><a href="{{ cancel_url }}">Cancel</a></div>
+</form>

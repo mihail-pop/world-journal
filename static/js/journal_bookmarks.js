@@ -1,8 +1,8 @@
 // One bookmark interaction for country drawers, News cards and the shell player.
+import { beginTask, notify } from "./notifications.js";
 const saved = new Map();
 const pending = new Map();
 let registered = false;
-let noticeTimer;
 
 function identity(url) {
     const params = new URL(url, location.origin).searchParams;
@@ -10,12 +10,7 @@ function identity(url) {
 }
 
 function showNotice(message, error = false) {
-    const notice = document.querySelector("[data-quick-save-notice]");
-    clearTimeout(noticeTimer);
-    notice.textContent = message;
-    notice.classList.toggle("is-error", error);
-    notice.hidden = false;
-    noticeTimer = setTimeout(() => { notice.hidden = true; }, error ? 8000 : 3500);
+    notify({id: "journal-bookmark", kind: error ? "error" : "success", title: error ? "Could not save to Journal" : message, message: error ? message : ""});
 }
 
 function sync(wrapper) {
@@ -77,6 +72,7 @@ async function quickSave(link) {
     if (pending.has(key) || saved.has(key)) return;
     const abort = new AbortController();
     const timeout = setTimeout(() => abort.abort(), 20000);
+    const finish = beginTask("Saving to Journal…");
     const task = (async () => {
         try {
             const response = await fetch(document.body.dataset.journalQuickSaveUrl, {
@@ -86,12 +82,13 @@ async function quickSave(link) {
             const result = response.headers.get("Content-Type")?.includes("application/json") ? await response.json() : {};
             if (!response.ok) throw new Error(result.message || "Could not save. Try again.");
             saved.set(key, result);
-            showNotice(result.created ? "Saved to Journal" : "Already saved in Journal");
+            notify({id: "journal-bookmark", kind: result.created ? "success" : "info", title: result.created ? "Saved to Journal" : "Already saved in Journal", action: {label: "Open entry", href: result.edit_url}, duration: 10000});
             document.dispatchEvent(new CustomEvent("world-journal:data-changed", {detail: {path: document.body.dataset.journalQuickSaveUrl}}));
         } catch (error) {
             showNotice(error.name === "AbortError" ? "Saving timed out. You can retry safely." : error.message, true);
         } finally {
             clearTimeout(timeout);
+            finish();
             pending.delete(key);
             refresh();
         }

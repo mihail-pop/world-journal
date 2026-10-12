@@ -201,7 +201,10 @@ export function registerPageMemory() {
     });
     document.body.addEventListener("htmx:afterRequest", event => {
         const config = event.detail.requestConfig;
-        if (event.detail.successful && config && config.verb.toLowerCase() !== "get") {
+        // HTMX returns early for HX-Location without setting `successful`.
+        // These accepted writes must still invalidate retained research views.
+        const redirected = event.detail.xhr.status >= 200 && event.detail.xhr.status < 300 && event.detail.xhr.getResponseHeader("HX-Location");
+        if ((event.detail.successful || redirected) && config && config.verb.toLowerCase() !== "get") {
             document.dispatchEvent(new CustomEvent("world-journal:data-changed", {
                 detail: {path: new URL(config.path, location.href).pathname},
             }));

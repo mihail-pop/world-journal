@@ -12,9 +12,11 @@ import { initializePlayer } from "./player.js";
 import { registerJournalBookmarks } from "./journal_bookmarks.js";
 import { initializeTheme } from "./theme.js";
 import { registerUiControls } from "./ui_controls.js";
+import { registerNotifications } from "./notifications.js";
 
 function initializeApplication() {
     initializeTheme();
+    registerNotifications();
     registerUiControls();
     initializePlayer();
     registerJournalBookmarks();

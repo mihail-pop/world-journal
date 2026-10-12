@@ -1,4 +1,5 @@
 // Color groups are UI state; the database continues storing one color per country.
+import { beginTask, confirmAction, notify } from "../notifications.js";
 const COLORS = ["#4a90e2", "#dd6858", "#4aab83", "#a57bd5", "#d5ac47", "#52abb8", "#cf78a3"];
 const VALID_COLOR = /^#[0-9a-f]{6}$/i;
 
@@ -84,9 +85,11 @@ function renderGroups(controller) {
             } else draft.activeGroup = index;
             renderGroups(controller);
         });
-        heading.append(choose, color, button("Remove", "preset-map-group-remove", () => {
+        heading.append(choose, color, button("Remove", "preset-map-group-remove", async () => {
+            if (group.countries.length && !await confirmAction({title: `Remove ${group.title?.trim() || "this color group"}?`, message: `This clears the color assigned to ${group.countries.length} countr${group.countries.length === 1 ? "y" : "ies"}. Save the preset afterward to keep the change.`, accept: "Remove group"})) return;
+            if (!state.active || state.saving || state.draft !== draft || controller.abortController.signal.aborted) return;
             const active = draft.groups[draft.activeGroup];
-            draft.groups.splice(index, 1);
+            draft.groups.splice(draft.groups.indexOf(group), 1);
             draft.activeGroup = active !== group ? draft.groups.indexOf(active) : Math.max(0, Math.min(index, draft.groups.length - 1));
             markChanged(controller);
             renderGroups(controller);
@@ -259,11 +262,17 @@ export function initializePresetMap(controller, callbacks) {
         countries: page.querySelector("[data-preset-map-countries]"), add: page.querySelector("[data-preset-map-add]"),
     };
     signal.addEventListener("abort", () => state.loadAbort?.abort(), {once: true});
-    state.retry.addEventListener("click", () => {
-        if (!state.saving) syncPresetEditor(controller, {reload: true});
+    state.retry.addEventListener("click", async () => {
+        if (state.saving) return;
+        if (state.draft?.dirty && !await confirmAction({title: "Reload the saved preset?", message: "Unsaved color groups and country selections in this draft will be discarded.", accept: "Discard & reload"})) return;
+        if (!signal.aborted && !state.saving) syncPresetEditor(controller, {reload: true});
     }, {signal});
     page.querySelector("[data-preset-map-exit]").addEventListener("click", () => exit(controller), {signal});
-    page.querySelector("[data-preset-map-discard]").addEventListener("click", () => exit(controller, true), {signal});
+    page.querySelector("[data-preset-map-discard]").addEventListener("click", async () => {
+        if (state.saving) return;
+        if (state.draft?.dirty && !await confirmAction({title: "Discard this preset draft?", message: "Your unsaved colors and country selections will be lost. The saved preset stays unchanged.", accept: "Discard draft"})) return;
+        if (!signal.aborted && !state.saving) exit(controller, true);
+    }, {signal});
     state.add.addEventListener("click", () => {
         const draft = state.draft;
         let color = COLORS.find(value => !draft.groups.some(group => group.color === value));
@@ -298,6 +307,7 @@ export function initializePresetMap(controller, callbacks) {
         state.saving = true;
         state.fields.disabled = true;
         state.status.textContent = "Saving preset…";
+        const finish = beginTask("Saving color preset…");
         try {
             const response = await fetch(endpoint(controller, id), {
                 method: "POST", signal, headers: {"Content-Type": "application/json", "X-CSRFToken": page.querySelector('[name="csrfmiddlewaretoken"]').value},
@@ -325,10 +335,13 @@ export function initializePresetMap(controller, callbacks) {
                 state.status.textContent = "Saved · these colors are now active on the map.";
             }
             document.dispatchEvent(new CustomEvent("world-journal:map-preset-saved", {detail: {previousId: id, id: result.id}}));
+            notify({id: "preset-save", kind: "success", title: "Color preset saved", message: "These colors are now active on the map."});
             state.refresh();
         } catch (error) {
             if (error.name !== "AbortError" && state.id === id) state.status.textContent = `${error.message} Your draft has been kept.`;
+            if (error.name !== "AbortError") notify({id: "preset-save", kind: "error", title: "Preset could not be saved", message: `${error.message} Your draft has been kept.`});
         } finally {
+            finish();
             state.saving = false;
             if (state.draft) state.fields.disabled = false;
         }

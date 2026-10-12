@@ -92,6 +92,7 @@ export function writeMapPreferences(value, validCountryCodes) {
         localStorage.setItem(MAP_PREFERENCES_STORAGE_KEY, JSON.stringify(normalized));
     } catch (error) {
         // Preferences remain active for the current page when storage is unavailable.
+        document.dispatchEvent(new CustomEvent("world-journal:preference-storage-error"));
     }
     document.dispatchEvent(new CustomEvent("world-journal:map-preferences-change", {
         detail: normalized,

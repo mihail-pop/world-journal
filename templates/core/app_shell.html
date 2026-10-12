@@ -20,6 +20,7 @@
     <link rel="stylesheet" href="{% static 'vendor/maplibre-gl/maplibre-gl.css' %}">
     <link rel="stylesheet" href="{% static 'css/app.css' %}">
     <link rel="stylesheet" href="{% static 'css/ui.css' %}">
+    <link rel="stylesheet" href="{% static 'css/notifications.css' %}">
     <script src="{% static 'vendor/htmx/htmx-2.0.8.min.js' %}" defer></script>
     <script type="module" src="{% static 'js/app.js' %}"></script>
 </head>
@@ -39,6 +40,7 @@
     </header>
 
     <main id="app-content" tabindex="-1" hx-history-elt hx-history="false">
+        <noscript>{% for notice in app_notices %}<p class="source-settings-message" role="status">{{ notice.message }}</p>{% endfor %}</noscript>
         {% include page_template %}
     </main>
 
@@ -62,6 +64,15 @@
     <template data-control-icon="close">{% include 'core/partials/icon.html' with name='close' %}</template>
     <template data-control-icon="plus">{% include 'core/partials/icon.html' with name='plus' %}</template>
     <template data-control-icon="check">{% include 'core/partials/icon.html' with name='check' %}</template>
-    <div class="journal-save-notice" data-quick-save-notice role="status" hidden></div>
+    <template data-control-icon="info">{% include 'core/partials/icon.html' with name='info' %}</template>
+    <template data-control-icon="trash">{% include 'core/partials/icon.html' with name='trash' %}</template>
+    <div class="notification-rack" data-notification-rack aria-label="Notifications"></div>
+    <dialog class="action-dialog" data-action-dialog aria-labelledby="action-dialog-title" aria-describedby="action-dialog-description">
+        <div class="action-dialog-heading"><span class="action-dialog-icon" data-dialog-icon>{% include 'core/partials/icon.html' with name='trash' %}</span><span class="action-dialog-caption">Please confirm</span><button class="notification-close" type="button" data-dialog-cancel aria-label="Close dialog">{% include 'core/partials/icon.html' with name='close' %}</button></div>
+        <h2 id="action-dialog-title"></h2><p id="action-dialog-description"></p>
+        <div data-dialog-content></div>
+        <div class="action-dialog-buttons"><button class="journal-button" type="button" data-dialog-cancel autofocus>Cancel</button><button class="journal-button is-danger" type="button" data-dialog-accept>Delete</button></div>
+    </dialog>
+    {{ app_notices|json_script:"app-notices" }}
 </body>
 </html>

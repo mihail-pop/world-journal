@@ -1,3 +1,5 @@
+import { dismissNotice, notify } from "../notifications.js";
+
 const editors = new Map();
 const replayLinks = new WeakSet();
 let registered = false;
@@ -73,11 +75,13 @@ async function save(state) {
                 state.applying = false;
             }
             state.savedVersion = version;
+            dismissNotice(`autosave-${form.dataset.autosaveUrl}`);
             showStatus(state, state.version === version ? "Saved" : "Unsaved changes", state.version === version ? "saved" : "dirty");
             document.dispatchEvent(new CustomEvent("world-journal:data-changed", {detail: {path: result.edit_url}}));
             return true;
         } catch (error) {
             showStatus(state, error.name === "AbortError" ? "Not saved: connection timed out. Try again." : error.message || "Not saved: connection unavailable.", "error");
+            notify({id: `autosave-${form.dataset.autosaveUrl}`, kind: "error", title: "Your entry needs saving", message: `${form.querySelector('[data-autosave-status]').textContent} Your draft is kept in this tab.`, action: {label: "Retry save", run: () => { if (editors.has(form)) void save(state); }}});
             return false;
         } finally {
             clearTimeout(timeout);
@@ -156,6 +160,7 @@ export function registerJournalAutosave() {
         if (event.detail?.page !== "journal" || event.detail.preserveJournal) return;
         const form = document.querySelector("[data-journal-editor]");
         if (form) editors.delete(form);
+        if (form) dismissNotice(`autosave-${form.dataset.autosaveUrl}`);
     });
     window.addEventListener("beforeunload", event => {
         if (![...editors.values()].some(state => state.pending || state.version !== state.savedVersion)) return;

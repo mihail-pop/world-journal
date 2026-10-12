@@ -1,5 +1,6 @@
 import json
 
+from django.contrib import messages
 from django.db import transaction
 from django.http import JsonResponse, QueryDict
 from django.shortcuts import get_object_or_404, render
@@ -108,6 +109,7 @@ def preset_edit(request, pk=None):
         if valid and colors_valid:
             with transaction.atomic():
                 preset = save_preset(form, colors)
+            messages.success(request, "Color preset saved.")
             url = reverse("core:map") + f"?edit_preset={preset.pk}" if request.POST.get("action") == "edit_map" else reverse("countries:preset_list")
             return navigate(request, url)
     return page(request, "countries/preset_edit.html", {"form": form, "color_formset": colors, "preset": preset, "is_new": pk is None})
@@ -174,6 +176,7 @@ def preset_duplicate(request, pk):
             copy.save()
             PresetCountry.objects.bulk_create([PresetCountry(preset=copy, country_id=row.country_id, color=row.color) for row in original.country_colors.all()])
             PresetColorGroup.objects.bulk_create([PresetColorGroup(preset=copy, color=group["color"], title=group["title"], position=index) for index, group in enumerate(preset_groups(original))])
+        messages.success(request, "Color preset duplicated.")
         return navigate(request, reverse("countries:preset_edit", kwargs={"pk": copy.pk}))
     return page(request, "countries/preset_duplicate.html", {"form": form, "preset": original})
 
@@ -184,6 +187,7 @@ def preset_delete(request, pk):
     form = ConfirmationForm(request.POST if request.method == "POST" else None)
     if request.method == "POST" and form.is_valid():
         preset.delete()
+        messages.success(request, "Color preset deleted. Favorites and Journal entries are kept.")
         return navigate(request, reverse("countries:preset_list"))
     return page(request, "countries/confirm_delete.html", {"form": form, "title": f"Delete preset {preset.name}?", "description": "Only this preset and its color assignments are deleted. Favorites and Journal entries are kept.", "cancel_url": reverse("countries:preset_list")})
 
@@ -217,6 +221,7 @@ def profile_edit(request, iso2):
             profile = form.save()
             if profile.entry_id:
                 profile.entry.countries.add(country)
+        messages.success(request, "Country overview updated.")
         return navigate(request, reverse("core:map") + f"?country={country.pk}&section=notes")
     return render_page(request, "journal", page_template="countries/profile_edit.html", context={"form": form, "country": country})
 

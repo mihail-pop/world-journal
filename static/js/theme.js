@@ -6,6 +6,7 @@ function saveTheme(theme) {
         localStorage.setItem(STORAGE_KEY, theme);
     } catch (error) {
         // Theme switching still works for the current page without storage.
+        document.dispatchEvent(new CustomEvent("world-journal:preference-storage-error"));
     }
 }
 

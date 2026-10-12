@@ -1,4 +1,5 @@
 import { countryFillColors } from "./country_paint.js";
+import { notify } from "../notifications.js";
 
 const FAVORITE_LAYER = "world-journal-country-favorites";
 const COLOR = /^#[0-9a-f]{6}$/i;
@@ -263,7 +264,10 @@ export function initializePersonalMap(controller, selectCountry) {
             else state.favorites.delete(code);
             if (controller.selectedCode === code) state.favoriteStatus.textContent = "";
         } catch (error) {
-            if (error.name !== "AbortError" && isAlive(controller) && controller.selectedCode === code) state.favoriteStatus.textContent = "Could not save the favorite. Try again.";
+            if (error.name !== "AbortError") {
+                notify({id: "favorite-error", kind: "error", title: "Favorite could not be saved", message: "Try again when the server is available."});
+                if (isAlive(controller) && controller.selectedCode === code) state.favoriteStatus.textContent = "Could not save the favorite. Try again.";
+            }
         } finally {
             state.favoritePending.delete(code);
             updatePersonalControls(controller);
@@ -286,7 +290,10 @@ export function initializePersonalMap(controller, selectCountry) {
             state.defaultColor = snapshot.default_color;
             state.status.textContent = id ? "Preset colors are active." : "Preset colors are off.";
         } catch (error) {
-            if (error.name !== "AbortError" && isAlive(controller)) state.status.textContent = "Could not change the preset. Try again.";
+            if (error.name !== "AbortError") {
+                notify({id: "preset-error", kind: "error", title: "Preset could not be changed", message: "Try again when the server is available."});
+                if (isAlive(controller)) state.status.textContent = "Could not change the preset. Try again.";
+            }
         } finally {
             state.activating = false;
             updatePersonalControls(controller);

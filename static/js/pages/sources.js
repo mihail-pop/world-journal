@@ -1,8 +1,56 @@
 // One-control writes are serialized; a second click replaces its queued value.
 // Saves continue across page navigation, without keeping a page listener alive.
+import { beginTask, dismissNotice, notify, updateNotice } from "../notifications.js";
+
 let registered = false;
 const pageStates = new WeakMap();
 let progressController = null;
+let manualRefresh = null;
+
+function reportRefresh(result) {
+    if (!manualRefresh) return;
+    manualRefresh.errors = 0;
+    if (result.busy) {
+        updateNotice("feed-refresh", `${result.completed} of ${result.total} feeds checked. You can keep browsing.`);
+        return;
+    }
+    manualRefresh.finish();
+    clearTimeout(manualRefresh.timer);
+    manualRefresh = null;
+    const failures = Math.max(result.failed, result.errors.length);
+    notify({id: "feed-refresh", kind: failures ? "warning" : "success", title: failures ? "Refresh finished with source notices" : "Feed refresh complete", message: !result.enabled ? "No sources are enabled." : failures ? `${failures} feed${failures === 1 ? " is" : "s are"} unavailable. Cached results are kept where available.` : "Articles and videos are ready to browse.", action: failures ? {label: "Review sources", href: "/settings/news/"} : undefined, duration: 12000});
+}
+
+function watchRefresh(url) {
+    manualRefresh?.finish();
+    clearTimeout(manualRefresh?.timer);
+    const state = manualRefresh = {finish: beginTask("Refreshing news feeds…", {id: "feed-refresh", message: "You can keep browsing while feeds refresh."}), timer: null, errors: 0, started: Date.now()};
+    async function poll() {
+        if (manualRefresh !== state) return;
+        try {
+            if (Date.now() - state.started > 45 * 60000) throw new Error("Refresh is taking longer than expected.");
+            // The existing Sources poll reports progress while that page is open.
+            if (!document.hidden && (!progressController || progressController.unavailable)) {
+                const abort = new AbortController();
+                const timeout = setTimeout(() => abort.abort(), 10000);
+                try {
+                    const response = await fetch(url, {signal: abort.signal});
+                    if (!response.ok) throw new Error("Refresh status unavailable.");
+                    const result = await response.json();
+                    if (manualRefresh === state) reportRefresh(result);
+                } finally { clearTimeout(timeout); }
+            }
+        } catch (_) {
+            if (++state.errors >= 3) {
+                state.finish();
+                manualRefresh = null;
+                notify({id: "feed-refresh", kind: "warning", title: "Refresh status is unavailable", message: "Feeds may still be refreshing. Check the Feed cache panel for the latest status.", action: {label: "View sources", href: "/settings/news/"}});
+            }
+        }
+        if (manualRefresh === state) state.timer = setTimeout(poll, 5000);
+    }
+    state.timer = setTimeout(poll, 1500);
+}
 
 function cleanupProgress() {
     if (!progressController) return;
@@ -48,11 +96,15 @@ async function pollProgress(controller) {
             if (!response.ok) throw new Error("Could not read background activity.");
             const result = await response.json();
             if (progressController !== controller) return;
+            controller.unavailable = false;
             renderProgress(controller.page, result);
+            reportRefresh(result);
             busy = result.busy;
         }
     } catch (error) {
         if (error.name === "AbortError") return;
+        // Let the independent watcher retry sooner while this card also recovers.
+        controller.unavailable = true;
         controller.page.querySelector("[data-refresh-summary]").textContent = "Background status is temporarily unavailable.";
         controller.page.querySelector("[data-refresh-all]").disabled = false;
     }
@@ -63,9 +115,12 @@ async function refreshAll(form, page) {
     const button = form.querySelector("button");
     button.disabled = true;
     page.querySelector("[data-refresh-summary]").textContent = "Queuing enabled feeds…";
+    const finish = beginTask("Starting feed refresh…");
     try {
         const response = await fetch(form.action, { method: "POST", body: new FormData(form), headers: { "X-Requested-With": "XMLHttpRequest" } });
         if (!response.ok) throw new Error("Could not start refresh. Check that the server is running.");
+        dismissNotice("feed-refresh");
+        watchRefresh(page.dataset.refreshStatusUrl);
         // The page may have changed while the server accepted the request.
         if (progressController?.page === page) {
             cleanupProgress();
@@ -75,6 +130,9 @@ async function refreshAll(form, page) {
     } catch (error) {
         page.querySelector("[data-refresh-summary]").textContent = error.message;
         button.disabled = false;
+        notify({id: "feed-refresh", kind: "error", title: "Refresh could not start", message: error.message});
+    } finally {
+        finish();
     }
 }
 
@@ -112,6 +170,7 @@ async function savePending(page, state) {
             const response = await fetch(page.dataset.saveUrl, { method: "POST", body, headers: { "X-Requested-With": "XMLHttpRequest" } });
             const result = await response.json();
             if (!response.ok) throw new Error(result.error || "Could not save this choice.");
+            dismissNotice("source-choice");
             change.input.dataset.savedValue = change.value;
             for (const row of page.querySelectorAll("[data-source-row]")) {
                 const saved = result.states[row.dataset.sourceRow];
@@ -133,6 +192,7 @@ async function savePending(page, state) {
                 else change.input.value = change.input.dataset.savedValue;
             }
             showStatus(page, `${error.message} Your previous choice is kept.`, true);
+            notify({id: "source-choice", kind: "error", title: "Source preference could not be saved", message: `${error.message} Your previous choice is kept.`});
         }
     }
     state.running = false;

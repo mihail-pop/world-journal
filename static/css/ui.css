@@ -404,8 +404,6 @@ details[open] > summary { margin-bottom: .9rem; color: var(--ui-text); }
 .journal-bookmark-actions:hover .journal-quick-save, .journal-bookmark-actions:focus-within .journal-quick-save { width: 2.25rem; max-width: 2.25rem; margin-left: .3rem; visibility: visible; opacity: 1; }
 .journal-bookmark-actions .journal-quick-save:hover:not(:disabled) { background: var(--ui-accent); color: var(--ui-accent-ink); }
 .journal-bookmark-actions .journal-quick-save.is-saved { opacity: 1; color: var(--ui-accent); }
-.journal-save-notice { position: fixed; z-index: 90; top: calc(var(--header-height) + .75rem); left: 50%; transform: translateX(-50%); max-width: calc(100vw - 2rem); padding: .7rem 1rem; border: 1px solid var(--ui-border); border-radius: 7px; background: var(--ui-surface); color: var(--ui-text); box-shadow: 0 3px 16px #0003; }
-.journal-save-notice.is-error { border-color: var(--ui-favorite); }
 @media (hover: none) { .journal-bookmark-actions .journal-quick-save { width: 2.25rem; max-width: 2.25rem; margin-left: .3rem; visibility: visible; opacity: 1; } }
 .statistics-panel, .preset-card, .empty-state { background: var(--ui-surface); border-color: var(--ui-border); }
 .statistics-heading { margin-bottom: 1.25rem; }

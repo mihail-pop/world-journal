@@ -1,5 +1,6 @@
 import { getCountryFeed, prioritizeCountryFeed, rememberCountryFeed } from "../news_cache.js";
 import { replaceCountryMarkup } from "../news_archive.js";
+import { notify } from "../notifications.js";
 
 let controller = null;
 let registered = false;
@@ -249,7 +250,10 @@ async function toggleFavorite(state) {
         if (result.favorite) state.favorites.add(code); else state.favorites.delete(code);
         document.dispatchEvent(new CustomEvent("world-journal:data-changed",{detail:{path:url}}));
     } catch (error) {
-        if (error.name !== "AbortError" && alive(state) && state.code === code) state.page.querySelector("[data-directory-favorite-status]").textContent = "Could not save the favorite. Try again.";
+        if (error.name !== "AbortError") {
+            notify({id:"favorite-error",kind:"error",title:"Favorite could not be saved",message:"Try again when the server is available."});
+            if (alive(state) && state.code === code) state.page.querySelector("[data-directory-favorite-status]").textContent = "Could not save the favorite. Try again.";
+        }
     } finally {
         state.favoritePending.delete(code);
         if (!state.abort.signal.aborted) { favoriteControl(state); renderLists(state); }

@@ -1,3 +1,4 @@
+import { notify } from "../notifications.js";
 import {
     clearSavedMapViewport,
     MAP_BOOLEAN_PREFERENCES,
@@ -110,6 +111,7 @@ async function initializeSettingsPage() {
             return;
         }
         setStatus(controller, "Home-country options could not be loaded.", true);
+        notify({id: "settings-load-error", kind: "error", title: "Country options are unavailable", message: "Reload Settings when the server is available. Your saved home country is kept."});
         console.error("World Journal settings initialization failed", error);
     }
 }
