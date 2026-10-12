@@ -1,0 +1,60 @@
+/* Stop GitHub repository details from shifting in the header. */
+.md-source__info,
+.md-source__repository,
+.md-source__facts,
+.md-source__fact {
+  animation: none !important;
+  transition: none !important;
+}
+
+/* Hide sidebar scrollbar tracks while keeping the sidebars scrollable. */
+.md-sidebar__scrollwrap {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.md-sidebar__scrollwrap::-webkit-scrollbar {
+  display: none;
+}
+
+/* Use the title itself as the clickable home link. */
+.md-header__title {
+  display: none !important;
+}
+
+.md-header__button.md-logo svg,
+.md-header__button.md-logo img {
+  display: none !important;
+}
+
+.md-header__button.md-logo {
+  flex-grow: 1;
+  justify-content: flex-start !important;
+  padding-left: 0.2rem;
+}
+
+.md-header__button.md-logo::after {
+  content: "World Journal";
+  font-size: 1.05rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* Reserve scrollbar space so pages do not shift horizontally. */
+html {
+  overflow-y: scroll !important;
+}
+
+h2:target .headerlink,
+h3:target .headerlink,
+h4:target .headerlink {
+  transform: scale(1.2);
+}
+
+.md-nav--primary .md-nav__link {
+  font-size: 0.8rem;
+}
+
+.md-nav--secondary .md-nav__link {
+  font-size: 0.75rem;
+}

@@ -1,0 +1,96 @@
+site_name: World Journal
+site_description: Official documentation for World Journal
+site_author: Mihail Pop
+site_url: https://mihail-pop.github.io/world-journal/
+repo_name: world-journal
+repo_url: https://github.com/mihail-pop/world-journal
+
+exclude_docs: |
+  adventure-map.md
+  backups.md
+  countries-page.md
+  country-data.md
+  country-facts.md
+  custom-territories.md
+  frontend-refresh.md
+  journal-statistics.md
+  journal.md
+  map-providers.md
+  news-archive.md
+  news-background.md
+  news-page.md
+  news-rss.md
+  news-settings.md
+  notifications.md
+  page-memory.md
+  personal-map.md
+  player-and-bookmarks.md
+
+theme:
+  name: material
+  custom_dir: overrides
+  icon:
+    repo: fontawesome/brands/github
+  features:
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - navigation.tabs
+    - content.tabs.link
+  palette:
+    - scheme: slate
+      primary: black
+      accent: light blue
+      toggle:
+        icon: material/weather-night
+        name: Switch to light mode
+
+    - scheme: default
+      primary: white
+      accent: light blue
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to dark mode
+
+nav:
+  - Introduction: index.md
+  - Setup:
+    - Docker: setup/docker.md
+    - Windows: setup/windows.md
+    - Mac: setup/mac.md
+    - Linux: setup/linux.md
+  - Configuration:
+    - Authentication: configuration/authentication.md
+    - Remote Access: configuration/remote-access.md
+    - Data and Backups: configuration/data-and-backups.md
+  - App Guide:
+    - How to use: app-guide/how-to-use.md
+    - How it works: app-guide/how-it-works.md
+    - Troubleshooting: app-guide/troubleshooting.md
+  - Developer Guide:
+    - Architecture: developer/architecture.md
+    - Database: developer/database.md
+    - Contributing: developer/contributing.md
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight
+  - toc:
+      permalink: "#"
+  - attr_list
+  - pymdownx.tabbed:
+      alternate_style: true
+  - md_in_html
+
+copyright: "Copyright &copy; 2026 World Journal"
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/mihail-pop/world-journal
+      name: World Journal on GitHub
+
+extra_css:
+  - stylesheets/custom.css
