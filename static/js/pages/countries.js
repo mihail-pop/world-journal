@@ -51,6 +51,8 @@ function countryRow(state, country, favorite) {
 
 function renderLists(state) {
     const focused = document.activeElement;
+    const lists = state.page.querySelector("[data-directory-lists]");
+    const scrollTop = lists.scrollTop;
     const query = normalize(state.form.elements.q.value.trim());
     const sort = state.form.elements.sort.value;
     const direction = state.form.elements.order.value === "desc" ? -1 : 1;
@@ -70,6 +72,7 @@ function renderLists(state) {
     state.page.querySelector("[data-directory-count]").textContent = matching.length;
     for (const link of state.page.querySelectorAll("[data-directory-tab]")) link.href = directoryUrl(state,state.code,link.dataset.directoryTab);
     if (focused?.isConnected && focused.closest("[data-directory-lists]")) focused.focus({preventScroll:true});
+    lists.scrollTop = scrollTop;
 }
 
 function favoriteControl(state) {
