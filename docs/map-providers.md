@@ -6,10 +6,10 @@ The style URL and fallback glyph URL are configured through `MAP_STYLE_URL` and 
 
 ## Browser preferences
 
-The map type selector now offers Terrain, No terrain and Adventure Mode. The
+The map type selector now offers Terrain, Simple and Adventure. The
 new `mapType` value is stored with existing v2 preferences, with the terrain flag
 derived from it for compatibility. Older terrain-on/off choices retain their
-meaning. [Adventure Mode](adventure-map.md) documents the illustrated atlas style,
+meaning. [Adventure](adventure-map.md) documents the illustrated atlas style,
 theme palettes, decorative artwork, unchanged interaction geometry and manual review.
 
 Map preferences use the `world-journal:map-preferences:v2` localStorage key. Country names and the terrain basemap default on, capital names default off, and there is no default home country. Protected areas, buildings, land-use shading and places of interest default off; the remaining detail groups and other labels default on. `detailDefaultsVersion: 1` applies those four quieter defaults once when reading older preferences. Subsequent explicit changes are preserved. Other saved choices and the storage version remain unchanged. Legacy v1 values remain readable, with simple mode converted to terrain off. Invalid values and home-country codes absent from canonical metadata fall back safely.

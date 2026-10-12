@@ -101,10 +101,13 @@ function updateLayerTheme(controller) {
     map.setPaintProperty(LAYERS.smallMarker, "circle-stroke-color", selected);
     map.setPaintProperty(LAYERS.countryNames, "text-color", selected);
     map.setPaintProperty(LAYERS.countryNames, "text-halo-color", background);
-    map.setLayoutProperty(LAYERS.countryNames, "text-font", [adventure ? "Noto Sans Regular" : "Noto Sans Bold"]);
-    map.setLayoutProperty(LAYERS.countryNames, "text-transform", adventure ? "uppercase" : "none");
-    map.setLayoutProperty(LAYERS.countryNames, "text-letter-spacing", adventure ? .07 : 0);
-    map.setLayoutProperty(LAYERS.countryNames, "text-size", ["interpolate", ["linear"], ["zoom"], 1, adventure ? 10 : 9, 5, adventure ? 16 : 14]);
+    if (controller.countryLabelAdventure !== adventure) {
+        controller.countryLabelAdventure = adventure;
+        map.setLayoutProperty(LAYERS.countryNames, "text-font", [adventure ? "Noto Sans Regular" : "Noto Sans Bold"]);
+        map.setLayoutProperty(LAYERS.countryNames, "text-transform", adventure ? "uppercase" : "none");
+        map.setLayoutProperty(LAYERS.countryNames, "text-letter-spacing", adventure ? .07 : 0);
+        map.setLayoutProperty(LAYERS.countryNames, "text-size", ["interpolate", ["linear"], ["zoom"], 1, adventure ? 10 : 9, 5, adventure ? 16 : 14]);
+    }
     map.setPaintProperty(LAYERS.capitalMarkers, "circle-color", selected);
     map.setPaintProperty(LAYERS.capitalMarkers, "circle-stroke-color", background);
     map.setPaintProperty(LAYERS.capitalNames, "text-color", selected);
@@ -710,6 +713,7 @@ function installCountryLayers(controller) {
     const { map } = controller;
     // A style can recreate layers while retaining the GeoJSON source itself.
     controller.appliedFavorites = null;
+    controller.countryLabelAdventure = null;
     // Capture provider definitions once per style, before adding our GeoJSON.
     // Preference toggles only need these IDs/label rules, not whole style copies.
     controller.basemapLayers = (map.getStyle().layers ?? []).filter(layer => !isApplicationLayer(layer));

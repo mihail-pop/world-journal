@@ -41,7 +41,7 @@
             <div id="map-display-controls" class="map-display-controls" data-map-controls-panel hidden>
                 <fieldset>
                     <legend>Map display</legend>
-                    <label for="map-type">Map type</label><select id="map-type" data-map-type disabled><option value="terrain">Terrain</option><option value="plain">No terrain</option><option value="adventure">Adventure Mode</option></select>
+                    <label for="map-type">Map type</label><select id="map-type" data-map-type disabled><option value="terrain">Terrain</option><option value="plain">Simple</option><option value="adventure">Adventure</option></select>
                     <label><input type="checkbox" data-map-preference="countryNames"> Country names</label>
                     <label><input type="checkbox" data-map-preference="capitalNames"> Capital names</label>
                     <a class="map-settings-link" href="{% url 'core:settings' %}" hx-boost="true" hx-target="#app-content" hx-push-url="true">More map options {% include 'core/partials/icon.html' with name='settings' %}</a>
