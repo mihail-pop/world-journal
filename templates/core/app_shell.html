@@ -68,7 +68,6 @@
     <template data-control-icon="trash">{% include 'core/partials/icon.html' with name='trash' %}</template>
     <div class="notification-rack" data-notification-rack aria-label="Notifications"></div>
     <dialog class="action-dialog" data-action-dialog aria-labelledby="action-dialog-title" aria-describedby="action-dialog-description">
-        <div class="action-dialog-heading"><span class="action-dialog-icon" data-dialog-icon>{% include 'core/partials/icon.html' with name='trash' %}</span><span class="action-dialog-caption">Please confirm</span><button class="notification-close" type="button" data-dialog-cancel aria-label="Close dialog">{% include 'core/partials/icon.html' with name='close' %}</button></div>
         <h2 id="action-dialog-title"></h2><p id="action-dialog-description"></p>
         <div data-dialog-content></div>
         <div class="action-dialog-buttons"><button class="journal-button" type="button" data-dialog-cancel autofocus>Cancel</button><button class="journal-button is-danger" type="button" data-dialog-accept>Delete</button></div>

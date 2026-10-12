@@ -1,6 +1,8 @@
 # Notifications and confirmations
 
-The persistent shell owns `static/js/notifications.js` and `static/css/notifications.css`. Feedback stays visible across HTMX page navigation and follows the dark, light and brown interface palettes. It is bounded to four notices; repeated failures reuse an ID. Success/info notices expire, warnings last longer, and errors stay until dismissed or the related operation recovers. Hovering or focusing a notice pauses expiry. Progress starts after 800 ms so quick operations do not flash a popup.
+The persistent shell owns `static/js/notifications.js` and `static/css/notifications.css`. Every page and theme uses the same solid semantic colors: bright green for success, orange for loading/warnings, red for errors, and blue for information. Notices use concise text without icons or dismiss buttons. Confirmation dialogs use the orange action-needed surface with named Cancel/Delete/Remove choices.
+
+Feedback stays visible across HTMX page navigation. It is bounded to four active notices and four fading-out nodes; repeated IDs update in place. Notices fade in and out, including programmatic dismissal. Plain success/info notices expire after roughly 4.5–6 seconds, warnings after 10 seconds and errors after 12 seconds. Required retry actions and ongoing work remain until acted on or resolved; optional navigation actions expire. Hovering or focusing pauses expiry. Progress starts after 800 ms so quick operations do not flash a popup. Reduced-motion preferences disable the transitions.
 
 Meaningful actions include explicit Journal saves, quick bookmarks, image uploads/deletions, collection/preset changes, source checks/removal, import results, and user-requested feed refreshes. A manual refresh is followed across page navigation and reports aggregate completion or partial failures. Automatic feed refresh, individual country/tab loading, favorite successes, theme changes and successful autosaves stay quiet. Autosave failures keep the draft and offer Retry save. Source/favorite write failures, major page-loading failures and interrupted HTMX requests provide actionable feedback.
 
@@ -10,6 +12,8 @@ Deletion links still fetch the existing server confirmation, but HTMX intercepts
 
 Public helpers: `notify({id, kind, title, message, action, duration})`, `dismissNotice(id)`, `updateNotice(id, message)`, `beginTask(title, options)` (returns a finish callback), and `confirmAction({title, message, accept})` (resolves a boolean). Actions may have a same-app `href` or a `run` callback. Each caller must finish its delayed progress in `finally`. Forms can provide `data-task-label`; explicit confirmation forms can provide `data-confirm-title`, `data-confirm-message`, and `data-confirm-accept`.
 
+Map preference changes in Settings (map type, home country, general labels and terrain options) show a green Preferences saved notification after local storage succeeds. Rapid changes replace the same notice. The inline Map status is reserved for loading/errors and hidden when empty. Map gestures and display controls remain quiet; storage failures show a warning instead of a success notification.
+
 ## Manual review
 
 - Hard-refresh, save an entry, quick-save an article/video, and open it using the notification action. Check that feedback appears once and navigation preserves the player.
@@ -17,6 +21,6 @@ Public helpers: `notify({id, kind, title, message, action, duration})`, `dismiss
 - Use Add and check with a working and a failing source. Run Refresh now, navigate away, and wait for one aggregate completion notice. Routine background refresh should not generate popups.
 - Preview/import a backup and submit an invalid form. Check the progress notice, import result and field-level errors. Original import confirmation remains required.
 - Stop the local server during a save/deletion. Check the error, preserved draft and retry/cancel controls; restart and retry. Successful autosaves should remain inline.
-- Check dark/light/brown themes, a 390 px viewport, keyboard focus, Escape, and reduced motion. Notices should fit without moving page content.
+- Check dark/light/brown themes, a 390 px viewport, keyboard focus, Escape, and reduced motion. Notice colors must be identical across themes. Check fade-in/out, automatic dismissal without icons/X buttons, and rapid preference changes reusing one notice. Notices should fit without moving page content.
 
 No database migration or additional dependency is required. Notifications are browser-session UI, not a stored inbox.

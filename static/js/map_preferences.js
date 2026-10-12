@@ -86,10 +86,12 @@ export function readMapPreferences(validCountryCodes) {
     }
 }
 
-export function writeMapPreferences(value, validCountryCodes) {
+export function writeMapPreferences(value, validCountryCodes, { notifySaved = false } = {}) {
     const normalized = normalizePreferences(value, validCountryCodes);
+    let saved = false;
     try {
         localStorage.setItem(MAP_PREFERENCES_STORAGE_KEY, JSON.stringify(normalized));
+        saved = true;
     } catch (error) {
         // Preferences remain active for the current page when storage is unavailable.
         document.dispatchEvent(new CustomEvent("world-journal:preference-storage-error"));
@@ -97,6 +99,9 @@ export function writeMapPreferences(value, validCountryCodes) {
     document.dispatchEvent(new CustomEvent("world-journal:map-preferences-change", {
         detail: normalized,
     }));
+    if (saved && notifySaved) {
+        document.dispatchEvent(new CustomEvent("world-journal:preferences-saved"));
+    }
     return normalized;
 }
 

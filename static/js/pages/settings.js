@@ -23,6 +23,7 @@ async function loadCountries(url, signal) {
 
 function setStatus(controller, message, isError = false) {
     controller.status.textContent = message;
+    controller.status.hidden = !message;
     controller.status.classList.toggle("is-error", isError);
 }
 
@@ -67,8 +68,7 @@ async function initializeSettingsPage() {
         mapType.dispatchEvent(new Event("change", {bubbles: true}));
         mapType.addEventListener("change", () => {
             if (mapType.value === controller.preferences.mapType) return;
-            writeMapPreferences({...controller.preferences, mapType: mapType.value}, validCountryCodes);
-            setStatus(controller, "Map type saved.");
+            writeMapPreferences({...controller.preferences, mapType: mapType.value}, validCountryCodes, {notifySaved: true});
         }, {signal: controller.abortController.signal});
         const labelChoices = page.querySelectorAll("[data-settings-map-preference]");
         const preferenceKeys = new Set(MAP_BOOLEAN_PREFERENCES);
@@ -78,8 +78,7 @@ async function initializeSettingsPage() {
             input.addEventListener("change", () => {
                 const key = input.dataset.settingsMapPreference;
                 if (!preferenceKeys.has(key)) return;
-                writeMapPreferences({ ...readMapPreferences(validCountryCodes), [key]: input.checked }, validCountryCodes);
-                setStatus(controller, "Map preferences saved.");
+                writeMapPreferences({ ...readMapPreferences(validCountryCodes), [key]: input.checked }, validCountryCodes, {notifySaved: true});
             }, { signal: controller.abortController.signal });
         }
         document.addEventListener("world-journal:map-preferences-change", event => {
@@ -99,12 +98,7 @@ async function initializeSettingsPage() {
             if (homeCountry !== current.homeCountry) {
                 clearSavedMapViewport();
             }
-            writeMapPreferences({ ...current, homeCountry }, validCountryCodes);
-            const selectedCountry = sortedCountries.find((country) => country.iso_a2 === homeCountry);
-            setStatus(
-                controller,
-                selectedCountry ? `Home country saved as ${selectedCountry.name}.` : "Home country cleared.",
-            );
+            writeMapPreferences({ ...current, homeCountry }, validCountryCodes, {notifySaved: true});
         }, { signal: controller.abortController.signal });
     } catch (error) {
         if (error.name === "AbortError") {

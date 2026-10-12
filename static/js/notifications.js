@@ -1,53 +1,102 @@
 // One feedback surface outside HTMX page swaps. Routine background work stays quiet.
 const notices = new Map();
 const requests = new WeakMap();
+const retiring = new Set();
 let registered = false;
 let sequence = 0;
 let dialogState = null;
-
-function icon(name) {
-    return document.querySelector(`[data-control-icon="${name}"]`).content.cloneNode(true);
-}
+let finishDialogExit = null;
 
 export function dismissNotice(id) {
     const item = notices.get(id);
     if (!item) return;
     clearTimeout(item.timer);
-    item.element.remove();
     notices.delete(id);
+    cancelAnimationFrame(item.frame);
+    const element = item.element;
+    if (!element.classList.contains("is-visible") || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        element.remove();
+        return;
+    }
+    // Leave time for the exit transition, with a bounded number of retiring nodes.
+    while (retiring.size >= 4) retiring.values().next().value.remove();
+    const exit = {id, item, revive: () => {
+        clearTimeout(exit.timer);
+        element.removeEventListener("transitionend", onEnd);
+        element.inert = false;
+        element.removeAttribute("aria-hidden");
+        element.classList.remove("is-leaving");
+        retiring.delete(exit);
+        return item;
+    }, remove: () => {
+        clearTimeout(exit.timer);
+        element.removeEventListener("transitionend", onEnd);
+        element.remove();
+        retiring.delete(exit);
+    }};
+    const onEnd = event => { if (event.target === element && event.propertyName === "opacity") exit.remove(); };
+    retiring.add(exit);
+    element.inert = true;
+    element.setAttribute("aria-hidden", "true");
+    element.classList.add("is-leaving");
+    element.addEventListener("transitionend", onEnd);
+    exit.timer = setTimeout(exit.remove, 300);
 }
 
 export function updateNotice(id, message) {
     const element = notices.get(id)?.element;
-    if (element) element.querySelector(".notification-copy p").textContent = message;
+    if (!element) return;
+    let text = element.querySelector(".notification-copy p");
+    if (!text) {
+        text = document.createElement("p");
+        element.querySelector(".notification-copy strong").after(text);
+    }
+    text.textContent = message;
 }
 
 export function notify({id = `notice-${++sequence}`, kind = "info", title, message = "", action, duration} = {}) {
     if (!["info", "success", "warning", "error", "loading"].includes(kind)) kind = "info";
     const rack = document.querySelector("[data-notification-rack]");
     if (!rack) return id;
-    dismissNotice(id);
-    while (notices.size >= 4) dismissNotice(notices.keys().next().value);
-    const element = document.createElement("section");
-    element.className = "app-notification";
+    let item = notices.get(id);
+    const previousExit = [...retiring].find(exit => exit.id === id);
+    if (!item && previousExit) {
+        item = previousExit.revive();
+        while (notices.size >= 4) dismissNotice(notices.keys().next().value);
+        notices.set(id, item);
+    }
+    if (!item) {
+        while (notices.size >= 4) dismissNotice(notices.keys().next().value);
+        item = {element: document.createElement("section"), timer: null, frame: null, lifetime: 0};
+        item.element.className = "app-notification";
+        const pause = () => clearTimeout(item.timer);
+        item.resume = () => {
+            clearTimeout(item.timer);
+            if (item.lifetime && !item.element.matches(":hover, :focus-within")) item.timer = setTimeout(() => dismissNotice(id), item.lifetime);
+        };
+        item.element.addEventListener("mouseenter", pause);
+        item.element.addEventListener("mouseleave", item.resume);
+        item.element.addEventListener("focusin", pause);
+        item.element.addEventListener("focusout", event => { if (!item.element.contains(event.relatedTarget)) queueMicrotask(item.resume); });
+        notices.set(id, item);
+        rack.append(item.element);
+        item.frame = requestAnimationFrame(() => {
+            item.frame = requestAnimationFrame(() => { if (notices.get(id) === item) item.element.classList.add("is-visible"); });
+        });
+    }
+    const element = item.element;
     element.dataset.kind = kind;
-    const badge = document.createElement("span");
-    badge.className = "notification-icon";
-    badge.setAttribute("aria-hidden", "true");
-    if (kind === "loading") {
-        const spinner = document.createElement("span");
-        spinner.className = "notification-spinner";
-        badge.append(spinner);
-    } else badge.append(icon(kind === "success" ? "check" : "info"));
     const copy = document.createElement("div");
     copy.className = "notification-copy";
     copy.setAttribute("role", kind === "error" ? "alert" : "status");
+    copy.setAttribute("aria-atomic", "true");
     const heading = document.createElement("strong");
-    heading.textContent = title || ({success: "Done", error: "Something needs attention", warning: "Please check", loading: "Working…", info: "World Journal"}[kind]);
+    // Server messages already describe the action; avoid a generic second heading.
+    heading.textContent = title || message || ({success: "Saved", error: "Action failed", warning: "Action needed", loading: "Loading…", info: "Updated"}[kind]);
     const text = document.createElement("p");
     text.textContent = message;
     copy.append(heading);
-    if (message) copy.append(text);
+    if (title && message && message !== title) copy.append(text);
     if (action) {
         const button = document.createElement(action.href ? "a" : "button");
         if (action.href) {
@@ -63,24 +112,10 @@ export function notify({id = `notice-${++sequence}`, kind = "info", title, messa
         button.addEventListener("click", () => { if (!action.href) { dismissNotice(id); action.run(); } });
         copy.append(button);
     }
-    const close = document.createElement("button");
-    close.type = "button";
-    close.className = "notification-close";
-    close.setAttribute("aria-label", "Dismiss notification");
-    close.append(icon("close"));
-    close.addEventListener("click", () => dismissNotice(id));
-    element.append(badge, copy, close);
-    const item = {element, timer: null};
-    notices.set(id, item);
-    rack.append(element);
+    element.replaceChildren(copy);
     if (action?.href) window.htmx.process(element);
-    const lifetime = duration ?? (["error", "loading"].includes(kind) || action ? 0 : kind === "warning" ? 12000 : 6000);
-    const resume = () => { clearTimeout(item.timer); if (lifetime) item.timer = setTimeout(() => dismissNotice(id), lifetime); };
-    element.addEventListener("mouseenter", () => clearTimeout(item.timer));
-    element.addEventListener("mouseleave", resume);
-    element.addEventListener("focusin", () => clearTimeout(item.timer));
-    element.addEventListener("focusout", event => { if (!element.contains(event.relatedTarget)) resume(); });
-    resume();
+    item.lifetime = duration ?? (kind === "loading" || action?.run ? 0 : kind === "error" ? 12000 : kind === "warning" || action ? 10000 : kind === "success" ? 4500 : 6000);
+    item.resume();
     return id;
 }
 
@@ -94,14 +129,24 @@ function finishDialog(accepted = false) {
     if (!dialogState) return;
     const state = dialogState;
     dialogState = null;
-    document.querySelector("[data-action-dialog]").close();
-    document.querySelector("[data-dialog-content]").replaceChildren();
-    if (state.opener?.isConnected) state.opener.focus({preventScroll: true});
-    state.resolve?.(accepted);
+    const dialog = document.querySelector("[data-action-dialog]");
+    dialog.classList.add("is-leaving");
+    const close = () => {
+        clearTimeout(timer);
+        dialog.close();
+        dialog.classList.remove("is-leaving");
+        document.querySelector("[data-dialog-content]").replaceChildren();
+        finishDialogExit = null;
+        if (state.opener?.isConnected) state.opener.focus({preventScroll: true});
+        state.resolve?.(accepted);
+    };
+    const timer = setTimeout(close, window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 220);
+    finishDialogExit = close;
 }
 
 export function confirmAction({title, message, accept = "Delete", opener = document.activeElement, onAccept} = {}) {
     if (dialogState) return Promise.resolve(false);
+    finishDialogExit?.();
     const dialog = document.querySelector("[data-action-dialog]");
     document.querySelector("#action-dialog-title").textContent = title;
     document.querySelector("#action-dialog-description").textContent = message;
@@ -155,7 +200,14 @@ export function registerNotifications() {
     registered = true;
     deliver(JSON.parse(document.querySelector("#app-notices").textContent));
     document.addEventListener("world-journal:server-notices", event => deliver(event.detail.notices));
-    document.addEventListener("world-journal:preference-storage-error", () => notify({id: "preference-storage", kind: "warning", title: "Browser preferences could not be kept", message: "Your choice applies now, but may reset after a refresh. Allow local storage for this site to remember it."}));
+    document.addEventListener("world-journal:preferences-saved", () => {
+        dismissNotice("preference-storage");
+        notify({id: "preferences-saved", kind: "success", title: "Preferences saved"});
+    });
+    document.addEventListener("world-journal:preference-storage-error", () => {
+        dismissNotice("preferences-saved");
+        notify({id: "preference-storage", kind: "warning", title: "Browser preferences could not be kept", message: "Your choice applies now, but may reset after a refresh. Allow local storage for this site to remember it."});
+    });
     const dialog = document.querySelector("[data-action-dialog]");
     dialog.addEventListener("cancel", event => {
         event.preventDefault();
@@ -194,7 +246,7 @@ export function registerNotifications() {
         }
         if (dialogState?.form) finishDialog(true);
         if (event.detail.requestConfig?.verb !== "get" && response?.querySelector(".errorlist")) {
-            notify({id: "form-validation", kind: "warning", title: "A few details need attention", message: "Review the highlighted fields. Your changes have not been saved."});
+            notify({id: "form-validation", kind: "warning", title: "Check the highlighted fields", message: "Changes haven’t been saved."});
         }
     });
     document.body.addEventListener("htmx:beforeRequest", event => {
@@ -230,7 +282,7 @@ export function registerNotifications() {
         const config = event.detail.requestConfig;
         const meaningful = config?.verb !== "get" || event.detail.target?.id === "app-content";
         if (event.detail.failed && meaningful && event.detail.xhr.status !== 0) {
-            notify({id: "request-error", kind: "error", title: "The request could not be completed", message: event.detail.xhr.status === 403 ? "Your session may have expired. Reload the page before trying again; keep a copy of any unsaved text." : "Check that the server is running and try again. Your current page is kept."});
+            notify({id: "request-error", kind: "error", title: "Request failed", message: event.detail.xhr.status === 403 ? "Copy any unsaved text, reload the page, then retry." : "Check that the server is running, then retry."});
         }
     });
     document.body.addEventListener("htmx:afterSwap", event => {
@@ -239,6 +291,6 @@ export function registerNotifications() {
     for (const name of ["htmx:sendError", "htmx:timeout"]) document.body.addEventListener(name, event => {
         const config = event.detail.requestConfig;
         if (config?.verb === "get" && event.detail.target?.id !== "app-content") return;
-        notify({id: "request-error", kind: "error", title: "Connection interrupted", message: "Check that World Journal is running, then try again. Your current page is kept."});
+        notify({id: "request-error", kind: "error", title: "Connection interrupted", message: "Check that World Journal is running, then retry."});
     });
 }

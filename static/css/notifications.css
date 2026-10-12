@@ -1,33 +1,35 @@
-/* Shell-owned feedback. Colors follow the interface palette in every theme. */
-:root { --notice-success: #83c9a6; --notice-warning: #e9bb70; --notice-error: #ee9090; }
-[data-theme="light"] { --notice-success: #28704a; --notice-warning: #8b5b16; --notice-error: #b1373f; }
-[data-theme="brown"] { --notice-success: #b6cb96; --notice-warning: #eac083; --notice-error: #efa09a; }
-.notification-rack { position: fixed; z-index: 100; top: calc(var(--header-height) + .8rem); left: 50%; transform: translateX(-50%); display: grid; gap: .6rem; width: min(29rem, calc(100vw - 1.5rem)); pointer-events: none; }
-.app-notification { --notice-tone: var(--ui-accent); position: relative; display: grid; grid-template-columns: 2.3rem minmax(0, 1fr) 1.8rem; gap: .7rem; align-items: start; padding: 1rem; border: 1px solid var(--ui-border); border-left: 3px solid var(--notice-tone); border-radius: 10px; background: var(--ui-paper); color: var(--ui-text); box-shadow: 0 8px 28px #0003, 0 2px 6px #0002; pointer-events: auto; animation: notice-arrive .18s ease-out; }
-.app-notification[data-kind="success"] { --notice-tone: var(--notice-success); }
-.app-notification[data-kind="warning"] { --notice-tone: var(--notice-warning); }
-.app-notification[data-kind="error"] { --notice-tone: var(--notice-error); }
-.notification-icon, .action-dialog-icon { display: grid; place-items: center; width: 2.3rem; height: 2.3rem; border: 1px solid color-mix(in srgb, var(--notice-tone) 35%, transparent); border-radius: 50%; color: var(--notice-tone); background: color-mix(in srgb, var(--notice-tone) 9%, var(--ui-paper)); }
-.notification-copy { min-width: 0; }
-.notification-copy strong { display: block; margin: .05rem 0 .25rem; font-size: 1rem; font-weight: 650; line-height: 1.35; }
-.notification-copy p { margin: 0; color: var(--ui-muted); font-size: .95rem; line-height: 1.5; overflow-wrap: anywhere; }
-.notification-close { display: grid; place-items: center; width: 1.8rem; height: 1.8rem; padding: .2rem; color: var(--ui-muted); border: 0; border-radius: 5px; background: transparent; cursor: pointer; }
-.notification-close:hover { color: var(--ui-text); background: var(--ui-hover); }
-.notification-close .icon { width: 1.15rem; height: 1.15rem; }
-.notification-action { margin-top: .65rem; padding: .25rem 0; color: var(--ui-accent); background: none; border: 0; font: inherit; font-size: .95rem; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
-.notification-spinner { width: 1.15rem; height: 1.15rem; border: 2px solid color-mix(in srgb, var(--notice-tone) 25%, transparent); border-top-color: var(--notice-tone); border-radius: 50%; animation: notice-spin .85s linear infinite; }
-.action-dialog { --notice-tone: var(--notice-error); box-sizing: border-box; width: min(31rem, calc(100vw - 1.5rem)); max-height: calc(100dvh - var(--header-height) - 3rem); overflow: auto; margin: calc(var(--header-height) + 1.25rem) auto auto; padding: 1.5rem; border: 1px solid var(--ui-border); border-radius: 12px; color: var(--ui-text); background: var(--ui-paper); box-shadow: 0 20px 70px #0005; }
-.action-dialog::backdrop { background: #080f1880; }
-.action-dialog[open] { animation: notice-arrive .18s ease-out; }
-.action-dialog-heading { display: flex; gap: .8rem; align-items: center; margin-bottom: 1rem; }
-.action-dialog-caption { flex: 1; color: var(--ui-muted); font-size: .85rem; font-weight: 600; letter-spacing: .03em; }
-.action-dialog h2 { margin: 0 0 .65rem; font-size: 1.3rem; font-weight: 650; line-height: 1.35; overflow-wrap: anywhere; }
-.action-dialog p { margin: 0; color: var(--ui-muted); font-size: 1rem; line-height: 1.6; }
-.action-dialog-buttons { display: flex; justify-content: flex-end; gap: .65rem; margin-top: 1.6rem; padding-top: 1rem; border-top: 1px solid var(--ui-border); }
-.action-dialog .is-danger { color: var(--ui-paper); border-color: var(--notice-error); background: var(--notice-error); }
-.action-dialog .is-danger:hover { filter: brightness(.92); }
+/* A single semantic palette: notification colors never change with the page theme. */
+:root { --notice-success: #3be07d; --notice-warning: #ffad36; --notice-error: #ff5f65; --notice-info: #78baff; }
+.notification-rack { position: fixed; z-index: 100; top: calc(var(--header-height) + .85rem); left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: .6rem; width: min(32rem, calc(100vw - 1.5rem)); max-height: calc(100dvh - var(--header-height) - 2rem); pointer-events: none; }
+.app-notification { --notice-tone: var(--notice-info); --notice-ink: #102c49; box-sizing: border-box; width: fit-content; max-width: 100%; min-width: min(16rem, 100%); padding: .95rem 1.4rem; border: 1px solid color-mix(in srgb, var(--notice-ink) 14%, var(--notice-tone)); border-radius: 10px; background: var(--notice-tone); color: var(--notice-ink); box-shadow: 0 7px 24px #0003, 0 2px 5px #0002; pointer-events: auto; opacity: 0; transform: translateY(-9px); transition: opacity 240ms ease, transform 280ms cubic-bezier(.2,.7,.2,1), background-color 200ms ease, color 200ms ease; }
+.app-notification.is-visible { opacity: 1; transform: translateY(0); }
+.app-notification.is-leaving { opacity: 0; transform: translateY(-6px); pointer-events: none; }
+.app-notification[data-kind="success"] { --notice-tone: var(--notice-success); --notice-ink: #10351e; }
+.app-notification[data-kind="warning"], .app-notification[data-kind="loading"] { --notice-tone: var(--notice-warning); --notice-ink: #422706; }
+.app-notification[data-kind="error"] { --notice-tone: var(--notice-error); --notice-ink: #430e14; }
+.notification-copy { min-width: 0; text-align: center; overflow-wrap: anywhere; }
+.notification-copy strong { display: block; margin: 0; font-size: 1.03rem; font-weight: 650; line-height: 1.4; }
+.notification-copy p { margin: .3rem 0 0; color: inherit; font-size: .95rem; line-height: 1.5; }
+.notification-action { display: inline-flex; align-items: center; justify-content: center; margin-top: .75rem; padding: .45rem .85rem; border: 1px solid color-mix(in srgb, var(--notice-ink) 35%, transparent); border-radius: 6px; color: inherit; background: #ffffff26; font: inherit; font-size: .93rem; font-weight: 650; line-height: 1.3; text-decoration: none; cursor: pointer; transition: background-color 150ms ease; }
+.notification-action:hover { color: inherit; background: #ffffff50; }
+.app-notification .notification-action:focus-visible, .action-dialog button:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; }
+.action-dialog { box-sizing: border-box; width: min(31rem, calc(100vw - 1.5rem)); max-height: calc(100dvh - var(--header-height) - 3rem); overflow: auto; margin: calc(var(--header-height) + 1.25rem) auto auto; padding: 1.6rem; border: 1px solid #42270626; border-radius: 12px; color: #422706; background: var(--notice-warning); box-shadow: 0 18px 60px #0005; }
+.action-dialog::backdrop { background: #080f1870; animation: backdrop-arrive 240ms ease both; }
+.action-dialog[open] { animation: notice-arrive 280ms cubic-bezier(.2,.7,.2,1) both; }
+.action-dialog.is-leaving { animation: notice-leave 220ms ease both; pointer-events: none; }
+.action-dialog.is-leaving::backdrop { animation: backdrop-leave 220ms ease both; }
+.action-dialog h2 { margin: 0 0 .65rem; color: inherit; font-size: 1.3rem; font-weight: 650; line-height: 1.35; overflow-wrap: anywhere; }
+.action-dialog p { margin: 0; color: inherit; font-size: 1rem; line-height: 1.55; }
+.action-dialog-buttons { display: flex; justify-content: flex-end; gap: .65rem; margin-top: 1.4rem; }
+.action-dialog .journal-button { justify-content: center; border: 1px solid #42270655; border-radius: 6px; color: #422706; background: #ffffff26; font-weight: 650; }
+.action-dialog .journal-button:hover { color: #422706; background: #ffffff50; }
+.action-dialog .journal-button.is-danger { color: #430e14; border-color: #430e1426; background: var(--notice-error); }
+.action-dialog .journal-button.is-danger:hover { color: #430e14; background: #ff7176; }
 .action-dialog [data-dialog-content]:empty { display: none; }
-@keyframes notice-arrive { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
-@keyframes notice-spin { to { transform: rotate(360deg); } }
-@media (max-width: 46rem) { .notification-rack { top: calc(var(--header-height) + .5rem); } .app-notification { padding: .85rem; gap: .55rem; } .action-dialog { padding: 1.2rem; } .action-dialog-buttons > button { flex: 1; justify-content: center; } }
-@media (prefers-reduced-motion: reduce) { .app-notification, .action-dialog[open] { animation: none; } .notification-spinner { animation-duration: 2s; } }
+.action-dialog [data-dialog-error] { margin-top: .85rem; font-weight: 600; }
+@keyframes notice-arrive { from { opacity: 0; transform: translateY(-9px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes notice-leave { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(-6px); } }
+@keyframes backdrop-arrive { from { background: #080f1800; } to { background: #080f1870; } }
+@keyframes backdrop-leave { from { background: #080f1870; } to { background: #080f1800; } }
+@media (max-width: 46rem) { .notification-rack { top: calc(var(--header-height) + .5rem); } .app-notification { padding: .85rem 1.1rem; } .action-dialog { padding: 1.2rem; } .action-dialog-buttons > button { flex: 1; } }
+@media (prefers-reduced-motion: reduce) { .app-notification, .notification-action { transition: none; transform: none; } .action-dialog[open], .action-dialog::backdrop { animation: none; } }
