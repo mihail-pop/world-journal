@@ -3,9 +3,7 @@
   <a href="https://mihail-pop.github.io/world-journal/">Documentation</a>
 </p>
 
-This is the self-hosted world news and research app I wanted to have. It combines an interactive map, attributed news feeds and a personal journal without requiring paid APIs or a cloud service. I use it myself and plan to keep maintaining it.
-
-> **Note:** I added the open source AGPL license to make contributing easier and to keep modified network versions open as well.
+The app is usable but still work in progress, I will update the readme and documentation when I think it's good enough to share it with others. :) 
 
 ## Features
 
@@ -16,11 +14,8 @@ This is the self-hosted world news and research app I wanted to have. It combine
 - Save favorite countries and create named map color presets.
 - Browse a rolling 90-day news archive without downloading article bodies or videos.
 - Keep one movable video player running while navigating through the app.
-- Export journal data, preferences and local attachments in a portable backup.
 
-## Demo Video
-
-## Screenshots
+## Demo 
 
 ## Setup
 
