@@ -110,9 +110,9 @@ Use the bookmark control to save the current video and continue writing in the J
 
 Settings is divided into Preferences, Backup, Sources and Information.
 
-- **Preferences** controls the theme, home country, map type and map labels.
+- **Preferences** controls the theme, app font, home country, map type and map labels.
 - **Backup** exports or imports portable personal data.
 - **Sources** controls feeds, channels, refresh timing and source health.
 - **Information** collects application and data-source information.
 
-Visual map preferences belong to the current browser. The theme, journal entries, favorites, presets, source choices and territory edits are shared through SQLite.
+The app font and visual map preferences belong to the current browser. The theme, journal entries, favorites, presets, source choices and territory edits are shared through SQLite.

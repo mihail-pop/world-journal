@@ -3,34 +3,47 @@
     src: url("../vendor/fonts/InterVariable.woff2") format("woff2");
     font-style: normal;
     font-weight: 100 900;
-    font-display: swap;
+    font-display: block;
 }
 @font-face {
     font-family: "Inter";
     src: url("../vendor/fonts/InterVariable-Italic.woff2") format("woff2");
     font-style: italic;
     font-weight: 100 900;
-    font-display: swap;
+    font-display: block;
 }
 @font-face {
     font-family: "Roboto";
     src: url("../vendor/fonts/RobotoVariable.ttf") format("truetype");
     font-style: normal;
     font-weight: 100 900;
-    font-display: swap;
+    font-display: block;
 }
 @font-face {
     font-family: "Roboto";
     src: url("../vendor/fonts/RobotoVariable-Italic.ttf") format("truetype");
     font-style: italic;
     font-weight: 100 900;
-    font-display: swap;
+    font-display: block;
 }
+@font-face { font-family: "Overpass"; src: url("../vendor/fonts/overpass-regular.woff2") format("woff2"); font-style: normal; font-weight: 400; font-display: block; }
+@font-face { font-family: "Overpass"; src: url("../vendor/fonts/overpass-500.woff2") format("woff2"); font-style: normal; font-weight: 500; font-display: block; }
+@font-face { font-family: "Overpass"; src: url("../vendor/fonts/overpass-700.woff2") format("woff2"); font-style: normal; font-weight: 700; font-display: block; }
+@font-face { font-family: "Overpass"; src: url("../vendor/fonts/overpass-italic.woff2") format("woff2"); font-style: italic; font-weight: 400; font-display: block; }
+@font-face { font-family: "Overpass"; src: url("../vendor/fonts/overpass-500italic.woff2") format("woff2"); font-style: italic; font-weight: 500; font-display: block; }
+@font-face { font-family: "Overpass"; src: url("../vendor/fonts/overpass-700italic.woff2") format("woff2"); font-style: italic; font-weight: 700; font-display: block; }
+
+:root { --font-system: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", sans-serif; }
+:root, [data-font="inter"] { --ui-font-family: "Inter", var(--font-system); }
+[data-font="os"] { --ui-font-family: var(--font-system); }
+[data-font="overpass"] { --ui-font-family: "Overpass", var(--font-system); }
+[data-font="roboto"] { --ui-font-family: "Roboto", var(--font-system); }
+[data-font="segoe"] { --ui-font-family: "Segoe UI", Tahoma, Geneva, Verdana, var(--font-system); }
+
 /* Shared interface layer. Map rendering and theme source colors remain in app.css. */
 :root, .theme-swatch[data-theme="dark"] {
     --header-height: 3.7rem;
     --header-light: #f8f8f8;
-    --ui-font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", sans-serif;
     --ui-favorite: #e34f68;
     --ui-text: #d7e0e8;
     --ui-muted: #99aabb;
@@ -141,7 +154,19 @@ details[open] > summary { margin-bottom: .9rem; color: var(--ui-text); }
 .settings-grid, .source-card-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.15rem; align-items: stretch; }
 .settings-grid.settings-preferences-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) minmax(18rem, 1fr); }
 .settings-card { min-width: 0; padding: 1.3rem; border: 1px solid var(--ui-border); border-radius: 7px; background: var(--ui-surface); overflow-wrap: anywhere; }
-.settings-card h2 { display: flex; gap: .55rem; align-items: center; margin: 0 0 1.1rem; font-size: 1rem; }
+.settings-card > :is(h2, h3), .source-settings-section > h2 {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: .55rem;
+    margin: 0 0 1.2rem;
+    padding-bottom: .8rem;
+    border-bottom: 1px solid var(--ui-border);
+    color: var(--ui-text);
+    font-size: 1.15rem;
+    font-weight: 650;
+    text-align: center;
+}
 .settings-card > p { font-size: .95rem; }
 .settings-card-medium, .settings-card-wide { grid-column: span 2; }
 .settings-card-large { grid-column: 1 / -1; }
@@ -150,6 +175,20 @@ details[open] > summary { margin-bottom: .9rem; color: var(--ui-text); }
 .settings-field label { display: block; margin-bottom: .4rem; }
 .settings-field select { width: 100%; }
 .settings-status { margin: .5rem 0 0; font-size: .9rem; color: var(--ui-muted); }
+.settings-preset-card { text-align: center; }
+.settings-preset-previews, .settings-preset-colors {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+.settings-preset-previews { gap: .65rem; margin-bottom: 1rem; }
+.settings-preset-preview { display: grid; grid-template-rows: 1fr auto; gap: .45rem; min-width: 0; }
+.settings-preset-preview h3 { align-self: center; margin: 0; font-size: .9rem; line-height: 1.35; }
+.settings-preset-colors { gap: .2rem; min-height: 1rem; }
+.settings-preset-colors > li { height: 1rem; border: 1px solid var(--ui-border); border-radius: 3px; background: var(--preset-swatch); }
+.settings-preset-description { margin: .65rem 0 0; font-weight: 700; }
 .theme-choices {
     --theme-row-height: 6.1rem;
     --theme-gap: .6rem;
@@ -187,11 +226,11 @@ details[open] > summary { margin-bottom: .9rem; color: var(--ui-text); }
 .settings-help { padding: .5rem 0 1rem; color: var(--ui-muted); max-width: 52rem; }
 .settings-help p, .information-details p { font-size: .95rem; }
 .source-preferences-form { margin-top: 0; justify-content: space-between; }
+.source-preferences-form > h2 { flex-basis: 100%; margin-bottom: 0; }
 .source-preferences-form .settings-field { margin: 0; }
 .source-settings-section { margin: 1.5rem 0; }
-.source-settings-section > h2 { font-size: 1rem; margin-bottom: 1rem; }
 .source-settings-card { margin: 0; }
-.source-settings-card h3 { font-size: 1rem; }
+.custom-source-card-heading h3 { font-size: 1rem; }
 .source-settings-card h3 a { color: var(--ui-text); text-decoration: none; }
 .source-settings-card .source-choice { font-weight: 400; font-size: .95rem; }
 .source-health { font-size: .9rem; color: var(--ui-muted); }
@@ -242,7 +281,6 @@ details[open] > summary { margin-bottom: .9rem; color: var(--ui-text); }
 .custom-extra-feed-add input { width: 100%; min-width: 0; min-height: 2.5rem; }
 @media (max-width: 600px) { .custom-source-fields { grid-template-columns: minmax(0, 1fr); } }
 .backup-section { margin: 0; }
-.backup-section h2 { font-size: 1rem; }
 .backup-inclusions { margin-block: 1rem; }
 .backup-inclusions p { font-size: .9rem; color: var(--ui-muted); }
 .backup-form { margin-block: 1rem; }
@@ -540,7 +578,6 @@ html { overflow-y: scroll; scrollbar-gutter: stable; }
 .app-name, h1, h2, h3, h4, .journal-rendered, code, pre { font-family: var(--ui-font-family); }
 .settings-grid, .source-card-grid { align-items: stretch; }
 .settings-card > .journal-button { align-self: flex-start; }
-.settings-card h2 { font-size: 1.05rem; }
 .settings-tabs a { font-size: 1rem; }
 .settings-card > p, .settings-help p, .information-details p { font-size: 1rem; }
 .settings-toggle-list { align-items: stretch; }
@@ -758,6 +795,8 @@ select.select-native { display: none !important; }
 .select-search { flex: 0 0 auto; width: 100%; min-height: 2.6rem; margin: 0 0 .25rem; padding: .55rem .7rem; border: 1px solid var(--ui-border); border-radius: 5px; background: var(--ui-surface); color: var(--ui-text); font: inherit; font-size: 1rem; }
 .select-options { min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; }
 .select-option { display: block; width: 100%; min-height: 2.65rem; padding: .6rem .7rem; border: 1px solid transparent; border-radius: 4px; background: transparent; color: var(--ui-text); font: inherit; font-size: 1rem; text-align: left; line-height: 1.4; overflow-wrap: anywhere; }
+.select-option[data-font] { display: flex; justify-content: space-between; gap: .75rem; font-family: var(--ui-font-family); }
+.select-option[data-font] > span { color: var(--ui-muted); }
 .select-option:hover:not(:disabled), .select-option:focus-visible { background: var(--ui-hover); }
 .select-option[aria-selected=true] { border-color: color-mix(in srgb, var(--ui-accent) 45%, var(--ui-border)); background: color-mix(in srgb, var(--ui-accent) 13%, var(--ui-paper)); }
 .select-option + .select-option { margin-top: .2rem; }
@@ -825,7 +864,6 @@ select.select-native { display: none !important; }
     .news-board-card h2 { font-size: 1.1rem; }
 }
 @media (max-width: 46rem) {
-    :root { --ui-font-family: "Roboto", "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", sans-serif; }
     .settings-tabs { gap: .6rem; flex-wrap: wrap; justify-content: flex-start; }
     .settings-tabs a { font-size: .95rem; }
     .settings-tabs .icon { display: none; }

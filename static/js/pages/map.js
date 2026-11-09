@@ -897,6 +897,7 @@ function applyProviderFallback(controller) {
     controller.usingFallbackStyle = true;
     controller.layersInstalled = false;
     controller.status.textContent = "Map provider unavailable. Showing bundled country boundaries.";
+    controller.status.hidden = false;
     controller.map.setStyle(bundledMapStyle(controller));
 }
 
@@ -1345,7 +1346,6 @@ async function initializeMapPage() {
             },
         });
         initializeControls(controller);
-        controller.status.textContent = "Loading map…";
         controller.mapReady = true;
         if (!controller.suspended && page.isConnected) createMap(controller, page.dataset.mapStyleUrl);
     } catch (error) {
@@ -1354,6 +1354,7 @@ async function initializeMapPage() {
         }
         controller.status.textContent = "The bundled country map could not be loaded.";
         controller.status.classList.add("is-error");
+        controller.status.hidden = false;
         notify({id: "map-load-error", kind: "error", title: "The map could not be opened", message: "Reload the page when the server is available. Journal, News and Countries remain available."});
         console.error("World Journal map initialization failed", error);
     }

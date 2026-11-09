@@ -9,6 +9,15 @@ import {
 let lifecycleRegistered = false;
 let activeController = null;
 let activeInformationController = null;
+const FONT_STORAGE_KEY = "world-journal:font";
+
+function initializeAppFont() {
+    const select = document.querySelector("[data-app-font]");
+    if (!select) return;
+    select.value = document.documentElement.dataset.font;
+    select.disabled = false;
+    select.dispatchEvent(new Event("change"));
+}
 
 async function loadCountries(url, signal) {
     const response = await fetch(url, { signal });
@@ -157,8 +166,20 @@ export function registerSettingsPage() {
         return;
     }
     lifecycleRegistered = true;
+    document.addEventListener("change", event => {
+        if (!event.target.matches("[data-app-font]")) return;
+        const font = event.target.value;
+        document.documentElement.dataset.font = font;
+        try {
+            localStorage.setItem(FONT_STORAGE_KEY, font);
+            document.dispatchEvent(new CustomEvent("world-journal:preferences-saved"));
+        } catch {
+            document.dispatchEvent(new CustomEvent("world-journal:preference-storage-error"));
+        }
+    });
     document.addEventListener("world-journal:page-ready", (event) => {
         if (event.detail.page === "settings") {
+            initializeAppFont();
             initializeSettingsPage();
             initializeInformationPage();
         }

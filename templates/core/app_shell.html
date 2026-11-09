@@ -1,12 +1,42 @@
 {% load static %}
 <!doctype html>
-<html lang="en" data-theme="{{ theme }}" data-app-name="{{ app_display_name }}">
+<html lang="en" data-theme="{{ theme }}" data-font="inter" data-app-name="{{ app_display_name }}">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token }}">
     <link rel="icon" href="{% static 'icons/favicon.ico' %}" type="image/x-icon">
     <title>{{ active_page|title }} - {{ app_display_name }}</title>
+    <script>
+        (() => {
+            const files = {
+                inter: ["{% static 'vendor/fonts/InterVariable.woff2' %}"],
+                os: [],
+                overpass: [
+                    "{% static 'vendor/fonts/overpass-regular.woff2' %}",
+                    "{% static 'vendor/fonts/overpass-500.woff2' %}",
+                    "{% static 'vendor/fonts/overpass-700.woff2' %}",
+                ],
+                roboto: ["{% static 'vendor/fonts/RobotoVariable.ttf' %}"],
+                segoe: [],
+            };
+            const root = document.documentElement;
+            try {
+                const saved = localStorage.getItem("world-journal:font");
+                if (Object.hasOwn(files, saved)) root.dataset.font = saved;
+            } catch {
+                // Keep Inter when browser storage is unavailable.
+            }
+            for (const href of files[root.dataset.font]) {
+                const link = document.createElement("link");
+                link.rel = "preload";
+                link.as = "font";
+                link.crossOrigin = "anonymous";
+                link.href = href;
+                document.head.append(link);
+            }
+        })();
+    </script>
     <link rel="stylesheet" href="{% static 'vendor/maplibre-gl/maplibre-gl.css' %}">
     <link rel="stylesheet" href="{% static 'css/app.css' %}">
     <link rel="stylesheet" href="{% static 'css/ui.css' %}">

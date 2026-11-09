@@ -15,6 +15,7 @@ from config.version import (
     LATEST_RELEASE_API_URL,
     RELEASES_URL,
 )
+from countries.models import MapPreset, preset_groups
 
 from .models import AppSettings
 
@@ -70,7 +71,17 @@ def settings_page(request: HttpRequest) -> HttpResponse:
                 "discussions_url": DISCUSSIONS_URL,
             },
         )
-    return render_page(request, "settings", context={"theme_choices": AppSettings.Theme.choices})
+    preset_previews = []
+    for preset in MapPreset.objects.prefetch_related("color_groups", "country_colors")[:3]:
+        colors = [group["color"] for group in preset_groups(preset)]
+        default_color = preset.default_color.lower()
+        if default_color and default_color not in colors:
+            colors.append(default_color)
+        preset_previews.append({"name": preset.name, "colors": colors[:3]})
+    return render_page(request, "settings", context={
+        "theme_choices": AppSettings.Theme.choices,
+        "preset_previews": preset_previews,
+    })
 
 
 @require_POST

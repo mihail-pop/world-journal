@@ -92,6 +92,20 @@ class PresetColorGroup(models.Model):
         constraints = [models.UniqueConstraint(fields=("preset", "color"), name="unique_preset_group_color")]
 
 
+def preset_groups(preset):
+    if preset._state.adding:
+        return []
+    grouped = {}
+    for row in preset.country_colors.all():
+        grouped.setdefault(row.color.lower(), []).append(row.country_id)
+    result = [
+        {"color": group.color.lower(), "title": group.title, "countries": grouped.pop(group.color.lower(), [])}
+        for group in preset.color_groups.all()
+    ]
+    # Old version 1 backups have colors but no group metadata.
+    return result + [{"color": color, "title": "", "countries": codes} for color, codes in grouped.items()]
+
+
 class MapPersonalState(models.Model):
     # One shared active preset; zero or one row exists, always at key 1.
     id = models.PositiveSmallIntegerField(primary_key=True, default=1, editable=False)

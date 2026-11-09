@@ -15,7 +15,7 @@ from journal.models import Entry
 from journal.views import ConfirmationForm, navigate
 
 from .forms import ColorGroups, CountryProfileForm, DuplicatePresetForm, PresetForm, TerritoryDetailsForm
-from .models import Country, CountryFavorite, CountryProfile, MapPersonalState, MapPreset, PresetColorGroup, PresetCountry, TerritoryDetails
+from .models import Country, CountryFavorite, CountryProfile, MapPersonalState, MapPreset, PresetColorGroup, PresetCountry, TerritoryDetails, preset_groups
 
 
 def personal_snapshot():
@@ -86,18 +86,6 @@ def preset_list(request):
         for group in preset.display_groups:
             group["country_names"] = [names[code] for code in group["countries"]]
     return page(request, "countries/preset_list.html", {"presets": presets, "active_preset_id": state.active_preset_id if state else None})
-
-
-def preset_groups(preset):
-    grouped = {}
-    if not preset._state.adding:
-        for row in preset.country_colors.all():
-            grouped.setdefault(row.color.lower(), []).append(row.country_id)
-        result = [{"color": group.color.lower(), "title": group.title, "countries": grouped.pop(group.color.lower(), [])} for group in preset.color_groups.all()]
-    else:
-        result = []
-    # Old version 1 backups have colors but no group metadata.
-    return result + [{"color": color, "title": "", "countries": codes} for color, codes in grouped.items()]
 
 
 def save_preset(form, groups):

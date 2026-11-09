@@ -174,6 +174,13 @@ class SelectControl {
             button.tabIndex = -1;
             button.disabled = option.disabled || option.parentElement.disabled === true;
             button.textContent = option.textContent.trim();
+            if (this.select.hasAttribute("data-app-font")) {
+                button.dataset.font = option.value;
+                const sample = document.createElement("span");
+                sample.setAttribute("aria-hidden", "true");
+                sample.textContent = "Text159";
+                button.append(sample);
+            }
             button.addEventListener("click", () => {
                 if (this.select.multiple) option.selected = !option.selected;
                 else this.select.selectedIndex = index;
