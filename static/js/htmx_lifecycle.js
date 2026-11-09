@@ -23,7 +23,7 @@ function initializePage(root = document) {
         }
     });
     const appName = document.documentElement.dataset.appName;
-    document.title = `${PAGE_LABELS[pageName] ?? appName} | ${appName}`;
+    document.title = `${PAGE_LABELS[pageName] ?? appName} - ${appName}`;
     document.dispatchEvent(new CustomEvent("world-journal:page-ready", { detail: { page: pageName } }));
 }
 

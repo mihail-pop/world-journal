@@ -5,8 +5,8 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token }}">
-    <link rel="icon" href="data:,">
-    <title>{{ active_page|title }} | {{ app_display_name }}</title>
+    <link rel="icon" href="{% static 'icons/favicon.ico' %}" type="image/x-icon">
+    <title>{{ active_page|title }} - {{ app_display_name }}</title>
     <script>
         try {
             const savedTheme = localStorage.getItem("world-journal:theme");

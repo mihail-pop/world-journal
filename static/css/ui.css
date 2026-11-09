@@ -29,6 +29,7 @@
 /* Shared interface layer. Map rendering and theme source colors remain in app.css. */
 :root {
     --header-height: 4.15rem;
+    --header-light: #f8f8f8;
     --ui-font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", sans-serif;
     --ui-favorite: #e34f68;
     --ui-text: #d7e0e8;
@@ -41,6 +42,7 @@
     --ui-accent-ink: #10212d;
 }
 [data-theme="light"] {
+    --header-light: var(--text-secondary);
     --ui-text: #202629;
     --ui-muted: #697276;
     --ui-surface: #f7f8f8;
@@ -51,6 +53,7 @@
     --ui-accent-ink: #fff;
 }
 [data-theme="brown"] {
+    --header-light: #eeba9d;
     --ui-text: #f2e5dc;
     --ui-muted: #c4afa3;
     --ui-surface: #30231f;
@@ -68,16 +71,17 @@ button, input, textarea, select { font: inherit; }
 button { cursor: pointer; }
 button:disabled { cursor: default; opacity: .5; }
 :focus-visible { outline: 2px solid var(--ui-accent); outline-offset: 3px; }
-.app-header { height: var(--header-height); min-height: 0; gap: 1rem; padding: .4rem 1.5rem; background: var(--ui-surface); border-color: var(--ui-border); backdrop-filter: none; }
-.app-name { color: var(--ui-text); font-size: 1.1rem; letter-spacing: -.02em; }
-.primary-nav a, .settings-link { display: inline-flex; align-items: center; justify-content: center; gap: .5rem; min-height: 2.5rem; padding: .5rem .9rem; border-radius: 5px; color: var(--ui-muted); font-size: .95rem; text-decoration: none; }
+.app-header { height: var(--header-height); min-height: 0; gap: 1rem; padding: .4rem max(1.5rem, calc((100% - 68.75rem) / 2)); background: var(--bg-tertiary); backdrop-filter: none; }
+.app-name { color: var(--text-primary); font-size: 1.5rem; font-weight: 700; line-height: 1.2; }
+.primary-nav a, .settings-link, .logout-button, .player-toggle {
+    display: inline-flex; align-items: center; justify-content: center; min-height: 2.5rem; padding: .375rem .75rem;
+    border: 0; background: transparent; color: var(--text-primary); font-size: 1rem; font-weight: 550; text-decoration: none;
+}
 .primary-nav a::after { display: none; }
-.primary-nav a:hover, .settings-link:hover { background: var(--ui-hover); color: var(--ui-text); }
-.primary-nav a[aria-current="page"], .settings-link[aria-current="page"] { color: var(--ui-text); background: var(--ui-hover); text-decoration: none; }
+.app-name:hover, .primary-nav a:hover, .settings-link:hover, .logout-button:hover, .player-toggle:hover,
+.primary-nav a[aria-current="page"], .settings-link[aria-current="page"] { color: var(--header-light); text-decoration: none; }
 .header-actions { gap: .5rem; }
 .logout-form { display: flex; margin: 0; }
-.logout-button { min-height: 2.5rem; padding: .5rem .9rem; border: 0; border-radius: 5px; background: transparent; color: var(--ui-muted); font-size: 1rem; }
-.logout-button:hover { background: var(--ui-hover); color: var(--ui-text); }
 #app-content { padding: 1.8rem clamp(1rem, 3vw, 3rem) 4rem; min-height: calc(100svh - var(--header-height)); }
 .page { animation: none; }
 .page-standard { width: 100%; max-width: 76rem; margin-inline: auto; }
@@ -88,10 +92,10 @@ button:disabled { cursor: default; opacity: .5; }
 .page-standard .page-copy > p:not(.eyebrow) { margin: .45rem 0 0; font-size: 1rem; }
 .field-note, .page-standard .field-note, .country-fact-year { color: var(--ui-muted); font-size: .9rem; line-height: 1.55; }
 .field-note:empty { display: none; }
-.journal-button, .map-command, .news-retry, .video-play-button, .player-toggle, .player-actions button, .journal-markdown-toolbar button, .journal-section-actions button {
+.journal-button, .map-command, .news-retry, .video-play-button, .player-actions button, .journal-markdown-toolbar button, .journal-section-actions button {
     display: inline-flex; align-items: center; justify-content: center; gap: .4rem; min-height: 2.4rem; padding: .45rem .8rem; border: 1px solid var(--ui-border); border-radius: 5px; background: var(--ui-surface); color: var(--ui-text); font-size: .95rem; line-height: 1.3; font-weight: 500; text-decoration: none;
 }
-.journal-button:hover, .map-command:hover, .news-retry:hover, .video-play-button:hover, .player-toggle:hover, .player-actions button:hover, .journal-markdown-toolbar button:hover, .journal-section-actions button:hover { background: var(--ui-hover); border-color: var(--ui-muted); }
+.journal-button:hover, .map-command:hover, .news-retry:hover, .video-play-button:hover, .player-actions button:hover, .journal-markdown-toolbar button:hover, .journal-section-actions button:hover { background: var(--ui-hover); border-color: var(--ui-muted); }
 .journal-button.is-primary, .video-play-button { background: var(--ui-accent); color: var(--ui-accent-ink); border-color: var(--ui-accent); }
 .journal-button.is-primary:hover, .video-play-button:hover { background: color-mix(in srgb, var(--ui-accent) 85%, var(--ui-text)); color: var(--ui-accent-ink); }
 .page-standard input:not([type=checkbox]):not([type=radio]), .page-standard select, .page-standard textarea, .map-display-controls select {
@@ -426,15 +430,16 @@ details[open] > summary { margin-bottom: .9rem; color: var(--ui-text); }
     .settings-toggle-list { grid-template-columns: 1fr; gap: 0; }
     .journal-layout { gap: 1.5rem; grid-template-columns: 10rem minmax(0, 1fr); }
 }
-@media (max-width: 46rem) {
+@media (max-width: 52rem) {
     :root { --header-height: 6rem; }
-    .app-header { grid-template-columns: minmax(0, 1fr) auto; padding: .35rem .8rem; gap: .2rem .5rem; }
-    .app-name { font-size: 1rem; }
-    .primary-nav { grid-row: 2; grid-column: 1 / -1; justify-content: flex-start; border-top: 0; gap: .5rem; }
-    .primary-nav a { padding: .35rem .7rem; min-height: 2.2rem; }
-    .settings-link { padding: .35rem .5rem; }
-    .logout-button { min-height: 2rem; padding: .35rem .5rem; }
-    .header-actions .player-toggle { font-size: .9rem; padding: .35rem .5rem; min-height: 2rem; }
+    .app-header { grid-template-columns: minmax(0, 1fr) auto; padding: .35rem 1rem; gap: .2rem .5rem; }
+    .app-name { font-size: clamp(1.1rem, 5vw, 1.35rem); }
+    .primary-nav { grid-row: 2; grid-column: 1 / -1; justify-content: center; }
+    .primary-nav a { padding: .35rem .5rem; min-height: 2.2rem; }
+    .header-actions { gap: .25rem; }
+    .header-actions :is(.settings-link, .logout-button, .player-toggle) { font-size: .875rem; padding: .35rem .4rem; min-height: 2.2rem; }
+}
+@media (max-width: 46rem) {
     #app-content { padding: 1.15rem .9rem 3rem; }
     .page-standard h1 { font-size: 1.25rem; }
     .settings-tabs { gap: 0; justify-content: space-between; }
@@ -512,10 +517,7 @@ body:has(.persistent-player[data-player-state=playing]) .journal-save-bar { bott
 
 /* Stable page width and comfortably sized controls. */
 html { overflow-y: scroll; scrollbar-gutter: stable; }
-.app-header { padding-inline: max(1.5rem, calc((100% - 76rem) / 2)); }
 .app-name, h1, h2, h3, h4, .journal-rendered, code, pre { font-family: var(--ui-font-family); }
-.app-name { font-size: 1.15rem; font-weight: 650; }
-.primary-nav a, .settings-link { font-size: 1rem; }
 .settings-grid, .source-card-grid { align-items: stretch; }
 .settings-card > .journal-button { align-self: flex-start; }
 .settings-card h2 { font-size: 1.05rem; }
@@ -694,7 +696,6 @@ html { overflow-y: scroll; scrollbar-gutter: stable; }
 .video-card-actions a { font-size: .9rem; }
 .player-title { font-size: .95rem; }
 .player-channel { font-size: .85rem; }
-.player-toggle { font-size: .9rem; }
 .journal-writing-paper { padding: 1.9rem 2.4rem; }
 .page-standard .journal-writing-paper textarea { font-family: var(--ui-font-family); font-size: 1.075rem; line-height: 1.8; }
 .journal-reading-surface .journal-rendered { font-family: var(--ui-font-family); }
@@ -805,8 +806,6 @@ select.select-native { display: none !important; }
 }
 @media (max-width: 46rem) {
     :root { --ui-font-family: "Roboto", "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", sans-serif; }
-    .app-header { padding-inline: 1rem; }
-    .primary-nav a, .settings-link { font-size: 1rem; }
     .settings-tabs { gap: .6rem; flex-wrap: wrap; justify-content: flex-start; }
     .settings-tabs a { font-size: .95rem; }
     .settings-tabs .icon { display: none; }

@@ -86,7 +86,6 @@ a {
     align-items: center;
     gap: 1.5rem;
     padding: 0.75rem clamp(1rem, 4vw, 3.5rem);
-    border-bottom: 1px solid var(--overview-border);
     background: color-mix(in srgb, var(--overlay-bg) 94%, transparent);
     backdrop-filter: blur(12px);
 }
@@ -108,7 +107,6 @@ a {
 
 .primary-nav a {
     position: relative;
-    min-width: 5rem;
     padding: 0.6rem 0.8rem;
     color: var(--text-primary);
     text-align: center;
@@ -162,22 +160,16 @@ a {
     text-underline-offset: 0.35rem;
 }
 
-.player-toggle,
 .player-actions button {
     min-height: 2.5rem;
     border: 1px solid var(--overview-border);
     border-radius: 4px;
     background: var(--button-bg);
     color: var(--text-secondary);
-}
-
-.player-toggle,
-.player-actions button {
     cursor: pointer;
     padding: 0.4rem 0.75rem;
 }
 
-.player-toggle:hover,
 .player-actions button:hover {
     border-color: var(--special-color-hover);
 }
@@ -969,27 +961,6 @@ body:has(.persistent-player[data-player-state="playing"]) #app-content:not(:has(
 }
 
 @media (max-width: 46rem) {
-    :root {
-        --header-height: 7.3rem;
-    }
-
-    .app-header {
-        grid-template-columns: 1fr auto;
-        gap: 0.5rem 1rem;
-    }
-
-    .primary-nav {
-        grid-column: 1 / -1;
-        grid-row: 2;
-        justify-content: space-between;
-        border-top: 1px solid var(--overview-border);
-    }
-
-    .primary-nav a {
-        flex: 1;
-        min-width: 0;
-    }
-
     #app-content {
         min-height: calc(100vh - 7.5rem);
         padding-top: 2.5rem;

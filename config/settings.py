@@ -17,6 +17,8 @@ import mimetypes
 mimetypes.add_type("text/javascript", ".mjs", True)
 mimetypes.add_type("application/javascript", ".js", True)
 
+os.environ['DJANGO_RUNSERVER_HIDE_WARNING'] = 'true'
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 RUNTIME_ROOT = Path(os.environ.get("WORLD_JOURNAL_DATA_DIR", BASE_DIR))
