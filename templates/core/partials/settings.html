@@ -1,16 +1,19 @@
 <section class="page page-standard settings-page" data-page="settings" data-country-metadata-url="{% url 'countries:metadata' %}" aria-labelledby="settings-title">
     {% include 'core/partials/settings_nav.html' with section='preferences' %}
-    <div class="settings-grid">
-        <section class="settings-card"><h2>{% include 'core/partials/icon.html' with name='palette' %}Appearance</h2>
-            <label class="visually-hidden" for="theme-selector">Color theme</label><select id="theme-selector"><option value="dark">Dark</option><option value="light">Light</option><option value="brown">Brown</option></select>
-            <div class="theme-choices" role="group" aria-label="Color theme" data-theme-choices hidden>
-                <button class="theme-choice" type="button" data-theme-choice="dark" aria-pressed="false"><span class="theme-swatch theme-swatch-dark"><i></i><i></i><i></i></span>Dark</button>
-                <button class="theme-choice" type="button" data-theme-choice="light" aria-pressed="false"><span class="theme-swatch theme-swatch-light"><i></i><i></i><i></i></span>Light</button>
-                <button class="theme-choice" type="button" data-theme-choice="brown" aria-pressed="false"><span class="theme-swatch theme-swatch-brown"><i></i><i></i><i></i></span>Brown</button>
-            </div>
-        </section>
+    <div class="settings-grid settings-preferences-grid">
         <section class="settings-card"><h2>{% include 'core/partials/icon.html' with name='globe' %}Map</h2><div class="settings-field"><label for="settings-map-type">Map type</label><select id="settings-map-type" data-settings-map-type disabled><option value="terrain">Terrain</option><option value="plain">Simple</option><option value="adventure">Adventure</option></select></div><div class="settings-field"><label for="home-country">Home country</label><select id="home-country" data-home-country-select data-country-select disabled><option value="">World view</option></select><p class="settings-status" data-settings-status role="status" aria-live="polite">Loading countries…</p></div></section>
         <section class="settings-card"><h2>{% include 'core/partials/icon.html' with name='layers' %}Color presets</h2><p class="field-note">Group countries with your own colors.</p><a class="journal-button" href="{% url 'countries:preset_list' %}" hx-boost="true" hx-target="#app-content" hx-push-url="true">Manage presets{% include 'core/partials/icon.html' with name='edit' %}</a></section>
+        <section class="settings-card">
+            <h2 id="theme-title">{% include 'core/partials/icon.html' with name='palette' %}Theme</h2>
+            <form class="theme-choices" method="post" action="{% url 'core:save_theme' %}" aria-labelledby="theme-title" data-theme-form>
+                {% csrf_token %}
+                {% for value, label in theme_choices %}
+                <button class="theme-choice" type="submit" name="theme" value="{{ value }}" aria-pressed="{% if value == theme %}true{% else %}false{% endif %}">
+                    <span class="theme-swatch" data-theme="{{ value }}" aria-hidden="true"><i></i><i></i><i></i></span>{{ label }}
+                </button>
+                {% endfor %}
+            </form>
+        </section>
         <section class="settings-card settings-card-full settings-map-labels">
             <h2>General map labels</h2>
             <div class="settings-toggle-list">

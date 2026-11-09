@@ -22,7 +22,7 @@ This includes entries, collections, country tags, favorites, map presets, source
 
 Optional authentication uses a Django administrator account as one gate around the whole installation. It does not create separate data for each account. Everyone who is allowed into one installation shares the same journal and settings.
 
-Some presentation choices belong only to the current browser. Themes, the home country, map display settings and player position use browser storage so two browsers can keep different layouts while sharing the same journal.
+The installation shares one theme across browsers. The home country, map display settings and player position use browser storage so two browsers can keep different layouts while sharing the same journal.
 
 ## 3. Feed Refreshing
 

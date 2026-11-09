@@ -16,8 +16,10 @@ const palettes = {
 };
 
 export function adventurePalette() {
-    const theme = document.documentElement.dataset.theme;
-    return {name: theme in palettes ? theme : "dark", ...(palettes[theme] || palettes.dark)};
+    const root = document.documentElement;
+    const theme = root.dataset.theme;
+    const name = Object.hasOwn(palettes, theme) ? theme : getComputedStyle(root).colorScheme === "light" ? "light" : "dark";
+    return {name, ...palettes[name]};
 }
 
 

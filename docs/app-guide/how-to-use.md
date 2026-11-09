@@ -115,4 +115,4 @@ Settings is divided into Preferences, Backup, Sources and Information.
 - **Sources** controls feeds, channels, refresh timing and source health.
 - **Information** collects application and data-source information.
 
-Themes and visual map preferences belong to the current browser. Journal entries, favorites, presets, source choices and territory edits are shared through SQLite.
+Visual map preferences belong to the current browser. The theme, journal entries, favorites, presets, source choices and territory edits are shared through SQLite.

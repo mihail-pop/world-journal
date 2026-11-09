@@ -35,7 +35,7 @@
         {% if not summary %}{{ confirmation_form.non_field_errors }}{% endif %}
     </section>
 
-    <section class="backup-section settings-card" aria-labelledby="manual-backup-title"><h2 id="manual-backup-title">Backup info</h2><p>ZIP backups include saved research, images, country favorites, color presets and source preferences.</p><details><summary>Details &amp; full local copy</summary><p>Feed caches and browser preferences (theme, home country and viewport) are excluded. Save open editors before exporting.</p>
+    <section class="backup-section settings-card" aria-labelledby="manual-backup-title"><h2 id="manual-backup-title">Backup info</h2><p>ZIP backups include saved research, images, country favorites, color presets and source preferences.</p><details><summary>Details &amp; full local copy</summary><p>Feed caches, the installation theme and browser preferences such as home country and viewport are excluded. Save open editors before exporting.</p>
 
         <p>For an exact snapshot, stop the server, copy <code>db.sqlite3</code> and the entire <code>media</code> folder together, then restart. Store the copy somewhere separate from this project.</p>
 

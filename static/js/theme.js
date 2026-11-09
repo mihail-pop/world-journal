@@ -1,60 +1,53 @@
-const STORAGE_KEY = "world-journal:theme";
-const THEMES = new Set(["dark", "light", "brown"]);
+import { notify } from "./notifications.js";
 
-function saveTheme(theme) {
-    try {
-        localStorage.setItem(STORAGE_KEY, theme);
-    } catch (error) {
-        // Theme switching still works for the current page without storage.
-        document.dispatchEvent(new CustomEvent("world-journal:preference-storage-error"));
+function applyTheme(theme) {
+    const root = document.documentElement;
+    const changed = root.dataset.theme !== theme;
+    root.dataset.theme = theme;
+    for (const button of document.querySelectorAll("[data-theme-form] button[name=theme]")) {
+        button.setAttribute("aria-pressed", String(button.value === theme));
     }
-}
-
-function readSavedTheme() {
-    try {
-        return localStorage.getItem(STORAGE_KEY);
-    } catch (error) {
-        return null;
-    }
-}
-
-function applyTheme(theme, persist = true) {
-    const nextTheme = THEMES.has(theme) ? theme : "dark";
-    document.documentElement.dataset.theme = nextTheme;
-
-    const selector = document.querySelector("#theme-selector");
-    if (selector) {
-        selector.value = nextTheme;
-    }
-    const choices = document.querySelector("[data-theme-choices]");
-    if (choices) {
-        choices.hidden = false;
-        if (selector) selector.hidden = true;
-        for (const button of choices.querySelectorAll("[data-theme-choice]")) {
-            button.setAttribute("aria-pressed", String(button.dataset.themeChoice === nextTheme));
-        }
-    }
-    if (persist) {
-        saveTheme(nextTheme);
-    }
-
-    document.dispatchEvent(new CustomEvent("world-journal:theme-change", { detail: { theme: nextTheme } }));
+    if (changed) document.dispatchEvent(new CustomEvent("world-journal:theme-change", { detail: { theme } }));
 }
 
 export function initializeTheme() {
-    const restoreTheme = () => applyTheme(readSavedTheme() ?? document.documentElement.dataset.theme, false);
+    const root = document.documentElement;
+    let savedTheme = root.dataset.theme;
+    let pendingSave = null;
+    let saving = false;
 
-    restoreTheme();
-    document.body.addEventListener("change", (event) => {
-        if (event.target.matches("#theme-selector")) {
-            applyTheme(event.target.value);
+    document.body.addEventListener("submit", async event => {
+        const form = event.target;
+        if (!form.matches("[data-theme-form]") || !event.submitter) return;
+        event.preventDefault();
+
+        const theme = event.submitter.value;
+        const body = new FormData(form);
+        body.set("theme", theme);
+        pendingSave = { url: form.action, body };
+        applyTheme(theme);
+        if (saving) return;
+
+        saving = true;
+        // Save in order so a slow response cannot overwrite a newer choice.
+        while (pendingSave) {
+            const { url, body } = pendingSave;
+            pendingSave = null;
+            try {
+                const response = await fetch(url, { method: "POST", body, headers: { Accept: "application/json" } });
+                if (!response.ok) throw new Error("Theme save failed");
+                const result = await response.json();
+                savedTheme = result.theme;
+                if (!pendingSave) applyTheme(savedTheme);
+            } catch {
+                if (!pendingSave) {
+                    applyTheme(savedTheme);
+                    notify({ id: "theme-save", kind: "error", title: "Theme could not be saved", message: "Your last saved theme has been restored." });
+                }
+            }
         }
+        saving = false;
     });
-    document.body.addEventListener("click", (event) => {
-        const button = event.target.closest("[data-theme-choice]");
-        if (button && THEMES.has(button.dataset.themeChoice)) applyTheme(button.dataset.themeChoice);
-    });
-    document.addEventListener("world-journal:page-ready", restoreTheme);
-    document.body.addEventListener("htmx:historyRestore", restoreTheme);
-    window.addEventListener("pageshow", restoreTheme);
+
+    document.addEventListener("world-journal:page-ready", () => applyTheme(root.dataset.theme));
 }

@@ -4,7 +4,8 @@ import httpx
 from django.conf import settings
 from django.contrib.messages import get_messages
 from django.http import HttpRequest, HttpResponse, JsonResponse
-from django.shortcuts import render
+from django.shortcuts import redirect, render
+from django.views.decorators.http import require_POST
 
 from config.version import (
     APP_VERSION,
@@ -15,14 +16,18 @@ from config.version import (
     RELEASES_URL,
 )
 
+from .models import AppSettings
+
 
 def render_page(request: HttpRequest, page: str, *, page_template: str | None = None, context: dict | None = None) -> HttpResponse:
     from news.services.background import feed_warmer
 
     feed_warmer.start()
+    saved_theme = AppSettings.objects.filter(pk=1).values_list("theme", flat=True).first()
     page_context = {
         "active_page": page,
         "app_display_name": settings.APP_DISPLAY_NAME,
+        "theme": saved_theme or AppSettings.Theme.DARK,
         "map_style_url": settings.MAP_STYLE_URL,
         "map_glyphs_url": settings.MAP_GLYPHS_URL,
         "map_terrain": settings.MAP_TERRAIN_CONFIG,
@@ -65,7 +70,18 @@ def settings_page(request: HttpRequest) -> HttpResponse:
                 "discussions_url": DISCUSSIONS_URL,
             },
         )
-    return render_page(request, "settings")
+    return render_page(request, "settings", context={"theme_choices": AppSettings.Theme.choices})
+
+
+@require_POST
+def save_theme(request: HttpRequest) -> HttpResponse:
+    theme = request.POST.get("theme")
+    if theme not in AppSettings.Theme.values:
+        return JsonResponse({"error": "Choose an available theme."}, status=400)
+    AppSettings.objects.update_or_create(pk=1, defaults={"theme": theme})
+    if request.headers.get("Accept") == "application/json":
+        return JsonResponse({"theme": theme})
+    return redirect("core:settings")
 
 
 def version_info(request: HttpRequest) -> JsonResponse:

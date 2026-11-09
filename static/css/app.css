@@ -1,4 +1,4 @@
-:root {
+:root, .theme-swatch[data-theme="dark"] {
     --bg-primary: #0b1622;
     --bg-tertiary: #151f2e;
     --bg-quaternary: #32445b;
@@ -39,6 +39,90 @@
     --button-bg: #6b534c;
     --special-color: #df5c38;
     --special-color-hover: #dd866e;
+    color-scheme: dark;
+}
+
+[data-theme="charcoal"] {
+    --bg-primary: #252422;
+    --bg-tertiary: #413e39;
+    --bg-quaternary: #5d574d;
+    --text-primary: #ece6db;
+    --text-secondary: #d2c9bb;
+    --overlay-bg: #393631;
+    --overview-border: #6b6153;
+    --button-bg: #49433b;
+    --special-color: #d4b17b;
+    --special-color-hover: #e5c996;
+    color-scheme: dark;
+}
+
+[data-theme="pink"] {
+    --bg-primary: #fff8f6;
+    --bg-tertiary: #f7e3e6;
+    --bg-quaternary: #efd0d8;
+    --text-primary: #54363e;
+    --text-secondary: #684851;
+    --overlay-bg: #f8e9e9;
+    --overview-border: #cca4b0;
+    --button-bg: #eac6d1;
+    --special-color: #b13661;
+    --special-color-hover: #8f204c;
+    color-scheme: light;
+}
+
+[data-theme="cake"] {
+    --bg-primary: #fff6e9;
+    --bg-tertiary: #f6dfca;
+    --bg-quaternary: #ebc29f;
+    --text-primary: #573326;
+    --text-secondary: #6b4433;
+    --overlay-bg: #f9e7d4;
+    --overview-border: #d4a482;
+    --button-bg: #e9ba93;
+    --special-color: #b52f20;
+    --special-color-hover: #a04a1b;
+    color-scheme: light;
+}
+
+[data-theme="green"] {
+    --bg-primary: #1e2923;
+    --bg-tertiary: #34473a;
+    --bg-quaternary: #4a604c;
+    --text-primary: #e5e8d9;
+    --text-secondary: #d2dcc6;
+    --overlay-bg: #2e4033;
+    --overview-border: #51694f;
+    --button-bg: #3c5341;
+    --special-color: #b4c990;
+    --special-color-hover: #cfdeb1;
+    color-scheme: dark;
+}
+
+[data-theme="teal"] {
+    --bg-primary: #203033;
+    --bg-tertiary: #354e52;
+    --bg-quaternary: #4b686b;
+    --text-primary: #e6e8dc;
+    --text-secondary: #c8d8ce;
+    --overlay-bg: #30464a;
+    --overview-border: #547174;
+    --button-bg: #3b575a;
+    --special-color: #a5c9b8;
+    --special-color-hover: #c6dfcb;
+    color-scheme: dark;
+}
+
+[data-theme="plum"] {
+    --bg-primary: #29232d;
+    --bg-tertiary: #493c4d;
+    --bg-quaternary: #655068;
+    --text-primary: #eee3da;
+    --text-secondary: #dac9cc;
+    --overlay-bg: #413546;
+    --overview-border: #725d74;
+    --button-bg: #4e3e53;
+    --special-color: #d4b78e;
+    --special-color-hover: #e2caa3;
     color-scheme: dark;
 }
 
@@ -148,16 +232,8 @@ a {
     text-decoration: none;
 }
 
-.settings-link:hover,
-.settings-link[aria-current="page"] {
+.settings-link:hover {
     color: var(--text-secondary);
-}
-
-.settings-link[aria-current="page"] {
-    text-decoration: underline;
-    text-decoration-color: var(--special-color);
-    text-decoration-thickness: 2px;
-    text-underline-offset: 0.35rem;
 }
 
 .player-actions button {
@@ -792,7 +868,7 @@ body:has(.persistent-player[data-player-state="playing"]) #app-content:not(:has(
     filter: invert(0.7);
 }
 
-[data-theme="light"] .maplibregl-ctrl-group button span {
+:is([data-theme="light"], [data-theme="pink"], [data-theme="cake"]) .maplibregl-ctrl-group button span {
     filter: none;
 }
 

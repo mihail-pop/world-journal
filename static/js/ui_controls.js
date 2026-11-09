@@ -263,7 +263,7 @@ class SelectControl {
 function enhance(root) {
     for (const select of root.querySelectorAll("select")) {
         if ((select.hidden && !select.classList.contains("select-native"))
-            || select.id === "theme-selector" || select.hasAttribute("data-native-select")) continue;
+            || select.hasAttribute("data-native-select")) continue;
         if (!controls.has(select)) controls.set(select, new SelectControl(select));
         else controls.get(select).sync();
     }

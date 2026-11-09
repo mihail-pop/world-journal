@@ -1,6 +1,6 @@
 # Personal map data (Phase 6)
 
-Favorites, color presets and country overview notes are shared SQLite data. Theme, viewport and display preferences remain browser-local. No new dependencies are needed.
+Favorites, color presets, country overview notes and the theme are shared SQLite data. Viewport and map display preferences remain browser-local. No new dependencies are needed.
 
 ## Data
 

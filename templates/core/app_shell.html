@@ -1,22 +1,12 @@
 {% load static %}
 <!doctype html>
-<html lang="en" data-theme="dark" data-app-name="{{ app_display_name }}">
+<html lang="en" data-theme="{{ theme }}" data-app-name="{{ app_display_name }}">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token }}">
     <link rel="icon" href="{% static 'icons/favicon.ico' %}" type="image/x-icon">
     <title>{{ active_page|title }} - {{ app_display_name }}</title>
-    <script>
-        try {
-            const savedTheme = localStorage.getItem("world-journal:theme");
-            if (["dark", "light", "brown"].includes(savedTheme)) {
-                document.documentElement.dataset.theme = savedTheme;
-            }
-        } catch (error) {
-            // The dark root palette remains the fallback when storage is unavailable.
-        }
-    </script>
     <link rel="stylesheet" href="{% static 'vendor/maplibre-gl/maplibre-gl.css' %}">
     <link rel="stylesheet" href="{% static 'css/app.css' %}">
     <link rel="stylesheet" href="{% static 'css/ui.css' %}">

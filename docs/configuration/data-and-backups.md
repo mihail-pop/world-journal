@@ -4,9 +4,9 @@ World Journal keeps personal data on the machine running the app. There is no cl
 
 ## Where Data Is Stored
 
-- `db.sqlite3` contains journal entries, collections, country relationships, favorites, presets, source choices, the news archive and custom territory edits. Docker stores this file under `runtime/`.
+- `db.sqlite3` contains journal entries, collections, country relationships, favorites, presets, the installation theme, source choices, the news archive and custom territory edits. Docker stores this file under `runtime/`.
 - `media/` contains uploaded journal images.
-- Browser preferences such as the theme, home country, map type, player position and retained page state are stored in that browser.
+- Browser preferences such as the home country, map type, player position and retained page state are stored in that browser.
 - `world_journal_cache` is a table inside SQLite used for feed snapshots. Cached news can be downloaded again and does not need to be treated as permanent data.
 
 ## Portable Backup
