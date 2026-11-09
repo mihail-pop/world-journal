@@ -16,7 +16,11 @@ from news.types import CountryNewsPage, CountryNewsResult, NewsItem
 
 from .cache import age as _age
 from .cache import cache_lock as _cache_lock
-from .cache import clear_google_pause, deserialize_items, failure_retry_pending, google_cache_key, google_pause_until, pause_google, record_failure, parse_datetime as _parse_datetime
+from .cache import (
+    clear_google_pause, deserialize_items, failure_retry_pending, google_cache_key,
+    google_pause_until, pause_google, record_failure, stale_cache_remaining,
+)
+from .cache import parse_datetime as _parse_datetime
 from .fetch import FeedFetchError, FeedResponse, fetch_feed
 from .region_routing import eligible_fixed_feeds
 from .regional_news import get_regional_news
@@ -162,9 +166,8 @@ def _get_google_news(
             snapshot["last_error"] = "Google News is temporarily unavailable."
             snapshot["last_error_detail"] = str(error)[:240]
             snapshot["last_attempt_at"] = current_time.isoformat()
-            last_success_age = _age(current_time, snapshot.get("last_success_at"))
-            if last_success_age is not None and last_success_age.total_seconds() < settings.NEWS_STALE_SECONDS:
-                remaining = max(1, settings.NEWS_STALE_SECONDS - int(last_success_age.total_seconds()))
+            remaining = stale_cache_remaining(snapshot, current_time, settings.NEWS_STALE_SECONDS)
+            if remaining:
                 backend.set(cache_key, snapshot, max(remaining, failure_ttl))
                 return _result(country, source, snapshot, is_stale=True)
             empty_snapshot = {

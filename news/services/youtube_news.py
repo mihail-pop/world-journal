@@ -14,7 +14,10 @@ from news.preferences import effective_registry, freshness_seconds
 from news.registry import SourceRegistry
 from news.types import CountryVideosPage, NewsSource, VideoItem, VideoSourceResult
 
-from .cache import age, cache_lock, deserialize_video_items, failure_retry_pending, parse_datetime, record_failure, youtube_cache_key
+from .cache import (
+    age, cache_lock, deserialize_video_items, failure_retry_pending, parse_datetime,
+    record_failure, stale_cache_remaining, youtube_cache_key,
+)
 from .country_matcher import match_title
 from .country_news import _country_for_code
 from .fetch import FeedFetchError, FeedResponse, fetch_feed
@@ -154,15 +157,8 @@ def get_youtube_feed(
             snapshot["last_error"] = "This video channel is temporarily unavailable."
             snapshot["last_error_detail"] = str(error)[:240]
             snapshot["last_attempt_at"] = current_time.isoformat()
-            last_success_age = age(current_time, snapshot.get("last_success_at"))
-            if (
-                last_success_age is not None
-                and last_success_age.total_seconds() < settings.NEWS_YOUTUBE_STALE_SECONDS
-            ):
-                remaining = max(
-                    1,
-                    settings.NEWS_YOUTUBE_STALE_SECONDS - int(last_success_age.total_seconds()),
-                )
+            remaining = stale_cache_remaining(snapshot, current_time, settings.NEWS_YOUTUBE_STALE_SECONDS)
+            if remaining:
                 backend.set(key, snapshot, max(remaining, failure_ttl))
                 return _source_result(source, snapshot, stale=True, failed=True)
             empty = {

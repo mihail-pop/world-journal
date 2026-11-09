@@ -146,12 +146,15 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': RUNTIME_ROOT / 'db.sqlite3',
+        # Cache and archive transactions read before they write. Acquire the
+        # write lock up front so SQLite can wait for a concurrent writer.
+        'OPTIONS': {'transaction_mode': 'IMMEDIATE'},
     }
 }
 
 CACHES = {
     'default': {
-        'BACKEND': 'django.core.cache.backends.db.DatabaseCache',
+        'BACKEND': 'news.cache_backend.FeedDatabaseCache',
         'LOCATION': 'world_journal_cache',
         'OPTIONS': {
             'MAX_ENTRIES': 1000,

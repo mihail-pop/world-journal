@@ -14,7 +14,10 @@ from django.core.cache import cache
 from news.adapters.rss import FeedParseError, normalize_feed
 from news.types import FeedResult, NewsFeed, NewsItem, NewsProvider, RegionalProviderResult
 
-from .cache import age, cache_lock, deserialize_items, failure_retry_pending, fixed_feed_cache_key, parse_datetime, record_failure
+from .cache import (
+    age, cache_lock, deserialize_items, failure_retry_pending, fixed_feed_cache_key,
+    parse_datetime, record_failure, stale_cache_remaining,
+)
 from .country_matcher import MatchClass, match_country_text
 from .fetch import FeedFetchError, FeedResponse, fetch_feed
 from .region_routing import has_regional_affinity
@@ -146,15 +149,8 @@ def get_fixed_feed(
             snapshot["last_error"] = "This regional feed is temporarily unavailable."
             snapshot["last_error_detail"] = str(error)[:240]
             snapshot["last_attempt_at"] = current_time.isoformat()
-            last_success_age = age(current_time, snapshot.get("last_success_at"))
-            if (
-                last_success_age is not None
-                and last_success_age.total_seconds() < settings.NEWS_REGIONAL_STALE_SECONDS
-            ):
-                remaining = max(
-                    1,
-                    settings.NEWS_REGIONAL_STALE_SECONDS - int(last_success_age.total_seconds()),
-                )
+            remaining = stale_cache_remaining(snapshot, current_time, settings.NEWS_REGIONAL_STALE_SECONDS)
+            if remaining:
                 backend.set(key, snapshot, max(remaining, failure_ttl))
                 return _feed_result(feed, snapshot, stale=True, failed=True)
             empty = {

@@ -14,6 +14,7 @@ from django.views.decorators.http import require_http_methods
 from core.views import render_page
 from countries.models import Country
 
+from .cache_backend import CacheWriteError
 from .forms import AdditionalFeedForm, CustomSourceForm, NewsPreferencesForm
 from .models import CustomSource, NewsPreferences, SourcePreference
 from .preferences import effective_registry, freshness_seconds, source_choices
@@ -229,9 +230,14 @@ def refresh_status(request):
     if paused_until and registry.get("google_news_country").enabled_by_default:
         errors.append({"name": "Google News", "error": f"Automatic refresh is paused after a rate-limit response. It resumes after {paused_until:%H:%M UTC on %b %d}. Cached headlines remain available."})
     errored_jobs = set()
+    missing = 0
     for job, key in jobs:
-        snapshot = snapshots.get(key)
-        if isinstance(snapshot, dict) and snapshot.get("last_error"):
+        snapshot = snapshots.get(key, {})
+        if not isinstance(snapshot, dict):
+            snapshot = {}
+        if not isinstance(snapshot.get("items"), list) or not parse_datetime(snapshot.get("last_success_at")):
+            missing += 1
+        if snapshot.get("last_error"):
             errors.append({"name": label(job), "error": snapshot.get("last_error_detail") or snapshot["last_error"]})
             errored_jobs.add(job)
     # Also expose unexpected worker failures, but drop them after a later
@@ -248,6 +254,7 @@ def refresh_status(request):
     progress["errors"] = errors
     progress["failed"] = len(errors)
     progress["enabled"] = len(jobs)
+    progress["missing"] = missing
     return JsonResponse(progress)
 
 
@@ -305,7 +312,7 @@ def add_custom_source(request):
 
     feed_warmer.rescan()
     if success:
-        messages.success(request, "Source added and checked. Matching items are now available on the map.")
+        messages.success(request, "Source added and checked.")
     else:
         messages.warning(request, "Source saved, but its check failed. See the reason below; it stays paused until a successful check.")
     return _navigate(request, _country(request))
@@ -334,7 +341,7 @@ def custom_source_action(request, source_id, action):
         success = check_custom_source(record)
         record.save()
         if success:
-            messages.success(request, "Source checked; its cache is ready.")
+            messages.success(request, "Source checked.")
         else:
             messages.warning(request, f"Source check failed: {record.last_error}")
     else:
@@ -357,17 +364,22 @@ def refresh_source(request, source_id):
         messages.warning(request, "This source is switched off or unavailable. Turn it on before refreshing it.")
         return _navigate(request, country)
     options = {"force_refresh": True, "fresh_seconds": freshness_seconds()}
-    if source_id in feeds:
-        result = get_fixed_feed(item, registry.get_provider(item.provider_id), **options)
-        name = f"{registry.get_provider(item.provider_id).display_name} — {item.section_label}"
-    elif item.kind is SourceKind.YOUTUBE:
-        result = get_youtube_feed(item, **options)
-        name = item.display_name
-    elif item.kind is SourceKind.DYNAMIC_COUNTRY_RSS and country:
-        result = get_country_news(country.pk, registry=registry, **options)
-        name = f"{item.display_name} — {country.name}"
-    else:
-        raise Http404("Source cannot be refreshed here")
+    try:
+        if source_id in feeds:
+            provider = registry.get_provider(item.provider_id)
+            result = get_fixed_feed(item, provider, **options)
+            name = f"{provider.display_name} — {item.section_label}"
+        elif item.kind is SourceKind.YOUTUBE:
+            result = get_youtube_feed(item, **options)
+            name = item.display_name
+        elif item.kind is SourceKind.DYNAMIC_COUNTRY_RSS and country:
+            result = get_country_news(country.pk, registry=registry, **options)
+            name = f"{item.display_name} — {country.name}"
+        else:
+            raise Http404("Source cannot be refreshed here")
+    except CacheWriteError:
+        messages.warning(request, "The feed cache could not be saved. Try refreshing again in a moment.")
+        return _navigate(request, country)
     error = result.error or getattr(result, "warning", "")
     if error or getattr(result, "refresh_failed", False):
         messages.warning(request, f"{name}: refresh failed. Previously cached results are kept where available.")

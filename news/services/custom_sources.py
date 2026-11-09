@@ -1,4 +1,5 @@
 """User feeds join the existing registry, matching, cache and background queue."""
+import logging
 from dataclasses import replace
 from html.parser import HTMLParser
 from urllib.parse import parse_qs, urlsplit, urlunsplit
@@ -10,6 +11,7 @@ from django.utils import timezone
 
 from news.adapters.rss import FeedParseError, _plain_text, normalize_feed
 from news.adapters.youtube import ATOM_NAMESPACE, YouTubeFeedParseError, normalize_youtube_feed
+from news.cache_backend import CacheWriteError
 from news.models import CustomSource
 from news.registry import ROUTING_REGIONS, SourceRegistry, YOUTUBE_CHANNEL_PATTERN, get_source_registry
 from news.types import FeedType, NewsFeed, NewsProvider, NewsSource, SourceKind
@@ -18,6 +20,7 @@ from .cache import fixed_feed_cache_key, youtube_cache_key
 from .fetch import FeedFetchError, fetch_feed
 
 
+logger = logging.getLogger(__name__)
 YOUTUBE_HOSTS = {"youtube.com", "www.youtube.com", "m.youtube.com"}
 FORMAT_LABELS = {"rss20": "RSS 2.0", "rss10": "RSS 1.0 / RDF", "atom10": "Atom 1.0", "atom03": "Atom 0.3"}
 
@@ -183,7 +186,10 @@ def check_custom_source(record):
             "etag": response.etag, "last_modified": response.last_modified,
             "parser_warnings": list(getattr(normalized, "parser_warnings", ())),
         }
-        cache.set(key, snapshot, ttl)
+        try:
+            cache.set(key, snapshot, ttl)
+        except CacheWriteError:
+            logger.warning("Could not cache verified source %s; the background scheduler will check it again when due.", record.registry_id)
         return True
     except (FeedFetchError, FeedParseError, YouTubeFeedParseError) as error:
         record.last_error = str(error)[:240]

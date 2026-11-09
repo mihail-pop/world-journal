@@ -132,14 +132,14 @@ def maintain_archive():
             changed, codes = _cleanup_locked(timezone.now())
             if changed:
                 _changed(codes)
-        except DatabaseError:
-            _log_failure()
+        except DatabaseError as error:
+            _log_failure(error)
 
 
-def _log_failure():
+def _log_failure(error):
     global _next_error_log
     if time.monotonic() >= _next_error_log:
-        logger.warning("News archive is unavailable; current feeds remain available. Apply pending migrations if necessary.")
+        logger.warning("Could not update the news archive: %s", error)
         _next_error_log = time.monotonic() + 3600
 
 
@@ -154,8 +154,8 @@ def capture_snapshot(job, snapshot, registry, now=None):
         try:
             _collect(job, snapshot, registry, now or timezone.now())
             _seen[job] = stamp
-        except DatabaseError:
-            _log_failure()
+        except DatabaseError as error:
+            _log_failure(error)
 
 
 def forget_removed_jobs(jobs):
@@ -277,5 +277,5 @@ def remove_origins(feed_ids):
                 ArchivedNewsSource.objects.filter(feed_id__in=feed_ids).delete()
                 ArchivedNews.objects.filter(origins__isnull=True).delete()
             _changed(touched)
-        except DatabaseError:
-            _log_failure()
+        except DatabaseError as error:
+            _log_failure(error)

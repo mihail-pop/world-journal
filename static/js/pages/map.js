@@ -514,6 +514,7 @@ function renderSelection(controller, code, { fit = true, focusDrawer = false } =
         return;
     }
     setSelectedCountry(controller, code);
+    drawer.dataset.countryCode = code || "";
     personalSelectionChanged(controller);
     factsSelectionChanged(controller);
 

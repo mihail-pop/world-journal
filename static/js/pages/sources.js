@@ -17,8 +17,18 @@ function reportRefresh(result) {
     manualRefresh.finish();
     clearTimeout(manualRefresh.timer);
     manualRefresh = null;
-    const failures = Math.max(result.failed, result.errors.length);
-    notify({id: "feed-refresh", kind: failures ? "warning" : "success", title: failures ? "Refresh finished with source notices" : "Feed refresh complete", message: !result.enabled ? "No sources are enabled." : failures ? `${failures} feed${failures === 1 ? " is" : "s are"} unavailable. Cached results are kept where available.` : "Articles and videos are ready to browse.", action: failures ? {label: "Review sources", href: "/settings/news/"} : undefined, duration: 12000});
+    const incomplete = result.failed || result.missing;
+    let message = "Articles and videos are ready to browse.";
+    if (!result.enabled) message = "No sources are enabled.";
+    else if (incomplete) message = "Some feeds could not be refreshed or still have no cached results.";
+    notify({
+        id: "feed-refresh",
+        kind: incomplete ? "warning" : "success",
+        title: incomplete ? "Refresh finished with source notices" : "Feed refresh complete",
+        message,
+        action: incomplete ? {label: "Review sources", href: "/settings/news/"} : undefined,
+        duration: 12000,
+    });
 }
 
 function watchRefresh(url) {
@@ -62,18 +72,19 @@ function cleanupProgress() {
 function renderProgress(page, result) {
     const progress = page.querySelector("[data-refresh-progress]");
     progress.max = Math.max(1, result.total);
-    progress.value = result.total ? result.completed : result.busy ? 0 : 1;
-    const failed = Math.max(result.errors.length, result.failed);
-    page.querySelector("[data-refresh-summary]").textContent = result.busy
-        ? `Refreshing ${result.completed} of ${result.total} feeds`
-        : !result.enabled ? "No feeds enabled" : failed ? `Done · ${failed} feed${failed === 1 ? "" : "s"} unavailable` : "Done · cache ready";
+    progress.value = result.total ? result.completed : Number(!result.busy && !result.missing);
+    let summary = "Done · cache ready";
+    if (result.busy) summary = `Refreshing ${result.completed} of ${result.total} feeds`;
+    else if (!result.enabled) summary = "No feeds enabled";
+    else if (result.failed) summary = `${result.failed} source notice${result.failed === 1 ? "" : "s"}`;
+    else if (result.missing) summary = `Waiting for cached results from ${result.missing} feed${result.missing === 1 ? "" : "s"}`;
+    page.querySelector("[data-refresh-summary]").textContent = summary;
     page.querySelector("[data-refresh-current]").textContent = result.busy
         ? result.current.join(" · ") || "Waiting for the next feed…"
         : "";
     page.querySelector("[data-refresh-all]").disabled = result.busy;
     const details = page.querySelector("[data-refresh-errors]");
     details.hidden = !result.errors.length;
-    details.querySelector("[data-refresh-error-summary]").textContent = `${result.errors.length} feed${result.errors.length === 1 ? "" : "s"} unavailable`;
     const list = details.querySelector("[data-refresh-error-list]");
     const signature = JSON.stringify(result.errors);
     if (list.dataset.errors !== signature) {
@@ -89,7 +100,7 @@ function renderProgress(page, result) {
 
 async function pollProgress(controller) {
     if (progressController !== controller) return;
-    let busy = false;
+    let delay = 60000;
     try {
         if (!document.hidden) {
             const response = await fetch(controller.page.dataset.refreshStatusUrl, { signal: controller.abort.signal });
@@ -99,16 +110,24 @@ async function pollProgress(controller) {
             controller.unavailable = false;
             renderProgress(controller.page, result);
             reportRefresh(result);
-            busy = result.busy;
+            if (result.busy) delay = 2000;
+            else if (result.missing && !result.failed) delay = 5000;
         }
     } catch (error) {
-        if (error.name === "AbortError") return;
+        if (progressController !== controller || error.name === "AbortError") return;
         // Let the independent watcher retry sooner while this card also recovers.
         controller.unavailable = true;
         controller.page.querySelector("[data-refresh-summary]").textContent = "Background status is temporarily unavailable.";
         controller.page.querySelector("[data-refresh-all]").disabled = false;
+        delay = 15000;
     }
-    if (progressController === controller) controller.timer = setTimeout(() => pollProgress(controller), busy ? 2000 : 15000);
+    if (progressController === controller) controller.timer = setTimeout(() => pollProgress(controller), delay);
+}
+
+function startProgress(page) {
+    cleanupProgress();
+    progressController = { page, abort: new AbortController(), timer: null };
+    pollProgress(progressController);
 }
 
 async function refreshAll(form, page) {
@@ -122,11 +141,7 @@ async function refreshAll(form, page) {
         dismissNotice("feed-refresh");
         watchRefresh(page.dataset.refreshStatusUrl);
         // The page may have changed while the server accepted the request.
-        if (progressController?.page === page) {
-            cleanupProgress();
-            progressController = { page, abort: new AbortController(), timer: null };
-            pollProgress(progressController);
-        }
+        if (progressController?.page === page) startProgress(page);
     } catch (error) {
         page.querySelector("[data-refresh-summary]").textContent = error.message;
         button.disabled = false;
@@ -185,6 +200,7 @@ async function savePending(page, state) {
                 count.textContent = [...card.querySelectorAll("[data-source-row]")].filter(row => result.states[row.dataset.sourceRow]?.enabled).length;
             }
             document.dispatchEvent(new CustomEvent("world-journal:data-changed", { detail: { path: "/settings/news/preference/" } }));
+            if (progressController?.page === page) startProgress(page);
             showStatus(page, "Saved.");
         } catch (error) {
             if (!state.pending.has(key) && valueOf(change.input) === change.value) {
@@ -199,14 +215,12 @@ async function savePending(page, state) {
 }
 
 function initialize() {
-    cleanupProgress();
     const page = document.querySelector("[data-source-settings]");
-    if (!page) return;
+    if (!page) { cleanupProgress(); return; }
     stateFor(page);
     const input = page.querySelector('[name="kind"]');
     updateHelp(page, input.value);
-    progressController = { page, abort: new AbortController(), timer: null };
-    pollProgress(progressController);
+    startProgress(page);
 }
 
 function updateHelp(page, kind) {
@@ -220,6 +234,9 @@ export function registerSourceSettings() {
     registered = true;
     document.addEventListener("world-journal:page-ready", initialize);
     document.addEventListener("world-journal:page-cleanup", cleanupProgress);
+    document.addEventListener("visibilitychange", () => {
+        if (!document.hidden && progressController) startProgress(progressController.page);
+    });
     document.addEventListener("change", event => {
         const input = event.target;
         const page = input.closest?.("[data-source-settings]");

@@ -23,7 +23,8 @@ This is intended for the project's single-process local server.
   successful check. It extends the refresh interval, not the time between queued
   downloads. Missing feeds are prepared immediately; the worker pool and
   0.75-second Google request spacing remain unchanged.
-- Failed feeds retain usable stale data. Automatic retries start at 30 minutes
+- Failed feeds retain usable stale data. An unchanged response renews the
+  retention window for the current snapshot. Automatic retries start at 30 minutes
   and double up to 12 hours, honoring longer publisher Retry-After delays.
   Explicit Retry and Refresh now bypass individual failure backoff.
 - Google HTTP 429 responses pause all Google queries, including manual sweeps,
@@ -33,10 +34,12 @@ This is intended for the project's single-process local server.
   Saving source preferences also wakes the scheduler.
 
 The shared Feed cache card in Sources shows completed queue jobs and currently
-running feed/country names. Refresh now forces a bounded sweep of all enabled
-feeds without deleting usable cache. It retains Google pacing, deduplicates
-in-flight checks, and shows failures centrally. Additional custom article feeds
-use this same queue and retain independent cache/failure state.
+running feed/country names. It reports missing snapshots separately from completed
+checks and polls once a minute when idle and ready. Refresh now forces a bounded
+sweep of all enabled feeds without deleting usable cache. It retains Google
+pacing, deduplicates in-flight checks, and shows failures centrally. Additional
+custom article feeds use this same queue and retain independent cache/failure
+state.
 
 The queue continues after browser tabs close, while the Django process runs.
 Stopping the server stops all fetching. After a restart, opening a page resumes
@@ -54,13 +57,13 @@ Country endpoints read cached snapshots only: no publisher requests and no waits
 on a feed lock. Available articles appear while missing feeds are prepared, with
 an honest preparation message instead of a false empty/failure state.
 
-The browser prepares country HTML in batches of at most 20 and retains it across
-country selections and page navigation. A repeated selection uses that HTML
-immediately. A first selection can also be immediate once its background batch
-has arrived. Unchanged batch versions return no repeated HTML. The browser checks
-every five seconds during preparation and every 30 seconds afterward; hidden tabs
-pause their UI polling, while server fetching continues. New content updates an
-open drawer without a full-page reload or clearing its current article filter.
+The browser preloads country HTML in batches of at most 20 on Map or Countries
+and retains it across navigation. After that preload it checks only the country
+being viewed, every five seconds while feeds are preparing and every 30 seconds
+when idle. Source changes trigger a new preload when a drawer page is visible.
+Unchanged versions skip repeated HTML. Other pages and hidden tabs pause drawer
+checks while server fetching continues. New content updates an open drawer
+without reloading the page or clearing its article filter.
 
 Only HTML strings are stored for unopened video drawers, so preloading does not
 fetch thumbnails or create iframes. Play still creates the validated persistent

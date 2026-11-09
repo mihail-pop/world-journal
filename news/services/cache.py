@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 from hashlib import blake2b
+from math import ceil
 from threading import Lock
 
 from django.conf import settings
@@ -44,6 +45,14 @@ def parse_datetime(value: object) -> datetime | None:
 def age(now: datetime, value: object) -> timedelta | None:
     parsed = parse_datetime(value)
     return now - parsed if parsed else None
+
+
+def stale_cache_remaining(snapshot: dict, now: datetime, retention: int) -> int:
+    if not snapshot.get("last_success_at"):
+        return 0
+    # A 304 validates the existing body without changing its archive stamp.
+    checked_at = parse_datetime(snapshot.get("fetched_at")) or parse_datetime(snapshot.get("last_success_at"))
+    return max(0, ceil(retention - (now - checked_at).total_seconds())) if checked_at else 0
 
 
 def refresh_jitter(job, snapshot):
@@ -99,8 +108,11 @@ def pause_google(backend, now, error):
 
 def clear_google_pause(backend, now):
     with cache_lock(GOOGLE_COOLDOWN_KEY):
-        if not google_pause_until(backend, now):
-            backend.delete(GOOGLE_COOLDOWN_KEY)
+        state = backend.get(GOOGLE_COOLDOWN_KEY)
+        if state:
+            deadline = parse_datetime(state.get("retry_after_at"))
+            if deadline is None or now >= deadline:
+                backend.delete(GOOGLE_COOLDOWN_KEY)
 
 
 def deserialize_items(snapshot: dict) -> tuple[NewsItem, ...] | None:
