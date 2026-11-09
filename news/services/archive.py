@@ -11,10 +11,11 @@ from uuid import uuid4
 
 from django.conf import settings
 from django.core.cache import cache
-from django.db import DatabaseError, transaction
+from django.db import DatabaseError
 from django.db.models import Q, Sum
 from django.utils import timezone
 
+from core.database import database_write, write_transaction
 from news.models import ArchivedNews, ArchivedNewsCountry, ArchivedNewsSource
 from news.preferences import effective_registry
 from news.types import SourceKind
@@ -87,7 +88,8 @@ def _cleanup_locked(now, force=False):
         if not expired:
             break
         touched.update(ArchivedNewsCountry.objects.filter(item_id__in=expired).values_list("country_code", flat=True))
-        ArchivedNews.objects.filter(pk__in=expired).delete()
+        with database_write():
+            ArchivedNews.objects.filter(pk__in=expired).delete()
         changed = True
     count = ArchivedNews.objects.count()
     total = ArchivedNews.objects.aggregate(total=Sum("metadata_bytes"))["total"] or 0
@@ -103,7 +105,8 @@ def _cleanup_locked(now, force=False):
             total -= size + origin_count * 512 + tag_count * 256
         for start in range(0, len(remove), 500):
             touched.update(ArchivedNewsCountry.objects.filter(item_id__in=remove[start:start+500]).values_list("country_code", flat=True))
-            ArchivedNews.objects.filter(pk__in=remove[start:start+500]).delete()
+            with database_write():
+                ArchivedNews.objects.filter(pk__in=remove[start:start+500]).delete()
         changed = changed or bool(remove)
     return changed, touched
 
@@ -192,16 +195,28 @@ def _collect(job, snapshot, registry, now):
     cutoff = now - timedelta(days=settings.NEWS_ARCHIVE_DAYS)
     from .country_news import _countries_by_code
     valid_countries = set(_countries_by_code())
+    prepared = []
+    # Country matching can be slow on a cold start. Finish it before asking
+    # SQLite for the writer lock so a user save can run during preparation.
+    for item in items:
+        link = item.watch_url if kind == "videos" else item.link
+        published = item.published_at
+        if len(link) > 2048 or (published and published < cutoff):
+            continue
+        if category == "google":
+            codes = {identifier} if identifier in valid_countries else set()
+        else:
+            evidence = match_title(item.title) if kind == "videos" else match_country_text(item.title, item.summary)
+            codes = {match.country_code for match in evidence} & valid_countries
+        prepared.append((item, link, codes))
+    if not prepared:
+        return
+
     changed = False
     touched = set()
-    with transaction.atomic():
-        for item in items:
-            link = item.watch_url if kind == "videos" else item.link
-            if len(link) > 2048:
-                continue  # Never truncate an external link into a broken URL.
+    with write_transaction():
+        for item, link, codes in prepared:
             published = item.published_at
-            if published and published < cutoff:
-                continue
             # A future publisher date must not make retention unlimited.
             sort_date = published if published and published <= now else now
             identity, fingerprint = identities(item, kind)
@@ -227,11 +242,6 @@ def _collect(job, snapshot, registry, now):
             if existing and (direct or created):
                 touched.update(row.country_tags.values_list("country_code", flat=True))
             changed = changed or created
-            if category == "google":
-                codes = {identifier} if identifier in valid_countries else set()
-            else:
-                evidence = match_title(item.title) if kind == "videos" else match_country_text(item.title, item.summary)
-                codes = {match.country_code for match in evidence} & valid_countries
             for code in codes:
                 _tag, created = ArchivedNewsCountry.objects.get_or_create(item=row, country_code=code)
                 changed = changed or created
@@ -272,7 +282,7 @@ def archived_items(kind, country_code=None, *, category="all", exclude=(), regis
 def remove_origins(feed_ids):
     with _write_lock:
         try:
-            with transaction.atomic():
+            with write_transaction():
                 touched = set(ArchivedNewsCountry.objects.filter(item__origins__feed_id__in=feed_ids).values_list("country_code", flat=True))
                 ArchivedNewsSource.objects.filter(feed_id__in=feed_ids).delete()
                 ArchivedNews.objects.filter(origins__isnull=True).delete()

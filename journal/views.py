@@ -5,7 +5,6 @@ from django import forms
 from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.core.paginator import Paginator
-from django.db import transaction
 from django.db.models import Count
 from django.http import HttpResponse, JsonResponse, QueryDict
 from django.shortcuts import get_object_or_404, redirect
@@ -13,6 +12,7 @@ from django.urls import reverse
 from django.utils.dateparse import parse_datetime
 from django.views.decorators.http import require_http_methods
 
+from core.database import database_write, write_transaction
 from core.views import render_page
 from countries.models import Country
 
@@ -111,7 +111,7 @@ def quick_save(request):
         return JsonResponse({"message": "This video has no valid YouTube ID."}, status=422)
     if content.entry_type == EntryType.ARTICLE and not content.source_url:
         return JsonResponse({"message": "This article has no valid source link."}, status=422)
-    with transaction.atomic():
+    with write_transaction():
         # Repeated quick saves reuse the original entry without changing notes.
         lookup = {"youtube_video_id": content.youtube_video_id} if content.youtube_video_id else {"source_url": content.source_url}
         entry = Entry.objects.filter(**lookup).first()
@@ -158,7 +158,7 @@ def section_submission(data, entry):
 
 
 def save_entry(form, sections):
-    with transaction.atomic():
+    with write_transaction():
         entry = form.save()
         sections.instance = entry
         section_objects = sections.save(commit=False)
@@ -254,7 +254,7 @@ def delete_entry(request, pk):
     entry = get_object_or_404(Entry, pk=pk)
     form = ConfirmationForm(request.POST if request.method == "POST" else None)
     if request.method == "POST" and form.is_valid():
-        with transaction.atomic():
+        with write_transaction():
             entry.delete()
         messages.success(request, "Entry deleted, including its sections and local images.")
         return navigate(request, reverse("core:journal"))
@@ -266,7 +266,8 @@ def collection_edit(request, pk=None):
     collection = get_object_or_404(Collection, pk=pk) if pk else Collection()
     form = CollectionForm(request.POST if request.method == "POST" else None, instance=collection)
     if request.method == "POST" and form.is_valid():
-        collection = form.save()
+        with database_write():
+            collection = form.save()
         messages.success(request, "Collection saved.")
         return navigate(request, reverse("core:journal") + f"?collection={collection.pk}")
     return page(request, "journal/collection_edit.html", {"form": form, "collection": collection, "is_new": pk is None})
@@ -277,7 +278,8 @@ def collection_delete(request, pk):
     collection = get_object_or_404(Collection, pk=pk)
     form = ConfirmationForm(request.POST if request.method == "POST" else None)
     if request.method == "POST" and form.is_valid():
-        collection.delete()
+        with database_write():
+            collection.delete()
         messages.success(request, "Collection deleted. Its entries are kept in the journal.")
         return navigate(request, reverse("core:journal"))
     return page(request, "journal/confirm_delete.html", {"form": form, "title": f"Delete collection {collection.name}?", "description": "Entries are kept and moved to Unfiled. Only the collection is removed.", "cancel_url": reverse("core:journal") + f"?collection={collection.pk}"})
@@ -300,7 +302,7 @@ def delete_attachment(request, pk, attachment_pk):
     form = ConfirmationForm(request.POST if request.method == "POST" else None)
     url = attachment.entry.get_absolute_url()
     if request.method == "POST" and form.is_valid():
-        with transaction.atomic():
+        with write_transaction():
             attachment.delete()
         messages.success(request, "Image deleted.")
         return navigate(request, url)

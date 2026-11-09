@@ -1,9 +1,10 @@
-from sqlite3 import SQLITE_BUSY, SQLITE_LOCKED
 from time import sleep
 
 from django.core.cache.backends.base import DEFAULT_TIMEOUT
 from django.core.cache.backends.db import DatabaseCache
 from django.db import DatabaseError, OperationalError
+
+from core.database import database_write, is_database_busy
 
 
 class CacheWriteError(DatabaseError):
@@ -19,10 +20,10 @@ class FeedDatabaseCache(DatabaseCache):
             try:
                 # DatabaseCache.set discards the write result. Retry the same
                 # snapshot so transient contention doesn't require another fetch.
-                if self._base_set("set", key, value, timeout):
-                    return
+                with database_write():
+                    if self._base_set("set", key, value, timeout):
+                        return
             except OperationalError as error:
-                code = getattr(error.__cause__, "sqlite_errorcode", 0)
-                if (code & 0xFF) not in (SQLITE_BUSY, SQLITE_LOCKED):
+                if not is_database_busy(error):
                     raise
         raise CacheWriteError("Could not save the news cache after retrying.")

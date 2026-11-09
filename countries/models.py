@@ -4,6 +4,8 @@ from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator, MaxValueValidator, RegexValidator
 from django.db import models, transaction
 
+from core.database import write_transaction
+
 
 class Country(models.Model):
     """Stable ISO or explicitly local territory identity; geometry stays bundled."""
@@ -37,7 +39,7 @@ class TerritoryDetails(models.Model):
             raise ValidationError("Local territory details can only belong to a custom territory.")
 
     def save(self, *args, **kwargs):
-        with transaction.atomic():
+        with write_transaction():
             super().save(*args, **kwargs)
             Country.objects.filter(pk=self.country_id, is_custom=True).update(name=self.name)
         from journal.formatting import country_aliases

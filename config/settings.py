@@ -150,7 +150,7 @@ DATABASES = {
         'NAME': RUNTIME_ROOT / 'db.sqlite3',
         # Cache and archive transactions read before they write. Acquire the
         # write lock up front so SQLite can wait for a concurrent writer.
-        'OPTIONS': {'transaction_mode': 'IMMEDIATE'},
+        'OPTIONS': {'transaction_mode': 'IMMEDIATE', 'timeout': 30},
     }
 }
 

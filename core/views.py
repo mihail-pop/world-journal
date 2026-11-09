@@ -17,6 +17,7 @@ from config.version import (
 )
 from countries.models import MapPreset, preset_groups
 
+from .database import database_write
 from .models import AppSettings
 
 
@@ -89,7 +90,8 @@ def save_theme(request: HttpRequest) -> HttpResponse:
     theme = request.POST.get("theme")
     if theme not in AppSettings.Theme.values:
         return JsonResponse({"error": "Choose an available theme."}, status=400)
-    AppSettings.objects.update_or_create(pk=1, defaults={"theme": theme})
+    with database_write():
+        AppSettings.objects.update_or_create(pk=1, defaults={"theme": theme})
     if request.headers.get("Accept") == "application/json":
         return JsonResponse({"theme": theme})
     return redirect("core:settings")

@@ -11,6 +11,7 @@ from django.urls import reverse
 from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_http_methods
 
+from core.database import database_write
 from core.views import render_page
 from countries.models import Country
 
@@ -177,7 +178,8 @@ def save_preference(request):
             value = NewsPreferencesForm.base_fields["freshness_minutes"].clean(request.POST.get("value"))
         except ValidationError:
             return JsonResponse({"error": "Choose a refresh interval of 6, 8, 10 or 12 hours."}, status=400)
-        NewsPreferences.objects.update_or_create(pk=1, defaults={"freshness_minutes": value})
+        with database_write():
+            NewsPreferences.objects.update_or_create(pk=1, defaults={"freshness_minutes": value})
     else:
         identity = request.POST.get("source_id")
         item = next((item for item in (*registry.sources, *registry.providers, *registry.feeds) if item.id == identity), None)
@@ -186,7 +188,8 @@ def save_preference(request):
         value = request.POST.get("value")
         if value not in {"true", "false"}:
             return JsonResponse({"error": "Invalid source choice."}, status=400)
-        SourcePreference.objects.update_or_create(source_id=identity, defaults={"enabled": value == "true"})
+        with database_write():
+            SourcePreference.objects.update_or_create(source_id=identity, defaults={"enabled": value == "true"})
     from .services.background import feed_warmer
 
     feed_warmer.rescan()

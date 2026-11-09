@@ -1,5 +1,6 @@
 from django import forms
-from django.db import transaction
+
+from core.database import write_transaction
 
 from .models import CustomSource, NewsPreferences, SourcePreference
 
@@ -25,7 +26,7 @@ class NewsPreferencesForm(forms.Form):
             )
 
     def save(self):
-        with transaction.atomic():
+        with write_transaction():
             NewsPreferences.objects.update_or_create(pk=1, defaults={"freshness_minutes": self.cleaned_data["freshness_minutes"]})
             for item in self.items:
                 if item.enabled_by_default:

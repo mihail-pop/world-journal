@@ -1,13 +1,14 @@
 import json
 
 from django.contrib import messages
-from django.db import transaction
+from django.db import OperationalError
 from django.http import JsonResponse, QueryDict
 from django.shortcuts import get_object_or_404, render
 from django.urls import reverse
 from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_http_methods
 
+from core.database import database_write, is_database_busy, write_transaction
 from core.views import render_page
 from journal.formatting import render_body
 from journal.forms import default_collection
@@ -16,6 +17,9 @@ from journal.views import ConfirmationForm, navigate
 
 from .forms import ColorGroups, CountryProfileForm, DuplicatePresetForm, PresetForm, TerritoryDetailsForm
 from .models import Country, CountryFavorite, CountryProfile, MapPersonalState, MapPreset, PresetColorGroup, PresetCountry, TerritoryDetails, preset_groups
+
+
+PRESET_BUSY_MESSAGE = "The database is still busy. Try saving again."
 
 
 def personal_snapshot():
@@ -61,10 +65,11 @@ def favorite(request, iso2):
     value = request.POST.get("favorite")
     if value not in {"1", "0"}:
         return JsonResponse({"error": "Choose whether to favorite this country."}, status=400)
-    if value == "1":
-        CountryFavorite.objects.get_or_create(country=country)
-    else:
-        CountryFavorite.objects.filter(country=country).delete()
+    with database_write():
+        if value == "1":
+            CountryFavorite.objects.get_or_create(country=country)
+        else:
+            CountryFavorite.objects.filter(country=country).delete()
     if request.headers.get("Accept") == "application/json":
         return JsonResponse({"country": country.pk, "favorite": value == "1"})
     if request.POST.get("origin") == "countries":
@@ -89,6 +94,10 @@ def preset_list(request):
 
 
 def save_preset(form, groups):
+    # Another queued save may have taken this name after form validation.
+    form.validate_unique()
+    if form.errors:
+        return None
     preset = form.save()
     preset.country_colors.all().delete()
     PresetCountry.objects.bulk_create([PresetCountry(preset=preset, country_id=code, color=color) for code, color in groups.assignments().items()])
@@ -112,11 +121,18 @@ def preset_edit(request, pk=None):
     if request.method == "POST" and not adding:
         valid, colors_valid = form.is_valid(), colors.is_valid()
         if valid and colors_valid:
-            with transaction.atomic():
-                preset = save_preset(form, colors)
-            messages.success(request, "Color preset saved.")
-            url = reverse("core:map") + f"?edit_preset={preset.pk}" if request.POST.get("action") == "edit_map" else reverse("countries:preset_list")
-            return navigate(request, url)
+            try:
+                with write_transaction():
+                    saved = save_preset(form, colors)
+            except OperationalError as error:
+                if not is_database_busy(error):
+                    raise
+                form.add_error(None, PRESET_BUSY_MESSAGE)
+            else:
+                if saved is not None:
+                    messages.success(request, "Color preset saved.")
+                    url = reverse("core:map") + f"?edit_preset={saved.pk}" if request.POST.get("action") == "edit_map" else reverse("countries:preset_list")
+                    return navigate(request, url)
     return page(request, "countries/preset_edit.html", {"form": form, "color_formset": colors, "preset": preset, "is_new": pk is None})
 
 
@@ -151,20 +167,28 @@ def preset_data(request, pk=None):
             errors.extend(str(error) for error in groups.non_form_errors())
             errors.extend(str(error) for fields in groups.errors for values in fields.values() for error in values)
             return JsonResponse({"error": " ".join(errors)}, status=400)
-        with transaction.atomic():
-            # A second editor must not overwrite a newer saved version silently.
-            current_stamp = MapPreset.objects.filter(pk=pk).values_list("updated_at", flat=True).first() if pk else None
-            if pk and (not current_stamp or current_stamp.isoformat() != payload.get("updated_at")):
-                return JsonResponse({"error": "This preset changed since you opened it. Your draft is kept; reopen the preset to load the saved version."}, status=409)
-            preset = save_preset(form, groups)
-            MapPersonalState.objects.update_or_create(pk=1, defaults={"active_preset": preset})
+        try:
+            with write_transaction():
+                # A second editor must not overwrite a newer saved version silently.
+                current_stamp = MapPreset.objects.filter(pk=pk).values_list("updated_at", flat=True).first() if pk else None
+                if pk and (not current_stamp or current_stamp.isoformat() != payload.get("updated_at")):
+                    return JsonResponse({"error": "This preset changed since you opened it. Your draft is kept; reopen the preset to load the saved version."}, status=409)
+                preset = save_preset(form, groups)
+                if preset is None:
+                    return JsonResponse({"error": form.errors["name"][0]}, status=400)
+                MapPersonalState.objects.update_or_create(pk=1, defaults={"active_preset": preset})
+        except OperationalError as error:
+            if not is_database_busy(error):
+                raise
+            return JsonResponse({"error": PRESET_BUSY_MESSAGE}, status=503)
     return JsonResponse({"id": str(preset.pk) if not preset._state.adding else "new", "name": preset.name, "description": preset.description, "default_color": preset.default_color, "updated_at": preset.updated_at.isoformat() if preset.updated_at else "", "groups": preset_groups(preset)})
 
 
 @require_http_methods(["POST"])
 def preset_activate(request, pk=None):
     preset = get_object_or_404(MapPreset, pk=pk) if pk else None
-    MapPersonalState.objects.update_or_create(pk=1, defaults={"active_preset": preset})
+    with database_write():
+        MapPersonalState.objects.update_or_create(pk=1, defaults={"active_preset": preset})
     if request.headers.get("Accept") == "application/json":
         return JsonResponse(personal_snapshot())
     return navigate(request, reverse("countries:preset_list"))
@@ -175,7 +199,7 @@ def preset_duplicate(request, pk):
     original = get_object_or_404(MapPreset, pk=pk)
     form = DuplicatePresetForm(request.POST if request.method == "POST" else None, initial={"name": f"{original.name[:150]} copy"})
     if request.method == "POST" and form.is_valid():
-        with transaction.atomic():
+        with write_transaction():
             copy = form.save(commit=False)
             copy.description, copy.default_color = original.description, original.default_color
             copy.save()
@@ -191,7 +215,8 @@ def preset_delete(request, pk):
     preset = get_object_or_404(MapPreset, pk=pk)
     form = ConfirmationForm(request.POST if request.method == "POST" else None)
     if request.method == "POST" and form.is_valid():
-        preset.delete()
+        with database_write():
+            preset.delete()
         messages.success(request, "Color preset deleted. Favorites and Journal entries are kept.")
         return navigate(request, reverse("countries:preset_list"))
     return page(request, "countries/confirm_delete.html", {"form": form, "title": f"Delete preset {preset.name}?", "description": "Only this preset and its color assignments are deleted. Favorites and Journal entries are kept.", "cancel_url": reverse("countries:preset_list")})
@@ -222,7 +247,7 @@ def profile_edit(request, iso2):
     profile = CountryProfile.objects.filter(country=country).first() or CountryProfile(country=country)
     form = CountryProfileForm(request.POST if request.method == "POST" else None, instance=profile, country=country)
     if request.method == "POST" and form.is_valid():
-        with transaction.atomic():
+        with write_transaction():
             profile = form.save()
             if profile.entry_id:
                 profile.entry.countries.add(country)
@@ -234,7 +259,7 @@ def profile_edit(request, iso2):
 @require_http_methods(["POST"])
 def profile_create(request, iso2):
     country = get_object_or_404(Country, pk=iso2.upper())
-    with transaction.atomic():
+    with write_transaction():
         profile, _created = CountryProfile.objects.get_or_create(country=country)
         if not profile.entry_id:
             entry = Entry.objects.create(title=f"{country.name}: overview", collection=default_collection("note"))
