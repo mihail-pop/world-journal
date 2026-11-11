@@ -51,7 +51,7 @@ function positionPresetLegend(controller) {
     if (!legend || legend.hidden) return;
     const workspace = controller.page.querySelector(".map-workspace").getBoundingClientRect();
     const rect = legend.getBoundingClientRect();
-    let bottom = 44; // Keep bundled/provider attribution visible below the legend.
+    let bottom = 12;
     const blockers = [controller.page.querySelector("[data-country-drawer]"), document.querySelector("#persistent-player")];
     for (const blocker of blockers) {
         if (!blocker || blocker.hidden || (blocker.id === "persistent-player" && blocker.dataset.playerState !== "playing")) continue;

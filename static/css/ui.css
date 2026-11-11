@@ -224,7 +224,7 @@ details[open] > summary { margin-bottom: .9rem; color: var(--ui-text); }
 .version-status a.is-update { color: #f59e0b; }
 .version-support-links { border-top: 1px solid var(--ui-border); padding-top: .35rem; }
 .settings-help { padding: .5rem 0 1rem; color: var(--ui-muted); max-width: 52rem; }
-.settings-help p, .information-details p { font-size: .95rem; }
+.settings-help p { font-size: .95rem; }
 .source-preferences-form { margin-top: 0; justify-content: space-between; }
 .source-preferences-form > h2 { flex-basis: 100%; margin-bottom: 0; }
 .source-preferences-form .settings-field { margin: 0; }
@@ -579,7 +579,7 @@ html { overflow-y: scroll; scrollbar-gutter: stable; }
 .settings-grid, .source-card-grid { align-items: stretch; }
 .settings-card > .journal-button { align-self: flex-start; }
 .settings-tabs a { font-size: 1rem; }
-.settings-card > p, .settings-help p, .information-details p { font-size: 1rem; }
+.settings-card > p, .settings-help p { font-size: 1rem; }
 .settings-toggle-list { align-items: stretch; }
 .country-heading { padding-right: 5.5rem; }
 .country-flag { width: 3.8rem; height: 2.65rem; font-size: 2.5rem; }
@@ -1001,7 +1001,7 @@ html::-webkit-scrollbar-thumb { background: var(--ui-border); border: 3px solid 
 .preset-map-countries .select-tags { display: none; }
 
 /* Active preset legend; positioning also follows the player and country drawer. */
-.map-preset-legend { position: absolute; z-index: 6; left: 1rem; bottom: 2.75rem; width: max-content; max-width: min(19rem, calc(100% - 2rem)); max-height: min(18rem, 45%); overflow: auto; padding: .7rem .85rem; border: 1px solid var(--ui-border); border-radius: 6px; background: var(--ui-surface); box-shadow: 0 3px 14px #0002; color: var(--ui-text); scrollbar-width: thin; }
+.map-preset-legend { position: absolute; z-index: 6; left: 1rem; bottom: .75rem; width: max-content; max-width: min(19rem, calc(100% - 2rem)); max-height: min(18rem, 45%); overflow: auto; padding: .7rem .85rem; border: 1px solid var(--ui-border); border-radius: 6px; background: var(--ui-surface); box-shadow: 0 3px 14px #0002; color: var(--ui-text); scrollbar-width: thin; }
 .map-preset-legend summary { cursor: pointer; font-size: .95rem; font-weight: 600; overflow-wrap: anywhere; }
 .map-preset-legend ul { list-style: none; padding: 0; margin: .7rem 0 .1rem; display: grid; gap: .55rem; }
 .map-preset-legend li { display: flex; gap: .65rem; align-items: center; font-size: .95rem; line-height: 1.4; overflow-wrap: anywhere; }

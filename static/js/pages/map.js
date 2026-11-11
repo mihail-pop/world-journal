@@ -9,7 +9,6 @@ import { factsSelectionChanged, initializeCountryFacts, loadCountryOverview } fr
 import { applyPersonalLayers, initializePersonalMap, loadCountryNotes, loadPersonalData, personalSelectionChanged } from "./map_personal.js";
 import { initializePresetMap, selectPresetCountry, syncPresetEditor } from "./preset_map_editor.js";
 import {
-    AttributionControl,
     Map as MapLibreMap,
     NavigationControl,
 } from "../../vendor/maplibre-gl/maplibre-gl.mjs";
@@ -944,26 +943,6 @@ function createMap(controller, styleUrl) {
     });
     controller.map = map;
     map.addControl(new NavigationControl({ showCompass: false }), "top-right");
-    map.addControl(new AttributionControl({
-        compact: true,
-    }), "bottom-left");
-    const collapseAttribution = () => {
-        const attribution = controller.container.querySelector(".maplibregl-ctrl-attrib");
-        attribution?.removeAttribute("open");
-        attribution?.classList.remove("maplibregl-compact-show");
-        // MapLibre rebuilds provider attribution links as sources change.
-        for (const link of attribution?.querySelectorAll('a[target="_blank"]') ?? []) {
-            link.relList.add("noopener", "noreferrer");
-        }
-    };
-    collapseAttribution();
-    const attribution = controller.container.querySelector(".maplibregl-ctrl-attrib");
-    if (attribution) {
-        controller.attributionObserver = new MutationObserver(collapseAttribution);
-        controller.attributionObserver.observe(attribution, { childList: true, subtree: true });
-    }
-    map.on("resize", collapseAttribution);
-    map.on("idle", collapseAttribution);
 
     controller.fallbackTimer = window.setTimeout(() => applyProviderFallback(controller), 8000);
     map.on("style.load", () => {
@@ -973,7 +952,6 @@ function createMap(controller, styleUrl) {
         controller.paintThemeKey = null;
         controller.mapFontKey = null;
         installCountryLayers(controller);
-        requestAnimationFrame(collapseAttribution);
     });
     map.on("error", () => {
         if (!controller.layersInstalled) {
@@ -1451,7 +1429,6 @@ export function cleanupMapPage() {
     cancelCountryNews(controller, { abort: true });
     cancelCountryVideos(controller);
     controller.abortController.abort();
-    controller.attributionObserver?.disconnect();
     if (controller.map) {
         saveViewport(controller.map);
         controller.map.remove();

@@ -851,9 +851,7 @@ body:has(.persistent-player[data-player-state="playing"]) #app-content:not(:has(
     font-size: 0.72rem;
 }
 
-.maplibregl-ctrl-group,
-.maplibregl-ctrl-attrib.maplibregl-compact,
-.maplibregl-ctrl-attrib.maplibregl-compact-show {
+.maplibregl-ctrl-group {
     border: 1px solid var(--overview-border);
     background: var(--button-bg);
     color: var(--text-secondary);
@@ -870,10 +868,6 @@ body:has(.persistent-player[data-player-state="playing"]) #app-content:not(:has(
 
 :is([data-theme="light"], [data-theme="pink"], [data-theme="cake"]) .maplibregl-ctrl-group button span {
     filter: none;
-}
-
-.maplibregl-ctrl-attrib a {
-    color: var(--text-secondary);
 }
 
 .placeholder-surface,
@@ -1082,10 +1076,6 @@ body:has(.persistent-player[data-player-state="playing"]) #app-content:not(:has(
 
     .country-video-item {
         grid-template-columns: 6rem minmax(0, 1fr);
-    }
-
-    .maplibregl-ctrl-bottom-left {
-        max-width: calc(100% - 3.5rem);
     }
 
     .settings-section {

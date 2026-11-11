@@ -20,7 +20,7 @@ The opening camera precedence is a valid country query, configured home country,
 
 The map controller owns country and capital labels. It suppresses matching provider labels to avoid duplicates using `isBasemapCountryLabel` and `isBasemapCapitalLabel` in `static/js/pages/map.js`. Provider detail groups are isolated in `static/js/pages/basemap_features.js`; water uses source-layer semantics (`water`, `waterway`, and `water_name`) with layer-ID terms as a fallback.
 
-For every loaded style, the adapter records each provider layer's original visibility before applying preferences. Re-enabling a feature restores that visibility while honoring other disabled groups. A `style.load` event clears the previous style snapshot, reinstalls application sources and layers idempotently, reapplies preferences, and restores selection state. Terrain off hides all provider layers without changing styles, so the bundled sources remain installed and external attribution controls remain untouched.
+For every loaded style, the adapter records each provider layer's original visibility before applying preferences. Re-enabling a feature restores that visibility while honoring other disabled groups. A `style.load` event clears the previous style snapshot, reinstalls application sources and layers idempotently, reapplies preferences, and restores selection state. Terrain off hides all provider layers without changing styles, so the bundled sources remain installed.
 
 ## Country hover rendering
 

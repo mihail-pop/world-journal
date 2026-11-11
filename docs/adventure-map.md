@@ -71,8 +71,8 @@ Adventure hover and selection borders use separate line layers above ordinary co
 layers. They are installed lazily when Adventure is first selected and reuse
 the current MapLibre map. Their textures/sprites are generated once per theme,
 using a fixed seed, and reused; no image service, new feed, map provider, font
-dependency, API key, Python package or database migration is required. Existing
-provider attribution remains intact. Map labels use the selected local application font.
+dependency, API key, Python package or database migration is required.
+Map labels use the selected local application font.
 
 Simple and Adventure start with a bundled style instead of waiting for the
 external Terrain style to download. The provider style is requested on the first
@@ -165,7 +165,7 @@ Restart the server, reload with Ctrl+F5 and select Adventure in Display.
    the continental view and fade away at close country detail. Boats and sea
    creatures should keep their prior visibility. Inspect volcano/tornado regions.
 10. Start in Adventure or Simple with Ctrl+F5, then switch to Terrain and back.
-    Check startup, labels, provider attribution, selected country and favorites.
+    Check startup, labels, selected country and favorites.
     Hearts should sit just above Romania's name with a small gap throughout
     zooming, without jumping between positions. The drawer heart should keep
     normal styling. Check all three map types and themes, and Madagascar's mountain.

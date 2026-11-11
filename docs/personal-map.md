@@ -68,7 +68,7 @@ Both editors have a Title field for each color group. Titles and group order sur
 
 During ordinary map use, the selected preset has a collapsible bottom-left legend showing a color swatch and title for each used group. Untitled groups use Color 1, Color 2, etc. An applicable default color appears as Other countries. The legend disappears when preset colors are disabled or when the selection editor is open. It follows theme colors and stays with the retained map during Journal/Settings navigation.
 
-The legend moves above overlapping country drawers and the player, while leaving attribution visible. Long titles wrap and long legends scroll. On a very small viewport with both drawer and player open, it temporarily hides if fewer than 40px of unobstructed space remain; closing either restores it.
+The legend sits 12px above the map's lower edge and moves above overlapping country drawers and the player. Long titles wrap and long legends scroll. On a very small viewport with both drawer and player open, it temporarily hides if fewer than 40px of unobstructed space remain; closing either restores it.
 
 Manual checks:
 
