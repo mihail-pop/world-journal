@@ -111,8 +111,8 @@ function updateLayerTheme(controller) {
     map.setPaintProperty(LAYERS.selectedOutline, "line-opacity", adventure ? ["case", selectedState, 1, 0] : 0);
     map.setPaintProperty(LAYERS.smallMarker, "circle-color", ["coalesce", ["feature-state", "presetColor"], hover]);
     map.setPaintProperty(LAYERS.smallMarker, "circle-stroke-color", selected);
-    map.setPaintProperty(LAYERS.countryNames, "text-color", selected);
-    map.setPaintProperty(LAYERS.countryNames, "text-halo-color", background);
+    map.setPaintProperty(LAYERS.countryNames, "text-color", terrain ? "#ffffff" : selected);
+    map.setPaintProperty(LAYERS.countryNames, "text-halo-color", terrain ? "#000000" : background);
     if (controller.countryLabelAdventure !== adventure) {
         controller.countryLabelAdventure = adventure;
         map.setLayoutProperty(LAYERS.countryNames, "text-font", [adventure ? "Noto Sans Regular" : "Noto Sans Bold"]);
