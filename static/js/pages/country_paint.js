@@ -22,7 +22,7 @@ export function countryFillColors(theme, presetColor = null) {
     let normal = {rgb: rgb(theme.fill), alpha: theme.opacity};
     if (presetColor) normal = overlay(normal, rgb(presetColor), .65);
     if (theme.opacity === 0) {
-        // Terrain uses border highlights. Only explicit preset colors tint it.
+        // Terrain uses label feedback. Only explicit preset colors tint it.
         const fill = color(normal);
         return {fillNormal: fill, fillHovered: fill, fillSelected: fill, fillHoveredSelected: fill};
     }

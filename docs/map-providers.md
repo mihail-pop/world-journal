@@ -43,13 +43,23 @@ reloads restore paint state, and page cleanup cancels pending hover work before
 removing the map. Selection, centroid hit targets, preset colors and themes keep
 their existing behavior.
 
-Manual check: reload with Ctrl+F5, sweep rapidly across European countries, then
+Terrain hides all bundled country outlines, including hover and selection
+strokes, so only the provider's own boundaries are drawn. Hover enlarges a
+country's visible label by 15%, using one separate point and hiding its normal
+text with paint state. Normal label placement, zoom thresholds and map fades
+stay unchanged. If the label is absent, collided out, or switched off, the name
+appears above the pointer instead. Both cues clear on movement, pointer exit and
+navigation. Simple, Adventure and the bundled provider fallback retain their
+existing border and fill highlights.
+
+Manual check in Simple/Adventure: reload with Ctrl+F5, sweep rapidly across European countries, then
 stop on one. Only the current country should be highlighted. Hover Russia,
 Canada, and the United States at several zoom levels: loaded country parts should
 change together, without a tile-by-tile fill animation. Move onto ocean, the
 drawer, or toolbar and out of the map: the hover should clear. Try dragging,
-zooming, microstate markers, simple mode, themes, and Map → Journal → Map. Browser
-checks and automated tests are left to the user for this change.
+zooming, microstate markers, themes, and Map → Journal → Map. In Terrain, verify
+the enlarged label or pointer name, with no bundled borders. Also check hidden
+country names, crowded labels, close zoom and provider fallback.
 
 ## Country selection rendering
 
@@ -63,12 +73,13 @@ Closing the drawer clears selection through the same path. Country URLs and
 browser history use that path too, and source/style recreation restores the
 current selected flag after installing the layers.
 
-Manual check: after Ctrl+F5, select a large country, then a neighboring country.
+Manual check in Simple/Adventure: after Ctrl+F5, select a large country, then a neighboring country.
 The previous fill and outline should disappear together across the visible
 country, while the new selection appears together. Repeat quickly, close the
 drawer, use Back/Forward, and return from Journal to Map with a selected country.
 Also check simple mode and preset colors: removing selection should reveal the
-underlying country styling evenly. Tests and browser checks remain with the user.
+underlying country styling evenly. Terrain selections should open the drawer
+without adding a bundled country outline.
 
 ## 3D terrain availability
 
@@ -86,7 +97,7 @@ Turning the terrain basemap off shows the bundled simple country map. Provider d
 
 ## Country rendering, terrain and opening camera
 
-Country rendering uses one fill and one outline, replacing the previous four fill passes and three line passes over the same geometry. `static/js/pages/country_paint.js` composes the base/preset/hover/selection colors and alpha before drawing. Terrain shows the provider map directly with border highlights. Explicit preset colors use 65% opacity. Simple, Adventure and the bundled provider fallback also use fill highlights at 32% on hover and 26% on selection. Selected outlines take priority over hover outlines. Four fill variants are stored per promoted ISO feature ID. Hover/selection flags choose a variant through a fixed paint expression, and palette/theme/terrain changes update feature state without replacing that expression or rebuilding country tile layouts. Country and centroid IDs, all country metadata, click hit targets, deep links, drawer behavior and persistent-map navigation remain unchanged.
+Country rendering uses one fill and one outline, replacing the previous four fill passes and three line passes over the same geometry. `static/js/pages/country_paint.js` composes the base/preset/hover/selection colors and alpha before drawing. Terrain shows the provider map directly with label hover feedback and no bundled outlines. Explicit preset colors use 65% opacity. Simple, Adventure and the bundled provider fallback also use fill highlights at 32% on hover and 26% on selection. Selected outlines take priority over hover outlines in those modes. Four fill variants are stored per promoted ISO feature ID. Hover/selection flags choose a variant through a fixed paint expression, and palette/theme/terrain changes update feature state without replacing that expression or rebuilding country tile layouts. Country and centroid IDs, all country metadata, click hit targets, deep links, drawer behavior and persistent-map navigation remain unchanged.
 
 The Natural Earth source and country identities are unchanged; the bundled geometry now uses coverage-preserving shared-border simplification (see country-data.md). MapLibre's prior default subpixel tolerance (0.375 pixel) is restored after the zero-tolerance experiment increased work at wide zooms. The source retains its normal zoom range and close-zoom detail; it is not forced into a coarse world tile or replaced by a lower-resolution dataset.
 

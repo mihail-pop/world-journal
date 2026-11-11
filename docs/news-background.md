@@ -57,20 +57,21 @@ Country endpoints read cached snapshots only: no publisher requests and no waits
 on a feed lock. Available articles appear while missing feeds are prepared, with
 an honest preparation message instead of a false empty/failure state.
 
-The browser preloads country HTML in batches of at most 20 on Map or Countries
-and retains it across navigation. After that preload it checks only the country
-being viewed, every five seconds while feeds are preparing and every 30 seconds
-when idle. Source changes trigger a new preload when a drawer page is visible.
+The browser loads country HTML when a country is opened and retains it across
+navigation. Opening Map or Countries does not render and download panels for
+every country. It checks only the country being viewed, every five seconds while
+feeds are preparing and every 30 seconds when idle. Source changes clear the
+browser's saved panels and reload the visible country when a drawer page is open.
 Unchanged versions skip repeated HTML. Other pages and hidden tabs pause drawer
 checks while server fetching continues. New content updates an open drawer
 without reloading the page or clearing its article filter.
 
-Only HTML strings are stored for unopened video drawers, so preloading does not
-fetch thumbnails or create iframes. Play still creates the validated persistent
+Only HTML strings are stored for unopened video tabs, so caching does not fetch
+thumbnails or create iframes. Play still creates the validated persistent
 player. Country identities, request ordering and source-change generations prevent
 late responses from replacing another country's drawer or restoring old choices.
-Country matching and duplicate identification are reused to keep the world-wide
-HTML preparation from repeating the same work.
+Scheduled server-side feed fetching and the persistent SQLite feed cache remain
+independent of which countries the browser opens.
 
 The initial Google sweep takes at least about three minutes at the configured
 pacing, possibly longer with slow or failing feeds. Selected countries do not

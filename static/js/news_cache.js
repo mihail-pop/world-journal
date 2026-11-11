@@ -8,9 +8,7 @@ let priorityCountry = null;
 let timer = null;
 let running = false;
 let started = false;
-let prefetched = false;
 let endpoint;
-let countries = [];
 let invalidatedAt = 0;
 
 export function getCountryFeed(code, kind) {
@@ -69,7 +67,6 @@ async function readBatch(codes, currentGeneration, priority = null) {
     if (!response.ok) throw new Error("Feed cache is temporarily unavailable");
     const result = await response.json();
     if (generation !== currentGeneration) return null;
-    countries = result.countries;
     for (const [code, record] of Object.entries(result.records)) {
         rememberCountryFeed(code, "articles", record.articles, { requestedAt, version: record.version });
         rememberCountryFeed(code, "videos", record.videos, { requestedAt, version: record.version });
@@ -80,31 +77,21 @@ async function readBatch(codes, currentGeneration, priority = null) {
 
 async function poll() {
     if (running || !endpoint || !drawerPage || document.hidden) return;
+    const country = visibleCountry();
+    if (!country) return;
     running = true;
     const currentGeneration = generation;
-    const country = visibleCountry();
     const priority = country === priorityCountry ? priorityCountry : null;
     priorityCountry = null;
-    const canPreload = () => drawerPage && !document.hidden && generation === currentGeneration && !priorityCountry;
     let warming = false;
     try {
-        if (country) warming = await readBatch([country], currentGeneration, priority);
-        if (!prefetched && canPreload()) {
-            if (!countries.length) await readBatch([], currentGeneration);
-            const remaining = countries.filter(code => code !== country && !versions.has(code));
-            for (let index = 0; index < remaining.length && canPreload(); index += 20) {
-                await readBatch(remaining.slice(index, index + 20), currentGeneration);
-                // Spread the one-time preload out alongside the first map render.
-                await new Promise(resolve => setTimeout(resolve, 100));
-            }
-            prefetched = Boolean(canPreload());
-        }
+        warming = await readBatch([country], currentGeneration, priority);
     } catch (_) {
         // Cached drawers remain useful offline; the next poll retries quietly.
     } finally {
         running = false;
         if (generation !== currentGeneration || priorityCountry) schedule(0);
-        else if (!prefetched || visibleCountry()) schedule(warming ? 5000 : 30000);
+        else if (visibleCountry()) schedule(warming ? 5000 : 30000);
     }
 }
 
@@ -130,7 +117,6 @@ export function initializeNewsCache() {
         invalidatedAt = Date.now();
         entries.clear();
         versions.clear();
-        prefetched = false;
         schedule(0);
     });
 }
