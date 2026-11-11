@@ -89,7 +89,8 @@ function updateLayerTheme(controller) {
     const countryOutline = art?.border || getThemeColor("--text-primary");
     const hover = art?.accent || getThemeColor("--special-color");
     const selected = art?.label || getThemeColor("--text-secondary");
-    const theme = {fill: countryFill, accent: hover, opacity: adventure ? 1 : controller.preferences.terrain ? .22 : .72, adventure: art};
+    const terrain = controller.preferences.terrain && !controller.usingFallbackStyle;
+    const theme = {fill: countryFill, accent: hover, opacity: adventure ? 1 : terrain ? 0 : .72, adventure: art};
     updateAdventure(controller, adventure, art || undefined);
     const key = JSON.stringify([theme, background, countryOutline, selected, getThemeColor("--bg-tertiary")]);
     if (controller.paintThemeKey === key) return;
