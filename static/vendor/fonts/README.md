@@ -10,6 +10,8 @@ Inter and Roboto use the bundled variable files. Overpass uses the same regular,
 
 Inter is the default at every screen width. App Font is saved per browser, and the selected web font's upright files preload from the local app.
 
+All map labels follow App Font too. MapLibre renders them through its built-in local font support, using these CSS font faces or the chosen device font. Provider glyph URLs are removed before styles load, so Simple and Adventure have no external font dependency. Changes in Settings update the retained map without rebuilding it.
+
 SHA-256:
 
 - InterVariable-Italic.woff2: `e564f652916db6c139570fefb9524a77c4d48f30c92928de9db19b6b5c7a262a`

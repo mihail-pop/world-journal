@@ -170,6 +170,7 @@ export function registerSettingsPage() {
         if (!event.target.matches("[data-app-font]")) return;
         const font = event.target.value;
         document.documentElement.dataset.font = font;
+        document.dispatchEvent(new CustomEvent("world-journal:font-change", {detail: {font}}));
         try {
             localStorage.setItem(FONT_STORAGE_KEY, font);
             document.dispatchEvent(new CustomEvent("world-journal:preferences-saved"));

@@ -16,7 +16,7 @@ golems, spirit foxes, volcanoes and tornadoes are original
 canvas artwork with matching ink contours, shaded faces and hatching. A compass
 rose follows the map's bearing. The eight country colors in every theme and the
 country adjacency coloring are unchanged by the artwork refinements.
-Country labels use spaced capitals and retain the existing available glyph fonts.
+Country labels use spaced capitals and follow the application font selected in Settings.
 
 The dark theme uses a dusk-blue sea, warm sage/clay lands and ivory lettering;
 light uses sea glass, pale parchment and brown ink; brown uses aged gold, warm
@@ -72,13 +72,14 @@ layers. They are installed lazily when Adventure is first selected and reuse
 the current MapLibre map. Their textures/sprites are generated once per theme,
 using a fixed seed, and reused; no image service, new feed, map provider, font
 dependency, API key, Python package or database migration is required. Existing
-glyph/provider configuration and attribution remain intact.
+provider attribution remains intact. Map labels use the selected local application font.
 
 Simple and Adventure start with a bundled style instead of waiting for the
 external Terrain style to download. The provider style is requested on the first
 switch to Terrain, and its usual style-load handler restores application layers,
 selection, favorites and preferences. After loading, other types hide provider
-layers as before. Application labels still use the configured glyph endpoint.
+layers as before. Map labels render from the selected local application font,
+including country, capital and ocean names; no glyph endpoint is required.
 
 All provider terrain layers are hidden in Adventure. The original country fill
 still uses fixed hover/selection feature-state expressions. Adventure changes

@@ -1,4 +1,5 @@
 import { countryFillExpression } from "./country_paint.js";
+import { localMapStyle, mapFontStack, updateMapFonts } from "./map_fonts.js";
 import { adventurePalette, prepareAdventure, updateAdventure } from "./adventure_map.js";
 import { getCountryFeed, prioritizeCountryFeed, rememberCountryFeed } from "../news_cache.js";
 import { replaceCountryMarkup } from "../news_archive.js";
@@ -81,6 +82,7 @@ function updateLayerTheme(controller) {
     if (!map || !controller.layersInstalled) {
         return;
     }
+    updateMapFonts(controller);
     const adventure = controller.preferences.mapType === "adventure";
     if (adventure && !map.getLayer("world-journal-adventure-paper")) prepareAdventure(controller, addLayer);
     const art = adventure ? adventurePalette() : null;
@@ -115,7 +117,7 @@ function updateLayerTheme(controller) {
     map.setPaintProperty(LAYERS.countryNames, "text-halo-color", terrain ? "#000000" : background);
     if (controller.countryLabelAdventure !== adventure) {
         controller.countryLabelAdventure = adventure;
-        map.setLayoutProperty(LAYERS.countryNames, "text-font", [adventure ? "Noto Sans Regular" : "Noto Sans Bold"]);
+        map.setLayoutProperty(LAYERS.countryNames, "text-font", mapFontStack(adventure ? "Regular" : "Bold"));
         map.setLayoutProperty(LAYERS.countryNames, "text-transform", adventure ? "uppercase" : "none");
         map.setLayoutProperty(LAYERS.countryNames, "text-letter-spacing", adventure ? .07 : 0);
         map.setLayoutProperty(LAYERS.countryNames, "text-size", ["interpolate", ["linear"], ["zoom"], 1, adventure ? 10 : 9, 5, adventure ? 16 : 14]);
@@ -675,7 +677,7 @@ function applyPreferences(controller) {
         // external provider only when Terrain is actually requested.
         controller.providerStyleRequested = true;
         controller.layersInstalled = false;
-        controller.map.setStyle(controller.providerStyleUrl);
+        controller.map.setStyle(controller.providerStyleUrl, {transformStyle: localMapStyle, diff: false});
         controller.fallbackTimer = window.setTimeout(() => applyProviderFallback(controller), 8000);
         return;
     }
@@ -801,7 +803,7 @@ function installCountryLayers(controller) {
         layout: {
             "symbol-avoid-edges": true,
             "text-field": ["get", "name"],
-            "text-font": ["Noto Sans Bold"],
+            "text-font": mapFontStack("Bold"),
             "text-size": ["interpolate", ["linear"], ["zoom"], 1, 9, 5, 14],
             "text-max-width": 7,
         },
@@ -824,7 +826,7 @@ function installCountryLayers(controller) {
             visibility: "none",
             "symbol-avoid-edges": true,
             "text-field": ["get", "name"],
-            "text-font": ["Noto Sans Regular"],
+            "text-font": mapFontStack(),
             "text-size": ["interpolate", ["linear"], ["zoom"], 2.5, 9, 7, 12],
             "text-anchor": "top",
             "text-offset": [0, 0.55],
@@ -899,13 +901,12 @@ function applyProviderFallback(controller) {
     controller.layersInstalled = false;
     controller.status.textContent = "Map provider unavailable. Showing bundled country boundaries.";
     controller.status.hidden = false;
-    controller.map.setStyle(bundledMapStyle(controller));
+    controller.map.setStyle(bundledMapStyle());
 }
 
-function bundledMapStyle(controller) {
+function bundledMapStyle() {
     return {
         version: 8,
-        glyphs: controller.glyphsUrl,
         sources: {},
         layers: [{ id: "world-journal-background", type: "background", paint: { "background-color": "#0b1622" } }],
     };
@@ -934,7 +935,6 @@ function createMap(controller, styleUrl) {
     controller.providerStyleRequested = controller.preferences.terrain;
     const map = new MapLibreMap({
         container: controller.container,
-        style: controller.providerStyleRequested ? styleUrl : bundledMapStyle(controller),
         center: camera.center,
         zoom: camera.zoom,
         renderWorldCopies: true,
@@ -971,6 +971,7 @@ function createMap(controller, styleUrl) {
         controller.layersInstalled = false;
         controller.basemapVisibility.clear();
         controller.paintThemeKey = null;
+        controller.mapFontKey = null;
         installCountryLayers(controller);
         requestAnimationFrame(collapseAttribution);
     });
@@ -1014,6 +1015,9 @@ function createMap(controller, styleUrl) {
     // the fitted home country as soon as country layers are installed.
     const openingCountry = selectedCountry ?? homeCountry;
     if (openingCountry) focusCountry(controller, openingCountry, false);
+    map.setStyle(controller.providerStyleRequested ? styleUrl : bundledMapStyle(), {
+        transformStyle: localMapStyle, diff: false,
+    });
 }
 
 function closeControlsPanel(controller, { restoreFocus = false } = {}) {
@@ -1168,7 +1172,6 @@ async function initializeMapPage() {
         usingFallbackStyle: false,
         basemapVisibility: new Map(),
         fallbackTimer: null,
-        glyphsUrl: page.dataset.mapGlyphsUrl,
         status: page.querySelector("[data-map-status]"),
         notice: page.querySelector("[data-map-notice]"),
         toolbar: page.querySelector(".map-toolbar"),
@@ -1266,6 +1269,7 @@ async function initializeMapPage() {
         }
     }, { signal: abortController.signal });
     document.addEventListener("world-journal:theme-change", () => updateLayerTheme(controller), { signal: abortController.signal });
+    document.addEventListener("world-journal:font-change", () => updateLayerTheme(controller), { signal: abortController.signal });
     document.addEventListener("world-journal:map-preferences-change", event => {
         if (!controller.mapReady) return;
         controller.preferences = { ...event.detail };

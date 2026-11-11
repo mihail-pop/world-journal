@@ -24,7 +24,6 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 RUNTIME_ROOT = Path(os.environ.get("WORLD_JOURNAL_DATA_DIR", BASE_DIR))
 APP_DISPLAY_NAME = 'World Journal'
 MAP_STYLE_URL = 'https://tiles.openfreemap.org/styles/liberty'
-MAP_GLYPHS_URL = 'https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf'
 MAP_TERRAIN_CONFIG = {
     'available': False,
     'reason': 'No documented MapLibre elevation source is configured.',

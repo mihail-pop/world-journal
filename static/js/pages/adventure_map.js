@@ -1,5 +1,7 @@
 // Original, deterministic chart artwork. Geography always comes from the
 // application's unchanged country polygons; these illustrations are decorative.
+import { mapFontStack } from "./map_fonts.js";
+
 const PREFIX = "world-journal-adventure-";
 const COUNTRY_SOURCE = "world-journal-countries";
 const FILL_LAYER = "world-journal-country-fill";
@@ -490,7 +492,7 @@ export function prepareAdventure(controller, addLayer) {
     const waterArtwork = ["in",["get","kind"],["literal",["ship","sea-monster"]]];
     layer("illustrations",{type:"symbol",source:PREFIX+"illustrations",filter:waterArtwork,layout:illustrationLayout,paint:{"icon-opacity":1}},HOVER_OUTLINE_LAYER);
     layer("land-illustrations",{type:"symbol",source:PREFIX+"illustrations",minzoom:3.2,maxzoom:6.5,filter:["!",waterArtwork],layout:illustrationLayout,paint:{"icon-opacity":["interpolate",["linear"],["zoom"],3.2,0,3.8,1,5.3,1,6.5,0]}},HOVER_OUTLINE_LAYER);
-    layer("ocean-names",{type:"symbol",source:PREFIX+"oceans",maxzoom:5,layout:{"text-field":["get","name"],"text-font":["Noto Sans Regular"],"text-size":["interpolate",["linear"],["zoom"],1,11,3,16],"text-letter-spacing":.22,"text-max-width":20},paint:{"text-opacity":["interpolate",["linear"],["zoom"],1,.65,3,.6,5,0]}},LABEL_LAYER);
+    layer("ocean-names",{type:"symbol",source:PREFIX+"oceans",maxzoom:5,layout:{"text-field":["get","name"],"text-font":mapFontStack(),"text-size":["interpolate",["linear"],["zoom"],1,11,3,16],"text-letter-spacing":.22,"text-max-width":20},paint:{"text-opacity":["interpolate",["linear"],["zoom"],1,.65,3,.6,5,0]}},LABEL_LAYER);
 }
 
 export function updateAdventure(controller, active, palette = adventurePalette()) {

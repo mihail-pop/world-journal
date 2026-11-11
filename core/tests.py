@@ -57,7 +57,6 @@ class ShellNavigationTests(TestCase):
         self.assertContains(response, 'data-country-news-url-template="/news/countries/COUNTRY_CODE/"')
         self.assertContains(response, 'data-country-videos-url-template="/news/countries/COUNTRY_CODE/videos/"')
         self.assertContains(response, 'data-map-style-url="https://tiles.openfreemap.org/styles/liberty"')
-        self.assertContains(response, 'data-map-glyphs-url="https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf"')
         self.assertContains(response, 'id="world-map"')
         self.assertContains(response, "data-country-drawer")
         self.assertContains(response, "data-country-flag")

@@ -31,7 +31,6 @@ def render_page(request: HttpRequest, page: str, *, page_template: str | None = 
         "app_display_name": settings.APP_DISPLAY_NAME,
         "theme": saved_theme or AppSettings.Theme.DARK,
         "map_style_url": settings.MAP_STYLE_URL,
-        "map_glyphs_url": settings.MAP_GLYPHS_URL,
         "map_terrain": settings.MAP_TERRAIN_CONFIG,
         "page_template": page_template or f"core/partials/{page}.html",
     }
