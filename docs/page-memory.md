@@ -1,6 +1,6 @@
 # Returning to Map and Journal
 
-The Map and Journal header links resume the last screen in the current browser tab. This is an intentional extension of the original destroy-on-navigation lifecycle, requested for switching between research and writing. No new dependency, server session, account, or background worker is involved. `APP_CONTEXT.md` retains the original planning baseline.
+The Map header resumes its last screen in the current browser tab. Journal resumes a retained writing editor; otherwise its header opens the latest edited document, or a blank document when empty. This extends the original destroy-on-navigation lifecycle for switching between research and writing. No new dependency, server session, account, or background worker is involved. `APP_CONTEXT.md` retains the original planning baseline.
 
 ## What stays
 
@@ -20,7 +20,7 @@ to pages using the normal `#app-content` partial lifecycle.
 
 ## Navigation and fresh data
 
-Header links remember the last Map/Journal URL when returning from another page. Clicking the currently active header link instead opens its root screen, discards its remembered view and starts at the top. Journal changes are saved before its editor is replaced; failed saves keep that editor visible. A Map reset tears down its old canvas before creating the fresh map. Explicit country links, filtered Journal links and Save to Journal still open their specified destination. Returning through the Journal header reuses the remembered screen; navigating within Journal or submitting a form replaces it with the fresh server response. Successful Save/Delete never restores the old editor through the header.
+The Map header remembers its last URL when returning from another page. Journal remembers an editor URL and draft, while a remembered library, reader or statistics screen returns through `/journal/` to the latest edit. Clicking the active header link opens its root destination. Journal changes are saved before replacing its editor, including detached editors; failed saves keep that draft available. A Map reset tears down its old canvas. Explicit country links, library filters and Save to Journal keep their requested destinations. Explicit Journal Save uses an in-place JSON request and retains the editor DOM; other in-Journal navigation uses fresh server responses.
 
 A small HTMX extension prepares retained nodes before HTMX performs its ordinary innerHTML swap. HTMX still owns request processing, URL history and swap events. The main content opts out of HTMX's serialized history cache: canvas state and draft input values cannot reliably be serialized, and transient editors should not be copied into local storage. Back/Forward can request fresh server partials and reuse the matching retained workspace. Only the last Journal workspace is retained; returning to another Journal URL uses the server response.
 
@@ -44,8 +44,8 @@ Hard-refresh once to load the updated shell and JavaScript, then:
 
 1. Select Bulgaria, let Articles load, change the article filter, zoom/pan and scroll its drawer. Visit Journal, Settings and Map through the header. The same camera, Bulgaria drawer, filter and scroll should return without map-data or article/video requests restarting.
 2. Load Videos or Overview and repeat. The loaded tab should remain selected. Start video playback, visit other pages and return; the persistent iframe should keep playing.
-3. Filter Journal, move to another list page, scroll down, visit Map and return through the Journal header. The URL, filters and position should return. Repeat on a detail screen and on statistics.
-4. Start a new entry, type text, add/reorder subsections and select countries. Visit Map and Settings, then Journal. All unsaved input and subsection structure should remain. Save: the new server detail should replace the editor, and a later header return must show the saved screen.
+3. Open the Journal library, reader or statistics, visit Map and return through Journal. The most recently edited document should open. The library button still opens the unchanged searchable list.
+4. Start a new document, type text, add/reorder sections and select countries. Visit Map and Settings, then Journal. Unsaved text, sections and cursor should remain. Save should retain that same editor and briefly turn the autosave icon green.
 5. From a retained Journal screen, follow an explicit country link to a different country. It should select that country. From Map, use Save to Journal: the requested prefilled editor should open instead of a previous Journal screen.
 6. Exercise Back/Forward across sections and countries, including closing the drawer. Press Escape while on Journal: it must not silently close the detached Map drawer or change the Journal URL.
 7. Save an entry associated with Bulgaria and return to its Notes. It should appear without losing the Map camera or reloading unchanged Articles. Change a news-source setting or color preset and return: the corresponding data should update.

@@ -1,15 +1,24 @@
-<div class="journal-content-fields" data-content-fields>
-    <div class="journal-writing-paper">
-        <div class="journal-title-field">{% include 'journal/_field.html' with field=content_form.title wide=True %}</div>
-        <div class="journal-markdown-toolbar" role="toolbar" aria-label="Formatting">
-            <button type="button" data-journal-format="bold" aria-label="Bold" title="Bold">{% include 'core/partials/icon.html' with name='bold' %}</button><button type="button" data-journal-format="italic" aria-label="Italic" title="Italic">{% include 'core/partials/icon.html' with name='italic' %}</button><button type="button" data-journal-format="heading" aria-label="Heading" title="Heading">{% include 'core/partials/icon.html' with name='heading' %}</button><button type="button" data-journal-format="list" aria-label="List" title="List">{% include 'core/partials/icon.html' with name='list' %}</button><button type="button" data-journal-format="quote" aria-label="Quote" title="Quote">{% include 'core/partials/icon.html' with name='quote' %}</button><button type="button" data-journal-format="code" aria-label="Code" title="Code">{% include 'core/partials/icon.html' with name='code' %}</button><button type="button" data-journal-preview>{% include 'core/partials/icon.html' with name='preview' %} Preview</button>
-        </div>
-        {% include 'journal/_field.html' with field=content_form.body %}
-        <div class="journal-rendered journal-preview" data-journal-preview-output hidden></div>
+<div class="journal-content-fields journal-editor-content" data-content-fields>
+    <div class="journal-writing-paper journal-document-paper">
+        <div data-journal-body-field>{% include 'journal/_field.html' with field=content_form.body %}</div>
+        <div class="journal-rendered journal-document-preview" data-journal-preview-output tabindex="0" aria-label="Preview" hidden></div>
     </div>
-    <details class="journal-writing-options" {% if content_form.entry_type.errors %}open{% endif %}><summary>Entry type</summary>{% include 'journal/_field.html' with field=content_form.entry_type %}</details>
-    <details class="journal-reference-fields" {% if content_form.source_url.value or content_form.youtube_reference.value or content_form.source_name.value or content_form.source_published_at.value or content_form.youtube_start_seconds.value or content_form.source_url.errors or content_form.youtube_reference.errors or content_form.source_name.errors or content_form.source_published_at.errors or content_form.youtube_start_seconds.errors %}open{% endif %}>
-        <summary>{% include 'core/partials/icon.html' with name='bookmark' %} Source &amp; video reference</summary>
-        <div class="journal-form-grid">{% include 'journal/_field.html' with field=content_form.source_url wide=True %}{% include 'journal/_field.html' with field=content_form.source_name %}{% include 'journal/_field.html' with field=content_form.source_published_at %}{% include 'journal/_field.html' with field=content_form.youtube_reference %}{% include 'journal/_field.html' with field=content_form.youtube_start_seconds %}</div>
-    </details>
+    <aside class="journal-document-details" aria-label="Writing details">
+        {% include 'journal/_field.html' with field=content_form.title %}
+        {% include 'journal/_field.html' with field=content_form.entry_type %}
+        <details class="journal-meta-group" {% if content_form.source_url.value or content_form.youtube_reference.value or content_form.source_name.value or content_form.source_published_at.value or content_form.youtube_start_seconds.value or content_form.source_url.errors or content_form.youtube_reference.errors or content_form.source_name.errors or content_form.source_published_at.errors or content_form.youtube_start_seconds.errors %}open{% endif %}>
+            <summary>{% include 'core/partials/icon.html' with name='bookmark' %} Source &amp; video reference</summary>
+            {% include 'journal/_field.html' with field=content_form.source_url %}{% include 'journal/_field.html' with field=content_form.source_name %}{% include 'journal/_field.html' with field=content_form.source_published_at %}{% include 'journal/_field.html' with field=content_form.youtube_reference %}{% include 'journal/_field.html' with field=content_form.youtube_start_seconds %}
+        </details>
+        {% if is_main %}
+        <details class="journal-meta-group" {% if content_form.collection.errors or content_form.event_date.errors or content_form.countries.errors or content_form.is_favorite.errors or content_form.is_pinned.errors %}open{% endif %}>
+            <summary>{% include 'core/partials/icon.html' with name='folder' %} Organization &amp; date</summary>
+            {% include 'journal/_field.html' with field=content_form.collection %}{% include 'journal/_field.html' with field=content_form.event_date %}{% include 'journal/_field.html' with field=content_form.countries %}
+            <p class="field-note">Country references add tags on save. Event date is separate from the day you save.</p>
+            <div class="journal-checkboxes"><label>{{ content_form.is_favorite }} Favorite</label>{{ content_form.is_favorite.errors }}<label>{{ content_form.is_pinned }} Pinned</label>{{ content_form.is_pinned.errors }}</div>
+        </details>
+        {% else %}
+        <div class="journal-section-actions"><button type="button" data-section-move="up" aria-label="Move section up" title="Move up">{% include 'core/partials/icon.html' with name='up' %}</button><button type="button" data-section-move="down" aria-label="Move section down" title="Move down">{% include 'core/partials/icon.html' with name='down' %}</button><button type="button" data-section-remove aria-label="Remove section" title="Remove section">{% include 'core/partials/icon.html' with name='trash' %}</button></div>
+        {% endif %}
+    </aside>
 </div>

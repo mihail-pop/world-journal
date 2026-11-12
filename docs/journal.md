@@ -12,7 +12,7 @@ One shared journal, with optional collections for grouping entries and ordered s
 
 These are ordinary related tables, not an opaque editor JSON document. Text is stored as source, not trusted HTML. UUIDs keep links stable; related rows keep an entry from becoming one enormous record. Future features use additive Django migrations. A five-year guarantee cannot come from freezing the initial schema.
 
-Date/type/collection/section-order indexes cover ordinary filtering. Lists are paginated to 30 entries and render a bounded 1,600-character Markdown excerpt rather than loading the full document. The preview has a fixed maximum height. Search is isolated in `journal/query.py` so SQLite FTS can replace substring search later without changing stored research.
+Date/type/collection/section-order indexes cover ordinary filtering. Lists are paginated to 30 entries and render a bounded 1,600-character Markdown excerpt rather than loading the full document. List excerpts have a fixed maximum height. Search is isolated in `journal/query.py` so SQLite FTS can replace substring search later without changing stored research.
 
 ## Editing and display
 
@@ -24,11 +24,50 @@ Event date, source publication time, and creation time are independent. List fil
 
 Article/video cards open a prefilled Journal editor. Saving without choosing a collection creates or reuses Articles (including bookmarks), Videos, or Notes. An explicit collection is preserved. Existing Unfiled entries move to the automatic collection when next saved; deleting a collection still preserves entries. Country overview creation also uses Notes. Types are organizational labels and all support the same body, subsections, sources and video references. Mixed research has been removed: migration 0002 converts its existing entries and sections to Notes, and old backups remain importable. Source pages are not scraped. A source link remains stored when its feed item disappears. Videos are structured IDs/timestamps and reuse the persistent shell player. No iframe is created when merely viewing a journal entry.
 
-Direct URL loads and normal form submissions work without HTMX. HTMX navigation swaps only app-content. Subsection movement and formatting toolbar require JavaScript; Add subsection also has a normal form fallback. The Journal header resumes the last screen when returning from another page. Clicking it while already in Journal saves changed edits first and opens the main list at the top; see [Page memory](page-memory.md).
+`/journal/` opens the most recently updated entry in the editor, ordered by
+`updated_at` rather than creation time or pinning. An empty journal opens
+`/journal/new/`. The existing list is available at `/journal/all/` through the
+stack-of-pages library button. Search, collections, pagination, country filters
+and the appearance of list cards remain unchanged; old filtered root URLs
+redirect to the corresponding library URL.
+
+The writing workspace has a section rail on the left, a body-only paper in the
+center, and title/type/reference/organization fields on the right. Selecting a
+section switches the active paper and details without rebuilding its inputs.
+Section creation, reordering, removal and undo remain available. The toolbar
+above the paper contains formatting, Preview, Save and an autosave icon. The
+plus button opens a blank document; the book button retains the complete reading
+view and image uploads, and the chart button opens statistics. Smaller screens
+place details below the paper.
+
+Preview uses the same paper as editing. The textarea stays visible until the
+sanitized preview response is ready, then the surfaces swap. Clicking Preview
+again returns to the same textarea and selection. A second click while a request
+is pending cancels it; a stale response cannot replace text edited during the
+request. There is no loading paragraph or second preview panel.
+
+Direct URL loads and normal form submissions work without HTMX. HTMX navigation
+swaps only app-content. Subsection movement and formatting require JavaScript;
+Add section has a normal form fallback. The Journal header can resume a retained
+editor and its draft when returning from another page. It does not resume the
+library, reader or statistics as the default writing destination; those return
+through the latest-edit landing route. See [Page memory](page-memory.md).
 
 ## Autosave and video links
 
-Changed editors save about every 60 seconds without replacing their DOM, text cursor or body. A small status shows unsaved changes, saving, saved or an error. Retained editors continue saving while Map or Settings is visible. Opening another Journal screen flushes changes first and keeps the editor visible if saving fails. Empty untouched editors are not created. Blank titles on a changed draft become Untitled entry/section. Save entry still performs normal validation and opens the saved detail.
+Changed editors save about every 60 seconds without replacing their DOM, text
+cursor or body. The compact autosave icon has an accessible status and tooltip:
+muted when idle, amber for unsaved changes, rotating while saving, green for four
+seconds after success, and red for errors. Save uses the same validated endpoint
+and stays in the editor. Server field errors open the affected section and
+details when explicitly saving; failed requests keep the draft available.
+
+Retained editors continue saving while Map or Settings is visible. Opening a
+different Journal screen flushes changes first, including when the old editor
+is detached. Failure blocks that replacement. Empty untouched editors are not
+created automatically. Blank main titles are stored as `Untitled`, while their
+blank input keeps the `Title` placeholder during editing; blank section titles
+with content receive the existing section default. No stored notes are renamed.
 
 The editor allocates a UUID before autosaving; retries update the same entry. The server rebuilds the inline formset initial/extra boundary from owned section IDs. Responses update new section IDs in place, so later autosaves, reordering, explicit saves and removals operate on the same records. Explicit and background saves are serialized. Automatically detected country tags update the selector if the user has not changed it during the request.
 

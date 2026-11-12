@@ -41,6 +41,14 @@ def page(request, template, context):
 
 @require_http_methods(["GET"])
 def index(request):
+    if request.GET:
+        return navigate(request, reverse("journal:list") + "?" + request.GET.urlencode())
+    latest = Entry.objects.order_by("-updated_at", "-id").values_list("pk", flat=True).first()
+    return navigate(request, reverse("journal:edit", args=[latest]) if latest else reverse("journal:new"))
+
+
+@require_http_methods(["GET"])
+def list_entries(request):
     entries = filtered_entries(request.GET)
     paginator = Paginator(entries, 30)
     params = request.GET.copy()
@@ -181,7 +189,7 @@ def autosave(request, pk):
     entry = Entry.objects.filter(pk=pk).first() or Entry(pk=pk)
     data = request.POST.copy()
     if not data.get("title", "").strip():
-        data["title"] = "Untitled entry"
+        data["title"] = "Untitled"
     section_data, prefixes = section_submission(data, entry)
     for prefix in prefixes:
         if section_data.get(prefix + "-DELETE"):
@@ -196,17 +204,22 @@ def autosave(request, pk):
     form_valid, sections_valid = form.is_valid(), sections.is_valid()
     if not form_valid or not sections_valid:
         errors = []
+        field_errors = {}
         for bound in (form, *sections.forms):
             if getattr(bound, "cleaned_data", {}).get("DELETE"):
                 continue
             for field, messages in bound.errors.items():
                 label = bound.fields[field].label or field.replace("_", " ").title() if field in bound.fields else "Entry"
                 errors.extend(f"{label}: {error}" for error in messages)
+                if field in bound.fields:
+                    prefix = prefixes.get(bound.prefix, bound.prefix)
+                    name = f"{prefix}-{field}" if prefix else field
+                    field_errors[name] = [str(error) for error in messages]
         errors.extend(str(error) for error in sections.non_form_errors())
-        return JsonResponse({"message": "Not saved: " + (errors[0] if errors else "Complete the highlighted fields.")}, status=422)
+        return JsonResponse({"message": "Not saved: " + (errors[0] if errors else "Complete the highlighted fields."), "errors": field_errors}, status=422)
     entry = save_entry(form, sections)
     section_ids = {prefixes.get(section.prefix, section.prefix): {"id": str(section.instance.pk), "title": section.instance.title} for section in sections.forms if not section.instance._state.adding and not section.cleaned_data.get("DELETE")}
-    return JsonResponse({"edit_url": reverse("journal:edit", args=[entry.pk]), "title": entry.title, "sections": section_ids, "countries": list(entry.countries.values_list("pk", flat=True))})
+    return JsonResponse({"edit_url": reverse("journal:edit", args=[entry.pk]), "read_url": entry.get_absolute_url(), "title": entry.title, "sections": section_ids, "countries": list(entry.countries.values_list("pk", flat=True))})
 
 
 @require_http_methods(["GET", "POST"])
@@ -238,8 +251,8 @@ def edit(request, pk=None):
         form_valid, sections_valid = form.is_valid(), sections.is_valid()
         if form_valid and sections_valid:
             entry = save_entry(form, sections)
-            messages.success(request, "Entry saved.")
-            return navigate(request, entry.get_absolute_url())
+            messages.success(request, "Saved.")
+            return navigate(request, reverse("journal:edit", args=[entry.pk]))
     return page(request, "journal/edit.html", {"entry": entry, "form": form, "section_formset": sections, "is_new": entry._state.adding})
 
 
@@ -269,7 +282,7 @@ def collection_edit(request, pk=None):
         with database_write():
             collection = form.save()
         messages.success(request, "Collection saved.")
-        return navigate(request, reverse("core:journal") + f"?collection={collection.pk}")
+        return navigate(request, reverse("journal:list") + f"?collection={collection.pk}")
     return page(request, "journal/collection_edit.html", {"form": form, "collection": collection, "is_new": pk is None})
 
 
@@ -281,8 +294,8 @@ def collection_delete(request, pk):
         with database_write():
             collection.delete()
         messages.success(request, "Collection deleted. Its entries are kept in the journal.")
-        return navigate(request, reverse("core:journal"))
-    return page(request, "journal/confirm_delete.html", {"form": form, "title": f"Delete collection {collection.name}?", "description": "Entries are kept and moved to Unfiled. Only the collection is removed.", "cancel_url": reverse("core:journal") + f"?collection={collection.pk}"})
+        return navigate(request, reverse("journal:list"))
+    return page(request, "journal/confirm_delete.html", {"form": form, "title": f"Delete collection {collection.name}?", "description": "Entries are kept and moved to Unfiled. Only the collection is removed.", "cancel_url": reverse("journal:list") + f"?collection={collection.pk}"})
 
 
 @require_http_methods(["POST"])

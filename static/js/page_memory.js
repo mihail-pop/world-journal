@@ -21,7 +21,9 @@ function updateHeaderLinks() {
         const name = link.dataset.navPage;
         if (["map", "journal", "news", "countries"].includes(name)) {
             const root = name === "map" ? "/" : `/${name}/`;
-            link.href = activePage?.dataset.page === name ? root : remembered.get(name)?.url ?? root;
+            const saved = remembered.get(name);
+            const canResume = name !== "journal" || (saved?.page.querySelector("[data-journal-editor]") && !saved.journalDirty);
+            link.href = activePage?.dataset.page === name || !canResume ? root : saved?.url ?? root;
         }
     }
 }
