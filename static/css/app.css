@@ -295,7 +295,7 @@ h1 {
 
 .map-workspace {
     position: relative;
-    height: calc(100svh - var(--header-height));
+    height: 100svh;
     min-height: 31rem;
     overflow: hidden;
     background: var(--bg-tertiary);
@@ -304,6 +304,10 @@ h1 {
 .world-map {
     position: absolute;
     inset: 0;
+}
+
+.world-map :is(.maplibregl-ctrl-top-left, .maplibregl-ctrl-top-right) {
+    top: var(--header-height);
 }
 
 .world-map .maplibregl-canvas-container.maplibregl-interactive,
@@ -346,7 +350,7 @@ h1 {
 }
 
 .map-toolbar {
-    top: 1rem;
+    top: calc(var(--header-height) + 1rem);
     left: 1rem;
     padding: 0.35rem;
 }
@@ -412,7 +416,7 @@ h1 {
 
 body:has(.persistent-player[data-player-state="playing"]) .country-drawer {
     bottom: var(--persistent-player-map-offset, 0.75rem);
-    max-height: max(8rem, calc(100% - var(--persistent-player-map-offset, 0.75rem) - 1rem));
+    max-height: max(8rem, calc(100% - var(--header-height) - var(--persistent-player-map-offset, 0.75rem) - 1rem));
 }
 
 body:has(.persistent-player[data-player-state="playing"]) #app-content:not(:has(.page-map)) {
@@ -457,7 +461,7 @@ body:has(.persistent-player[data-player-state="playing"]) #app-content:not(:has(
 }
 
 .map-notice {
-    top: 1rem;
+    top: calc(var(--header-height) + 1rem);
     left: 50%;
     max-width: min(34rem, calc(100% - 12rem));
     margin: 0;
@@ -478,10 +482,10 @@ body:has(.persistent-player[data-player-state="playing"]) #app-content:not(:has(
 .country-drawer {
     position: absolute;
     z-index: 7;
-    top: 1rem;
+    top: calc(var(--header-height) + 1rem);
     right: 1rem;
     width: min(25rem, calc(100% - 2rem));
-    max-height: calc(100% - 2rem);
+    max-height: calc(100% - var(--header-height) - 2rem);
     overflow: auto;
     padding: 1.25rem;
     border: 1px solid var(--overview-border);
@@ -1049,12 +1053,12 @@ body:has(.persistent-player[data-player-state="playing"]) #app-content:not(:has(
     }
 
     .map-workspace {
-        height: calc(100svh - var(--header-height));
+        height: 100svh;
         min-height: 27rem;
     }
 
     .map-notice {
-        top: 4.4rem;
+        top: calc(var(--header-height) + 4.4rem);
         max-width: calc(100% - 1.5rem);
     }
 

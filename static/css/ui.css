@@ -108,6 +108,14 @@ button:disabled { cursor: default; opacity: .5; }
     border: 0; background: transparent; color: var(--text-primary); font-size: 1rem; font-weight: 550; text-decoration: none;
 }
 .app-name:hover, .primary-nav a:hover, .settings-link:hover, .logout-button:hover, .player-toggle:hover { color: var(--header-light); text-decoration: none; }
+body:has(#app-content > .page-map) .app-header {
+    --text-primary: rgb(236 236 236);
+    --header-light: #fdfcfc;
+    position: absolute;
+    inset: 0 0 auto;
+    background: rgb(0 0 0 / 30%);
+    box-shadow: none;
+}
 .header-actions { gap: .5rem; }
 .logout-form { display: flex; margin: 0; }
 #app-content { padding: 1.8rem clamp(1rem, 3vw, 3rem) 4rem; min-height: calc(100svh - var(--header-height)); }
@@ -479,7 +487,7 @@ details[open] > summary { margin-bottom: .9rem; color: var(--ui-text); }
 .statistics-totals strong { color: var(--ui-text); }
 @media (min-width: 70rem) {
     .persistent-player:not(.is-expanded) { left: 1rem; right: auto; }
-    body:has(.page-map):has(.persistent-player[data-player-state=playing]) .country-drawer { bottom: auto; max-height: calc(100% - 2rem); }
+    body:has(.page-map):has(.persistent-player[data-player-state=playing]) .country-drawer { bottom: auto; max-height: calc(100% - var(--header-height) - 2rem); }
 }
 @media (max-width: 64rem) {
     .settings-grid, .source-card-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }

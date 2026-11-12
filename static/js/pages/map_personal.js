@@ -61,7 +61,8 @@ function positionPresetLegend(controller) {
         }
     }
     legend.style.bottom = `${bottom}px`;
-    const space = workspace.height - bottom - 76;
+    const headerBottom = document.querySelector(".app-header")?.getBoundingClientRect().bottom ?? 0;
+    const space = workspace.height - bottom - 76 - Math.max(0, headerBottom - workspace.top);
     legend.classList.toggle("is-obscured", space < 40);
     legend.style.maxHeight = `${Math.max(40, space)}px`;
 }
