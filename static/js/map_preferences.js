@@ -9,6 +9,8 @@ export const DEFAULT_MAP_PREFERENCES = Object.freeze({
     homeCountry: null,
     countryNames: true,
     capitalNames: false,
+    cityNames: true,
+    regionNames: false,
     smallCountryMarkers: false,
     terrain: true,
     mapType: "terrain",
@@ -27,6 +29,8 @@ export const DEFAULT_MAP_PREFERENCES = Object.freeze({
 export const MAP_BOOLEAN_PREFERENCES = Object.freeze([
     "countryNames",
     "capitalNames",
+    "cityNames",
+    "regionNames",
     "smallCountryMarkers",
     "terrain",
     "allOtherText",

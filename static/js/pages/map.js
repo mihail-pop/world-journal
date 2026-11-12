@@ -1,10 +1,12 @@
 import { countryFillExpression } from "./country_paint.js";
 import { localMapStyle, mapFontStack, updateMapFonts } from "./map_fonts.js";
+import { terrainCountrySize, updateMapLabels } from "./map_labels.js";
+import { ensurePlaceLabels } from "./place_labels.js";
 import { adventurePalette, prepareAdventure, updateAdventure } from "./adventure_map.js";
 import { getCountryFeed, prioritizeCountryFeed, rememberCountryFeed } from "../news_cache.js";
 import { replaceCountryMarkup } from "../news_archive.js";
 import { notify } from "../notifications.js";
-import { basemapFeaturePreferences } from "./basemap_features.js";
+import { basemapFeaturePreferences, isBasemapCapitalLabel, isBasemapCountryLabel, splitBasemapRegionLabels } from "./basemap_features.js";
 import { factsSelectionChanged, initializeCountryFacts, loadCountryOverview } from "./map_facts.js";
 import { applyPersonalLayers, initializePersonalMap, loadCountryNotes, loadPersonalData, personalSelectionChanged } from "./map_personal.js";
 import { initializePresetMap, selectPresetCountry, syncPresetEditor } from "./preset_map_editor.js";
@@ -23,10 +25,11 @@ import {
 const WORLD_CAMERA = { center: [8, 18], zoom: 1.35 };
 const SOURCE_ID = "world-journal-countries";
 const CENTROID_SOURCE_ID = "world-journal-country-centroids";
-const HOVER_LABEL_SOURCE_ID = "world-journal-hovered-country";
 const CAPITAL_SOURCE_ID = "world-journal-capitals";
 const FAVORITE_ICON_ID = "world-journal-favorite-heart";
 const COUNTRY_NEWS_DELAY_MS = 300;
+const COUNTRY_POINTER_LABEL_MAX_ZOOM = 6;
+const COUNTRY_WATER_HOVER_DELAY_MS = 500;
 const LAYERS = {
     simpleBackground: "world-journal-simple-background",
     fill: "world-journal-country-fill",
@@ -121,22 +124,7 @@ function updateLayerTheme(controller) {
     map.setPaintProperty(LAYERS.selectedOutline, "line-opacity", ["case", selectedState, adventure ? 1 : 0, 0]);
     map.setPaintProperty(LAYERS.smallMarker, "circle-color", ["coalesce", ["feature-state", "presetColor"], hover]);
     map.setPaintProperty(LAYERS.smallMarker, "circle-stroke-color", selected);
-    map.setPaintProperty(LAYERS.countryNames, "text-color", terrain ? "#ffffff" : selected);
-    map.setPaintProperty(LAYERS.countryNames, "text-halo-color", terrain ? "#000000" : background);
-    // Keep this state-based in every mode. Switching between a constant and a
-    // state expression can leave stale paint bindings on loaded symbol tiles.
-    map.setPaintProperty(LAYERS.countryNames, "text-opacity", ["case", hovered, terrain ? 0 : 1, 1]);
-    if (controller.countryLabelAdventure !== adventure) {
-        controller.countryLabelAdventure = adventure;
-        map.setLayoutProperty(LAYERS.countryNames, "text-font", mapFontStack(adventure ? "Regular" : "Bold"));
-        map.setLayoutProperty(LAYERS.countryNames, "text-transform", adventure ? "uppercase" : "none");
-        map.setLayoutProperty(LAYERS.countryNames, "text-letter-spacing", adventure ? .07 : 0);
-        map.setLayoutProperty(LAYERS.countryNames, "text-size", ["interpolate", ["linear"], ["zoom"], 1, adventure ? 10 : 9, 5, adventure ? 16 : 14]);
-    }
-    map.setPaintProperty(LAYERS.capitalMarkers, "circle-color", selected);
-    map.setPaintProperty(LAYERS.capitalMarkers, "circle-stroke-color", background);
-    map.setPaintProperty(LAYERS.capitalNames, "text-color", selected);
-    map.setPaintProperty(LAYERS.capitalNames, "text-halo-color", background);
+    updateMapLabels(controller, LAYERS, {terrain, adventure, foreground: selected, background});
     applyPersonalLayers(controller);
     if (controller.usingFallbackStyle && map.getLayer("world-journal-background")) {
         map.setPaintProperty("world-journal-background", "background-color", background);
@@ -186,6 +174,7 @@ function setSelectedCountry(controller, code) {
 function setHoveredCountry(controller, code) {
     code = controller.countriesByCode.has(code) ? code : null;
     const { map, hoveredCode } = controller;
+    if (code !== hoveredCode || code === null) cancelWaterHover(controller);
     // Paint state changes coalesce in the renderer's next frame. Changing layer
     // filters instead would rebuild GeoJSON tiles asynchronously on every hover.
     if (code !== hoveredCode) {
@@ -199,7 +188,6 @@ function setHoveredCountry(controller, code) {
             }
         }
         controller.hoveredCode = code;
-        map.getCanvas().style.cursor = code ? "pointer" : "";
     }
     updateTerrainHoverLabel(controller);
 }
@@ -216,24 +204,24 @@ function updateTerrainHoverLabel(controller) {
         layers: [LAYERS.countryNames],
         filter: ["==", ["get", "iso_a2"], hoveredCode],
     }).length > 0;
-    const labelCode = labelVisible ? hoveredCode : null;
-    if (labelCode && controller.hoverLabelCountry !== labelCode) {
-        // Only one point changes, and only on entering a different country.
-        // The full country geometry and normal label placement stay untouched.
-        map.getSource(HOVER_LABEL_SOURCE_ID).setData({
-            type: "Feature",
-            properties: { iso_a2: labelCode, name: country.name },
-            geometry: { type: "Point", coordinates: country.centroid },
-        });
-        controller.hoverLabelCountry = labelCode;
-    }
-    if (controller.hoverLabelKey !== labelCode && map.getLayer(LAYERS.hoverCountryName)) {
-        // Ignore an old point while an asynchronous source update is pending.
-        map.setPaintProperty(LAYERS.hoverCountryName, "text-opacity",
-            ["case", ["==", ["get", "iso_a2"], labelCode ?? ""], 1, 0]);
+    // Enlarged labels share the already-loaded centroid source. Wait until the
+    // replacement is placed, then switch both labels with the same paint flag.
+    // No source updates, symbol creation or new fades happen on pointer moves.
+    const labelReady = labelVisible && map.queryRenderedFeatures({
+        layers: [LAYERS.hoverCountryName],
+        filter: ["==", ["get", "iso_a2"], hoveredCode],
+    }).length > 0;
+    const labelCode = labelReady ? hoveredCode : null;
+    if (controller.hoverLabelKey !== labelCode && map.getSource(CENTROID_SOURCE_ID)) {
+        if (controller.hoverLabelKey) {
+            map.setFeatureState({source: CENTROID_SOURCE_ID, id: controller.hoverLabelKey}, {hoverLabel: false});
+        }
+        if (labelCode) {
+            map.setFeatureState({source: CENTROID_SOURCE_ID, id: labelCode}, {hoverLabel: true});
+        }
         controller.hoverLabelKey = labelCode;
     }
-    hoverName.hidden = !country || Boolean(labelVisible);
+    hoverName.hidden = !country || Boolean(labelVisible) || map.getZoom() >= COUNTRY_POINTER_LABEL_MAX_ZOOM;
     if (hoverName.hidden) return;
     hoverName.textContent = country.name;
     const halfWidth = hoverName.offsetWidth / 2;
@@ -247,6 +235,11 @@ function cancelHoverFrame(controller) {
         cancelAnimationFrame(controller.hoverFrame);
         controller.hoverFrame = null;
     }
+}
+
+function cancelWaterHover(controller) {
+    window.clearTimeout(controller.hoverWaterTimer);
+    controller.hoverWaterTimer = null;
 }
 
 function clearHover(controller) {
@@ -276,7 +269,22 @@ function scheduleHoverUpdate(controller) {
             setHoveredCountry(controller, null);
             return;
         }
-        setHoveredCountry(controller, queryCountryCode(controller, controller.hoverPoint));
+        const hitCode = queryCountryCode(controller, controller.hoverPoint);
+        if (hitCode) {
+            cancelWaterHover(controller);
+        } else if (controller.hoveredCode && controller.hoverWaterTimer === null) {
+            // Start once on leaving land; further water moves must not extend it.
+            controller.hoverWaterTimer = window.setTimeout(() => {
+                controller.hoverWaterTimer = null;
+                if (activeController !== controller || controller.abortController.signal.aborted || controller.suspended) return;
+                // A land move may have arrived just before this timer's frame.
+                const latestCode = controller.hoverPoint && controller.layersInstalled && !controller.map.isMoving()
+                    ? queryCountryCode(controller, controller.hoverPoint) : null;
+                setHoveredCountry(controller, latestCode);
+            }, COUNTRY_WATER_HOVER_DELAY_MS);
+        }
+        // Brief water gaps retain the country for both hover and clicking.
+        setHoveredCountry(controller, hitCode ?? controller.hoveredCode);
     });
 }
 
@@ -656,26 +664,6 @@ function isApplicationLayer(layer) {
     return layer.id.startsWith("world-journal-");
 }
 
-function serializedLayerDefinition(layer) {
-    return `${layer.id} ${layer["source-layer"] ?? ""} ${JSON.stringify(layer.filter ?? [])}`.toLowerCase();
-}
-
-function isBasemapCountryLabel(layer) {
-    const definition = serializedLayerDefinition(layer);
-    return layer.type === "symbol"
-        && (definition.includes("label_country") || (
-            layer["source-layer"] === "place" && definition.includes("country")
-        ));
-}
-
-function isBasemapCapitalLabel(layer) {
-    const definition = serializedLayerDefinition(layer);
-    return layer.type === "symbol"
-        && (definition.includes("capital") || (
-            layer["source-layer"] === "place" && definition.includes("adm0cap")
-        ));
-}
-
 function originalVisibility(controller, layer) {
     if (!controller.basemapVisibility.has(layer.id)) {
         controller.basemapVisibility.set(
@@ -689,10 +677,12 @@ function originalVisibility(controller, layer) {
 function applyBasemapPreferences(controller) {
     for (const layer of controller.basemapLayers) {
         const visibility = originalVisibility(controller, layer);
-        const hidden = !controller.preferences.terrain
+        const groups = controller.basemapFeatureGroups.get(layer.id);
+        const sharedLabel = groups.includes("cityNames") || groups.includes("regionNames");
+        const hidden = (!controller.preferences.terrain && !sharedLabel)
             || isBasemapCountryLabel(layer)
             || isBasemapCapitalLabel(layer)
-            || controller.basemapFeatureGroups.get(layer.id).some(key => !controller.preferences[key]);
+            || groups.some(key => !controller.preferences[key]);
         // Hidden terrain must stop drawing and requesting tiles. Changing every
         // opacity left all its geometry active, including while invisible.
         setLayerVisibility(controller.map, layer.id, !hidden && visibility !== "none");
@@ -723,8 +713,8 @@ function updateControls(controller) {
 function applyPreferences(controller) {
     updateControls(controller);
     if (controller.map && controller.preferences.terrain && !controller.providerStyleRequested) {
-        // Simple/Adventure start immediately from bundled geometry. Load the
-        // external provider only when Terrain is actually requested.
+        // Simple/Adventure start from bundled geometry and optional place
+        // labels. Load the full external basemap only when Terrain is requested.
         controller.providerStyleRequested = true;
         clearHover(controller);
         controller.layersInstalled = false;
@@ -743,11 +733,20 @@ function applyPreferences(controller) {
         controller.preferences.countryNames,
     );
     const showCapitals = controller.preferences.capitalNames;
-    setLayerVisibility(controller.map, LAYERS.capitalMarkers, showCapitals);
+    const terrain = controller.preferences.terrain && !controller.usingFallbackStyle;
+    setLayerVisibility(controller.map, LAYERS.capitalMarkers, showCapitals && !terrain);
     setLayerVisibility(controller.map, LAYERS.capitalNames, showCapitals);
     setLayerVisibility(controller.map, LAYERS.smallMarker, controller.preferences.smallCountryMarkers);
     updateLayerTheme(controller);
     updateTerrainHoverLabel(controller);
+    ensurePlaceLabels(controller, () => {
+        captureBasemapLayers(controller);
+        controller.paintThemeKey = null;
+        controller.mapFontKey = null;
+        controller.cityLabelLayoutsInstalled = false;
+        controller.cityLabelLayoutKey = null;
+        applyPreferences(controller);
+    }, () => showNotice(controller, "City and region labels could not be loaded. The country map is still available."));
     const styleLayers = controller.basemapLayers;
     const isVisible = (layerId) => controller.map.getLayoutProperty(layerId, "visibility") !== "none";
     const basemapCountryLabels = styleLayers.filter((layer) => (
@@ -761,12 +760,13 @@ function applyPreferences(controller) {
     ));
     controller.page.dataset.appliedCountryNames = String(isVisible(LAYERS.countryNames));
     controller.page.dataset.appliedCapitalNames = String(
-        isVisible(LAYERS.capitalMarkers) && isVisible(LAYERS.capitalNames),
+        isVisible(LAYERS.capitalNames),
     );
     controller.page.dataset.appliedSimpleMode = String(
         controller.preferences.mapType === "plain"
             && isVisible(LAYERS.simpleBackground)
-            && visibleBasemapLayers.length === 0,
+            && visibleBasemapLayers.every(layer => controller.basemapFeatureGroups.get(layer.id)
+                .some(key => key === "cityNames" || key === "regionNames")),
     );
     controller.page.dataset.visibleBasemapLayers = String(visibleBasemapLayers.length);
     controller.page.dataset.visibleBasemapCountryLabels = String(
@@ -789,20 +789,29 @@ function addLayer(controller, definition, beforeId) {
     }
 }
 
+function captureBasemapLayers(controller) {
+    controller.basemapLayers = (controller.map.getStyle().layers ?? []).filter(layer => !isApplicationLayer(layer));
+    controller.basemapFeatureGroups = new Map(controller.basemapLayers.map(layer => (
+        [layer.id, basemapFeaturePreferences(layer)]
+    )));
+}
+
 function installCountryLayers(controller) {
     const { map } = controller;
     // A style can recreate layers while retaining the GeoJSON source itself.
     controller.appliedFavorites = null;
-    controller.countryLabelAdventure = null;
+    controller.labelLayoutKey = null;
+    controller.cityLabelLayoutsInstalled = false;
+    controller.cityLabelLayoutKey = null;
     controller.adventureMarkerKey = null;
-    controller.hoverLabelCountry = null;
+    if (controller.hoverLabelKey && map.getSource(CENTROID_SOURCE_ID)) {
+        map.setFeatureState({source: CENTROID_SOURCE_ID, id: controller.hoverLabelKey}, {hoverLabel: false});
+    }
     controller.hoverLabelKey = null;
+    splitBasemapRegionLabels(map);
     // Capture provider definitions once per style, before adding our GeoJSON.
     // Preference toggles only need these IDs/label rules, not whole style copies.
-    controller.basemapLayers = (map.getStyle().layers ?? []).filter(layer => !isApplicationLayer(layer));
-    controller.basemapFeatureGroups = new Map(controller.basemapLayers.map(layer => (
-        [layer.id, basemapFeaturePreferences(layer)]
-    )));
+    captureBasemapLayers(controller);
     const firstBasemapLayer = controller.basemapLayers[0]?.id;
     if (!map.getSource(SOURCE_ID)) {
         // Restore MapLibre's previous subpixel tolerance. Keep the source's
@@ -814,9 +823,6 @@ function installCountryLayers(controller) {
     }
     if (!map.getSource(CAPITAL_SOURCE_ID)) {
         map.addSource(CAPITAL_SOURCE_ID, { type: "geojson", data: controller.capitals });
-    }
-    if (!map.getSource(HOVER_LABEL_SOURCE_ID)) {
-        map.addSource(HOVER_LABEL_SOURCE_ID, { type: "geojson", data: {type: "FeatureCollection", features: []} });
     }
     addLayer(controller, {
         id: LAYERS.simpleBackground,
@@ -869,20 +875,20 @@ function installCountryLayers(controller) {
     addLayer(controller, {
         id: LAYERS.hoverCountryName,
         type: "symbol",
-        source: HOVER_LABEL_SOURCE_ID,
+        source: CENTROID_SOURCE_ID,
         minzoom: 1,
         maxzoom: 8,
         layout: {
             "text-field": ["get", "name"],
             "text-font": mapFontStack("Bold"),
-            "text-size": ["interpolate", ["linear"], ["zoom"], 1, 10.35, 5, 16.1],
+            "text-size": terrainCountrySize(1.15),
             "text-max-width": 7,
             "text-allow-overlap": true,
             "text-ignore-placement": true,
         },
         paint: {
-            "text-color": "#ffffff", "text-halo-color": "#000000", "text-halo-width": 1.25,
-            "text-opacity": ["case", ["==", ["get", "iso_a2"], ""], 1, 0],
+            "text-color": "#202124", "text-halo-color": "#ffffff", "text-halo-width": 1.25,
+            "text-opacity": ["case", ["boolean", ["feature-state", "hoverLabel"], false], 1, 0],
         },
     });
     addLayer(controller, {
@@ -1022,9 +1028,14 @@ function createMap(controller, styleUrl) {
     });
     controller.map = map;
     map.addControl(new NavigationControl({ showCompass: false }), "top-right");
+    const stopDragging = () => controller.container.classList.remove("is-dragging");
+    map.on("dragstart", () => controller.container.classList.add("is-dragging"));
+    map.on("dragend", stopDragging);
+    window.addEventListener("pointerup", stopDragging, {signal: controller.abortController.signal});
 
     controller.fallbackTimer = window.setTimeout(() => applyProviderFallback(controller), 8000);
     map.on("style.load", () => {
+        controller.styleGeneration += 1;
         window.clearTimeout(controller.fallbackTimer);
         controller.layersInstalled = false;
         controller.basemapVisibility.clear();
@@ -1057,13 +1068,18 @@ function createMap(controller, styleUrl) {
         scheduleHoverUpdate(controller);
     });
     map.on("click", (event) => {
-        const code = queryCountryCode(controller, event.point);
+        // A real country hit takes priority. On water, use the still-active
+        // hover, which is cleared when the 500 ms grace period expires.
+        const code = queryCountryCode(controller, event.point) ?? controller.hoveredCode;
         if (code) {
             selectCountry(controller, code, { fit: true, focusDrawer: true });
         }
     });
     map.getCanvas().addEventListener("mouseleave", () => clearHover(controller), { signal: controller.abortController.signal });
-    window.addEventListener("blur", () => clearHover(controller), { signal: controller.abortController.signal });
+    window.addEventListener("blur", () => {
+        stopDragging();
+        clearHover(controller);
+    }, { signal: controller.abortController.signal });
     if (requested.code) {
         renderSelection(controller, requested.code, { fit: false });
     }
@@ -1225,11 +1241,12 @@ async function initializeMapPage() {
         hoveredCode: null,
         hoverPoint: null,
         hoverFrame: null,
-        hoverLabelCountry: null,
+        hoverWaterTimer: null,
         hoverLabelKey: null,
         hoverName: page.querySelector("[data-map-hover-name]"),
         layersInstalled: false,
         usingFallbackStyle: false,
+        styleGeneration: 0,
         basemapVisibility: new Map(),
         fallbackTimer: null,
         status: page.querySelector("[data-map-status]"),
@@ -1429,6 +1446,7 @@ function suspendMapPage() {
     const controller = activeController;
     if (!controller || controller.suspended) return;
     controller.suspended = true;
+    controller.container.classList.remove("is-dragging");
     if (controller.map) {
         clearHover(controller);
         controller.map.stop();
@@ -1506,7 +1524,9 @@ export function cleanupMapPage() {
     }
     const controller = activeController;
     activeController = null;
+    controller.container.classList.remove("is-dragging");
     cancelHoverFrame(controller);
+    cancelWaterHover(controller);
     window.clearTimeout(controller.fallbackTimer);
     cancelCountryNews(controller, { abort: true });
     cancelCountryVideos(controller);

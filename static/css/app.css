@@ -306,19 +306,28 @@ h1 {
     inset: 0;
 }
 
+.world-map .maplibregl-canvas-container.maplibregl-interactive,
+.world-map .maplibregl-canvas-container.maplibregl-interactive:active {
+    cursor: default;
+}
+
+.world-map.is-dragging .maplibregl-canvas-container.maplibregl-interactive {
+    cursor: grabbing;
+}
+
 .map-hover-name {
     position: absolute;
     z-index: 3;
     width: max-content;
     max-width: min(16rem, calc(100% - 16px));
     transform: translate(-50%, -100%);
-    color: #fff;
+    color: var(--map-label-color, #202124);
     font-family: var(--ui-font-family);
     font-size: 0.95rem;
     font-weight: 700;
     line-height: 1.2;
     text-align: center;
-    text-shadow: -1px -1px 1px #000, 1px -1px 1px #000, -1px 1px 1px #000, 1px 1px 1px #000;
+    text-shadow: -1px -1px 1px var(--map-label-halo, #fff), 1px -1px 1px var(--map-label-halo, #fff), -1px 1px 1px var(--map-label-halo, #fff), 1px 1px 1px var(--map-label-halo, #fff);
     pointer-events: none;
     user-select: none;
 }

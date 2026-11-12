@@ -2,7 +2,7 @@
 
 World Journal uses the configurable OpenFreeMap Liberty style as its initial external basemap and keeps country interaction independent through bundled Natural Earth geometry.
 
-The provider style URL is configured through `MAP_STYLE_URL` in Django settings. All map labels follow App Font in Settings, using the same bundled web fonts or device fonts as the interface. `static/js/pages/map_fonts.js` removes the provider's glyph URL before its style loads, enabling MapLibre's built-in browser font rendering, and applies the selected family while retaining regular, bold and italic label variants. Font changes also update the retained map while it is detached on Settings. Country geometry, hit targets, fills, outlines and Adventure artwork remain bundled. Simple, Adventure and the provider fallback need no external map or font service. Starting in Simple/Adventure defers the external Terrain style until Terrain is first selected.
+The provider style URL is configured through `MAP_STYLE_URL` in Django settings. All map labels follow App Font in Settings, using the same bundled web fonts or device fonts as the interface. `static/js/pages/map_fonts.js` removes the provider's glyph URL before its style loads, enabling MapLibre's built-in browser font rendering, and applies the selected family while retaining regular, bold and italic label variants. Font changes also update the retained map while it is detached on Settings. Country geometry, hit targets, fills, outlines and Adventure artwork remain bundled. Simple, Adventure and the provider fallback open without an external map or font service. Optional city and region labels use the same provider's vector tiles in every mode; starting in Simple/Adventure imports only place labels after the bundled map opens, without terrain imagery or remote sprites.
 
 ## Browser preferences
 
@@ -18,9 +18,54 @@ The opening camera precedence is a valid country query, configured home country,
 
 ## Basemap layer adapter
 
-The map controller owns country and capital labels. It suppresses matching provider labels to avoid duplicates using `isBasemapCountryLabel` and `isBasemapCapitalLabel` in `static/js/pages/map.js`. Provider detail groups are isolated in `static/js/pages/basemap_features.js`; water uses source-layer semantics (`water`, `waterway`, and `water_name`) with layer-ID terms as a fallback.
+The map controller owns country and capital labels. It suppresses matching provider labels to avoid duplicates using `isBasemapCountryLabel` and `isBasemapCapitalLabel` in `static/js/pages/basemap_features.js`. Classification uses label IDs or positive filter comparisons: a city rule excluding capitals must not be treated as a capital label, and a rule excluding countries must not be treated as a country label. Provider detail groups are isolated in the same module; water uses source-layer semantics (`water`, `waterway`, and `water_name`) with layer-ID terms as a fallback.
 
-For every loaded style, the adapter records each provider layer's original visibility before applying preferences. Re-enabling a feature restores that visibility while honoring other disabled groups. A `style.load` event clears the previous style snapshot, reinstalls application sources and layers idempotently, reapplies preferences, and restores selection state. Terrain off hides all provider layers without changing styles, so the bundled sources remain installed.
+## Place labels
+
+Terrain uses dark country text with white outlines and only slightly lighter
+dark text for capitals and cities. The same styling applies to normal country
+labels, enlarged hover labels, pointer names, capitals and settlements.
+Simple, Adventure and the bundled provider fallback retain their existing sizes,
+colors and capital placement.
+
+`static/js/pages/map_labels.js` manages the Terrain hierarchy: country text grows
+from 12 to 18 pixels between zooms 1 and 5, capitals from 12 to 16 between zooms
+2.5 and 7, and cities from 10.5 to 15 between zooms 3 and 11. The selected app
+font remains in use. Country hover stays 15% larger, and existing label zoom
+limits, placement collisions and renderer fades remain active.
+
+Capital names sit to the right of local concentric-circle icons. The dot and
+label share one symbol so a collided-out label does not leave an orphaned dot.
+Capital and city icons are drawn locally; no image provider is added. Provider
+city-dot zoom limits remain unchanged. City dots have a one-pixel outline at
+their displayed size instead of a thin subpixel ring, with a slightly larger
+circle to separate them from map detail.
+
+City & town names, enabled by default, independently controls the
+existing OpenFreeMap city, town and village layers. Towns and villages appear
+at closer zooms using the provider's existing rules and tiles. These labels no
+longer depend on Other labels. Capital settlements are excluded from this group
+even when the provider classifies them as towns or villages, keeping Capital
+names as their single control.
+
+Region names, disabled by default, separately controls the provider's
+administrative-region labels, such as states, provinces and oblasts. It is saved
+with the other browser map preferences. This group is independent of Other
+labels and does not affect ocean/water names, city names or boundary lines.
+Mixed provider place layers are partitioned once per style load, so provinces
+inside a generic neighborhood/place layer also follow this control. Both parts
+reuse the existing tile source, label appearance and zoom rules.
+
+Both controls apply to Terrain, Simple and Adventure. Simple/Adventure place
+text and dots follow their map palette, with city text kept smaller than their
+capital names. `static/js/pages/place_labels.js` adds only the provider's place
+symbols and required vector source when a bundled style needs them. Loading is
+asynchronous, does not replace the map or camera, and respects map cleanup and
+style changes. If the optional provider is unavailable, the bundled country map
+and capital labels remain usable. With both controls off, a fresh bundled map
+does not fetch provider place data.
+
+For every loaded style, the adapter records each provider layer's original visibility before applying preferences. Re-enabling a feature restores that visibility while honoring other disabled groups. A `style.load` event clears the previous style snapshot, reinstalls application sources and layers idempotently, reapplies preferences, and restores selection state. Terrain off hides provider landscape/detail layers while independently enabled city and region labels remain visible; bundled sources stay installed.
 
 ## Country hover rendering
 
@@ -33,8 +78,17 @@ duration and delay.
 
 Pointer movement keeps one latest position and at most one animation-frame
 callback. Hit-testing runs once per frame rather than for every mouse event;
-intermediate positions never queue old highlights. Clicks still hit-test their own
-position immediately and do not depend on the hover callback.
+intermediate positions never queue old highlights. Clicks hit-test their own
+position immediately, preferring the country under the pointer. In every mode,
+moving onto water retains the last hovered country for 500 ms, then clears it.
+Further movement over water does not restart that timer. Returning to land
+cancels it, and entering another country switches hover immediately. Leaving the
+canvas, moving the camera, or suspending/removing the map cancels pending expiry.
+Every mode uses the normal arrow over land
+and water, with a grabbing hand only after an actual drag starts. Pressing without
+dragging keeps the arrow; releasing the mouse restores it immediately. Clicking
+water during the 500 ms grace period opens the retained country's details, just
+like a direct country click. After expiry, water clicks select nothing.
 
 Leaving the canvas or losing window focus clears hover and cancels pending work.
 Camera movement suppresses hover until it settles, then rechecks the stationary
@@ -45,19 +99,24 @@ their existing behavior.
 
 Terrain hides all bundled country outlines, including hover and selection
 strokes, so only the provider's own boundaries are drawn. Hover enlarges a
-country's visible label by 15%, using one separate point and hiding its normal
-text with paint state. Normal label placement, zoom thresholds and map fades
+country's visible label by 15%. Normal and enlarged labels are prepared from the
+same centroid source; one `hoverLabel` paint flag switches their visibility
+together only after the larger label is placed. Pointer movement never updates
+source data or creates a new symbol, avoiding asynchronous gaps and fades during
+rapid hovering. Normal label placement, zoom thresholds and map fades
 stay unchanged. If the label is absent, collided out, or switched off, the name
-appears above the pointer instead. Both cues clear on movement, pointer exit and
+appears above the pointer instead while zoomed out (below zoom 6). Closer zooms
+keep the pointer clear for exploring cities. Both cues clear on movement, pointer exit and
 navigation. Simple, Adventure and the bundled provider fallback retain their
 existing border and fill highlights.
 
 Manual check in Simple/Adventure: reload with Ctrl+F5, sweep rapidly across European countries, then
 stop on one. Only the current country should be highlighted. Hover Russia,
 Canada, and the United States at several zoom levels: loaded country parts should
-change together, without a tile-by-tile fill animation. Move onto ocean, the
-drawer, or toolbar and out of the map: the hover should clear. Try dragging,
-zooming, microstate markers, themes, and Map → Journal → Map. In Terrain, verify
+change together, without a tile-by-tile fill animation. Move onto the
+ocean and confirm hover stays on the last country, then move to another country
+and confirm it switches. Leaving for the drawer, toolbar or outside the map
+clears hover. Try dragging, zooming, microstate markers, themes, and Map → Journal → Map. In Terrain, verify
 the enlarged label or pointer name, with no bundled borders. Also check hidden
 country names, crowded labels, close zoom and provider fallback.
 
@@ -113,11 +172,11 @@ Manual review (tests and browser checks remain with the user): hard-refresh once
 
 ## Basemap feature controls
 
-Settings → Preferences separates General map labels (country names, capital names and small-country markers, available in both views) from Terrain map. Small-country markers default off, including for existing preferences without that field. This switch only hides the visible microstate dots; polygon selection and the enlarged centroid click targets remain available. Markers are installed hidden to avoid flashing before preferences are applied. The map's Display panel retains Terrain, Country names and Capital names plus its existing favorite/preset controls, with a More map options link to Settings.
+Settings → Preferences separates General map labels (country names, capital names, city names, region names and small-country markers, shared by every mode) from Terrain map details. Small-country markers default off, including for existing preferences without that field. This switch only hides the visible microstate dots; polygon selection and the enlarged centroid click targets remain available. Markers are installed hidden to avoid flashing before preferences are applied. The map's Display panel retains Terrain, Country names and Capital names plus its existing favorite/preset controls, with a More map options link to Settings.
 
 Manual marker check: after Ctrl+F5, tiny-country dots should be hidden. Enable Small-country markers in General map labels and return to Map: the dots should appear in either view. Disable again and confirm they disappear, favorites/capital markers remain independent, and tiny countries are still selectable. The choice should survive refresh and section navigation. Browser and automated checks remain with the user.
 
-The terrain section controls protected areas, vegetation/wetlands, shaded relief, water features, roads/railways/airports, buildings, land-use shading, administrative borders, points of interest and other labels. `static/js/pages/basemap_features.js` groups provider layers primarily by OpenMapTiles source-layer semantics, with conservative ID fallbacks. Group membership is computed once per style load. Unknown layers keep their provider visibility, and styles without a recognized group simply have nothing to hide for that preference. Multiple controls can affect a label (e.g. hiding transport hides road labels even when Other labels is on). Other labels affects provider text-bearing symbols; country/capital labels remain independently controlled through application-owned layers.
+The terrain section controls protected areas, vegetation/wetlands, shaded relief, water features, roads/railways/airports, buildings, land-use shading, administrative borders, points of interest and other labels. `static/js/pages/basemap_features.js` groups provider layers primarily by OpenMapTiles source-layer semantics, with conservative ID fallbacks. Group membership is computed once per style load. Unknown layers keep their provider visibility, and styles without a recognized group simply have nothing to hide for that preference. Multiple controls can affect a label (e.g. hiding transport hides road labels even when Other labels is on). Other labels affects provider text-bearing symbols except city/town/village and administrative-region labels; country, capital, city and region names have independent controls.
 
 For the current Liberty style, protected areas controls the park fill and both park outlines. Vegetation controls wood, grass and wetland layers, leaving sand and ice alone. Relief controls the Natural Earth raster. These switches cannot remove colors already baked into that raster: turning off vegetation does not promise to remove every green pixel, and turning off water does not erase oceans from the relief image. Protected-area names delivered through POI layers follow Places of interest/Other labels, rather than the protected-area shading switch. Administrative borders controls provider boundaries only; selectable country outlines, hover, presets and hit targets remain intact. Buildings preserves the style's original visibility instead of forcing normally hidden layers on.
 

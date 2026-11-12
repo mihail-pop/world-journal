@@ -32,15 +32,17 @@
                 {% endfor %}
             </form>
         </section>
-        <section class="settings-card settings-card-full settings-map-labels">
+        <section class="settings-card settings-map-labels">
             <h2>General map labels</h2>
-            <div class="settings-toggle-list">
+            <div class="settings-toggle-list settings-toggle-list-stack">
                 <label><span>Country names</span><input type="checkbox" disabled data-settings-map-preference="countryNames"></label>
                 <label><span>Capital names</span><input type="checkbox" disabled data-settings-map-preference="capitalNames"></label>
+                <label title="Cities, towns and villages in every map mode"><span>City &amp; town names</span><input type="checkbox" disabled data-settings-map-preference="cityNames"></label>
+                <label title="States, provinces, oblasts and other administrative regions in every map mode"><span>Region names</span><input type="checkbox" disabled data-settings-map-preference="regionNames"></label>
                 <label title="Show dots for tiny countries; enlarged click targets remain available when hidden"><span>Small-country markers</span><input type="checkbox" disabled data-settings-map-preference="smallCountryMarkers"></label>
             </div>
         </section>
-        <section class="settings-card settings-card-full settings-terrain-card" aria-labelledby="terrain-settings-title">
+        <section class="settings-card settings-card-wide settings-terrain-card" aria-labelledby="terrain-settings-title">
             <h2 id="terrain-settings-title">Terrain map</h2>
             <div class="settings-terrain-groups">
                 <fieldset>
@@ -58,7 +60,7 @@
                         <label><span>Roads, railways &amp; airports</span><input type="checkbox" disabled data-settings-map-preference="transport"></label>
                         <label><span>Buildings</span><input type="checkbox" disabled data-settings-map-preference="buildings"></label>
                         <label><span>Land-use shading</span><input type="checkbox" disabled data-settings-map-preference="landUse"></label>
-                        <label title="Borders from the terrain map; selectable country outlines remain visible"><span>Administrative borders</span><input type="checkbox" disabled data-settings-map-preference="administrativeBorders"></label>
+                        <label title="Borders supplied by the Terrain map"><span>Administrative borders</span><input type="checkbox" disabled data-settings-map-preference="administrativeBorders"></label>
                         <label><span>Places of interest</span><input type="checkbox" disabled data-settings-map-preference="pointsOfInterest"></label>
                         <label><span>Other labels</span><input type="checkbox" disabled data-settings-map-preference="allOtherText"></label>
                     </div>
