@@ -304,6 +304,22 @@ def choose_metadata_record(records: list[dict[str, str]]) -> dict[str, str]:
     )
 
 
+def france_focus_bounds(geometry: dict) -> list[list[float]]:
+    # France's full extent includes Guiana, Réunion and Clipperton. Its default
+    # camera should show metropolitan France, including Corsica/coastal islands.
+    rings = [
+        polygon[0] for polygon in geometry["coordinates"]
+        if all(-6 <= x <= 10 and 40 <= y <= 52 for x, y in polygon[0])
+    ]
+    points = [point for ring in rings for point in ring]
+    if not points:
+        raise ValueError("Metropolitan France is missing from the country geometry")
+    return [
+        [min(point[0] for point in points), min(point[1] for point in points)],
+        [max(point[0] for point in points), max(point[1] for point in points)],
+    ]
+
+
 def build_outputs(
     records: list[dict[str, str]], shapes: list[list[list[tuple[float, float]]]]
 ) -> tuple[dict, dict, list[dict[str, str]]]:
@@ -401,6 +417,8 @@ def build_outputs(
     # hit target belongs on its actual land, not on a nearby unrelated country.
     from shapely.geometry import Point, shape
     for country, feature in zip(countries, features):
+        if country["iso_a2"] == "FR":
+            country["focus_bounds"] = france_focus_bounds(feature["geometry"])
         if country.get("is_custom"):
             polygon = shape(feature["geometry"])
             if not polygon.covers(Point(country["centroid"])):

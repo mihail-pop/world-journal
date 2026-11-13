@@ -52,6 +52,17 @@ def _valid_position(value: object, *, minimum_longitude: float = -180, maximum_l
     )
 
 
+def _valid_bounds(value: object) -> bool:
+    return (
+        isinstance(value, list)
+        and len(value) == 2
+        and _valid_position(value[0])
+        and _valid_position(value[1], maximum_longitude=540)
+        and value[0][0] <= value[1][0] <= value[0][0] + 360
+        and value[0][1] <= value[1][1]
+    )
+
+
 def load_country_data(
     metadata_path: Path | None = None, geometry_path: Path | None = None
 ) -> tuple[dict, dict]:
@@ -90,7 +101,7 @@ def validate_country_data(metadata: dict, geometry: dict) -> None:
     for index, country in enumerate(countries):
         custom = isinstance(country, dict) and country.get("is_custom") is True
         fields = COUNTRY_FIELDS | {"is_custom", "source_id", "qid"} if custom else COUNTRY_FIELDS
-        if not isinstance(country, dict) or set(country) != fields:
+        if not isinstance(country, dict) or set(country) - {"focus_bounds"} != fields:
             raise CountryDataError(f"Country metadata item {index} has invalid fields")
         alpha_2 = country["iso_a2"]
         alpha_3 = country["iso_a3"]
@@ -107,16 +118,15 @@ def validate_country_data(metadata: dict, geometry: dict) -> None:
         if not _valid_position(country["centroid"]):
             raise CountryDataError(f"Country {alpha_2} has an invalid centroid")
         bounds = country["bounds"]
-        if (
-            not isinstance(bounds, list)
-            or len(bounds) != 2
-            or not _valid_position(bounds[0])
-            or not _valid_position(bounds[1], maximum_longitude=540)
-            or bounds[1][0] < bounds[0][0]
-            or bounds[1][0] - bounds[0][0] > 360
-            or bounds[1][1] < bounds[0][1]
-        ):
+        if not _valid_bounds(bounds):
             raise CountryDataError(f"Country {alpha_2} has invalid bounds")
+        if "focus_bounds" in country:
+            focus = country["focus_bounds"]
+            if not _valid_bounds(focus) or any(
+                not bounds[0][axis] <= focus[0][axis] <= focus[1][axis] <= bounds[1][axis]
+                for axis in (0, 1)
+            ):
+                raise CountryDataError(f"Country {alpha_2} has invalid focus bounds")
         if not isinstance(country["small"], bool):
             raise CountryDataError(f"Country {alpha_2} has an invalid small-country marker")
         metadata_codes.append(alpha_2)

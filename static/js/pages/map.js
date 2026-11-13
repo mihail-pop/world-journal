@@ -305,14 +305,23 @@ function drawerPadding() {
     return { top, right: Math.min(drawerWidth + 48, (workspace?.clientWidth || window.innerWidth) * .6), bottom: 56, left: 56 };
 }
 
-function focusCountry(controller, country, animate = true) {
+function focusBounds(controller, bounds, maxZoom, animate = true, options = {}) {
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    controller.map.fitBounds(country.bounds, {
+    // MapLibre keeps padding set by easeTo; retainPadding is a Mapbox option.
+    // Fit against a neutral canvas so drawer space is counted exactly once.
+    if (Object.values(controller.map.getPadding()).some(value => value !== 0)) {
+        controller.map.setPadding({top: 0, right: 0, bottom: 0, left: 0});
+    }
+    controller.map.fitBounds(bounds, {
+        ...options,
         padding: drawerPadding(),
-        retainPadding: false,
-        maxZoom: country.small ? 7 : 5.5,
+        maxZoom,
         duration: animate && !reducedMotion ? 650 : 0,
     });
+}
+
+function focusCountry(controller, country, animate = true) {
+    focusBounds(controller, country.focus_bounds ?? country.bounds, country.small ? 7 : 5.5, animate);
 }
 
 function searchTarget(controller) {
@@ -327,12 +336,9 @@ function searchTarget(controller) {
 
 function focusSearchTarget(controller, target, animate = true) {
     controller.lastSearchTargetId = target.id;
-    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    controller.map.easeTo({
-        center: target.coordinates, zoom: 7, bearing: 0, pitch: 0,
-        padding: drawerPadding(), retainPadding: false,
-        duration: animate && !reducedMotion ? 650 : 0,
-    });
+    // Fitting a point gives it the same drawer-aware framing as a country,
+    // without leaving padding behind for the next selection or manual pan.
+    focusBounds(controller, [target.coordinates, target.coordinates], 7, animate, {bearing: 0, pitch: 0, linear: true});
 }
 
 function cancelCountryNews(controller, { abort = false } = {}) {
@@ -1184,7 +1190,7 @@ function initializeControls(controller) {
         closeCountry(controller, { focusMap: false });
         clearSavedMapViewport();
         const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-        controller.map?.easeTo({ ...WORLD_CAMERA, padding: 0, duration: reducedMotion ? 0 : 650 });
+        controller.map?.easeTo({ ...WORLD_CAMERA, padding: {top: 0, right: 0, bottom: 0, left: 0}, duration: reducedMotion ? 0 : 650 });
     }, { signal: controller.abortController.signal });
     document.addEventListener("pointerdown", (event) => {
         if (controller.suspended) return;

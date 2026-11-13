@@ -43,6 +43,8 @@ All 14 formerly excluded records are selectable: Dhekelia, Somaliland, Kosovo, G
 
 Natural Earth's Admin 0 countries theme groups some dependencies with administering countries. The application preserves that source policy instead of synthesizing separate boundaries from unrelated data.
 
+France also has a separate `focus_bounds` camera extent covering metropolitan France, Corsica and nearby coastal islands. Its full `bounds` and selectable geometry still include overseas territories. The country-data builder derives this camera extent from the existing simplified polygons; no additional map data is loaded.
+
 ## Small-country interaction
 
 Records carrying Natural Earth's `TINY` classification are marked `small`. The browser renders their metadata centroids as visible markers and gives all centroids an enlarged transparent pointer hit area. Polygon fills remain the authoritative country shapes.
