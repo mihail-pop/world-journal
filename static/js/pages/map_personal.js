@@ -2,6 +2,8 @@ import { countryFillColors } from "./country_paint.js";
 import { notify } from "../notifications.js";
 
 const FAVORITE_LAYER = "world-journal-country-favorites";
+const COUNTRY_NAMES_LAYER = "world-journal-country-names";
+const CENTROID_SOURCE = "world-journal-country-centroids";
 const COLOR = /^#[0-9a-f]{6}$/i;
 let editorRegistered = false;
 
@@ -105,6 +107,28 @@ export function applyPersonalLayers(controller) {
             controller.appliedFavorites = signature;
             map.setFilter(FAVORITE_LAYER, ["in", ["get", "iso_a2"], ["literal", favorites]]);
         }
+    }
+    updateFavoriteMarkerVisibility(controller);
+}
+
+export function updateFavoriteMarkerVisibility(controller) {
+    const {map, personal} = controller;
+    if (!personal?.favorites.size || controller.suspended || !controller.layersInstalled
+        || !map?.getLayer(FAVORITE_LAYER) || !map.getSource(CENTROID_SOURCE)) return;
+    // Use actual symbol placement, including zoom limits and collisions. Hover
+    // replaces a placed name's paint, so its normal symbol still counts here.
+    const names = controller.preferences.countryNames && map.getLayer(COUNTRY_NAMES_LAYER)
+        ? new Set(map.queryRenderedFeatures({layers: [COUNTRY_NAMES_LAYER]}).map(feature => feature.properties.iso_a2))
+        : new Set();
+    const previous = controller.favoriteMarkerVisibility ??= new Map();
+    for (const code of personal.favorites) {
+        const visible = !names.has(code);
+        if (previous.get(code) === visible) continue;
+        previous.set(code, visible);
+        map.setFeatureState({source: CENTROID_SOURCE, id: code}, {favoriteMarkerVisible: visible});
+    }
+    for (const code of previous.keys()) {
+        if (!personal.favorites.has(code)) previous.delete(code);
     }
 }
 

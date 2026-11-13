@@ -541,15 +541,8 @@ function updateAdventureMarkers(controller, active, palette) {
     if (map.getLayer(favoriteLayer)) {
         const image = active ? PREFIX+"favorite-heart-"+palette.name : "world-journal-favorite-heart";
         if (map.hasImage(image)) map.setLayoutProperty(favoriteLayer,"icon-image",image);
-        // Clear the label's upper half and the heart's visible lower half,
-        // leaving about two pixels of space. Keep one position at every zoom.
-        // Offsets use unscaled icon pixels (icon-size is .9).
-        const labelOffset = fontSize => ["case",
-            [">=",["get","label_rows"],4],["literal",[0,-(4*fontSize*.6+6)/.9]],
-            [">=",["get","label_rows"],3],["literal",[0,-(3*fontSize*.6+6)/.9]],
-            [">=",["get","label_rows"],2],["literal",[0,-(2*fontSize*.6+6)/.9]],
-            ["literal",[0,-(fontSize*.6+6)/.9]]];
-        map.setLayoutProperty(favoriteLayer,"icon-anchor","center");
-        map.setLayoutProperty(favoriteLayer,"icon-offset",labelOffset(active ? 16 : 14));
+        // Anchor the visible tip; the 24px silhouette has 3px of space below it.
+        map.setLayoutProperty(favoriteLayer,"icon-anchor","bottom");
+        map.setLayoutProperty(favoriteLayer,"icon-offset",[0,3]);
     }
 }

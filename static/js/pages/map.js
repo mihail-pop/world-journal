@@ -8,7 +8,7 @@ import { replaceCountryMarkup } from "../news_archive.js";
 import { notify } from "../notifications.js";
 import { basemapFeaturePreferences, isBasemapCapitalLabel, isBasemapCountryLabel, splitBasemapRegionLabels } from "./basemap_features.js";
 import { factsSelectionChanged, initializeCountryFacts, loadCountryOverview } from "./map_facts.js";
-import { applyPersonalLayers, initializePersonalMap, loadCountryNotes, loadPersonalData, personalSelectionChanged } from "./map_personal.js";
+import { applyPersonalLayers, initializePersonalMap, loadCountryNotes, loadPersonalData, personalSelectionChanged, updateFavoriteMarkerVisibility } from "./map_personal.js";
 import { initializePresetMap, selectPresetCountry, syncPresetEditor } from "./preset_map_editor.js";
 import {
     Map as MapLibreMap,
@@ -30,6 +30,7 @@ const FAVORITE_ICON_ID = "world-journal-favorite-heart";
 const COUNTRY_NEWS_DELAY_MS = 300;
 const COUNTRY_POINTER_LABEL_MAX_ZOOM = 6;
 const COUNTRY_WATER_HOVER_DELAY_MS = 500;
+const COUNTRY_SECTIONS = ["overview", "articles", "videos", "notes"];
 const LAYERS = {
     simpleBackground: "world-journal-simple-background",
     fill: "world-journal-country-fill",
@@ -172,8 +173,9 @@ function setSelectedCountry(controller, code) {
     controller.selectedCode = code;
 }
 
-function setHoveredCountry(controller, code) {
+function setHoveredCountry(controller, code, {favorite = false} = {}) {
     code = controller.countriesByCode.has(code) ? code : null;
+    controller.hoveredFavoriteCode = favorite ? code : null;
     const { map, hoveredCode } = controller;
     if (code !== hoveredCode || code === null) cancelWaterHover(controller);
     // Paint state changes coalesce in the renderer's next frame. Changing layer
@@ -196,12 +198,13 @@ function setHoveredCountry(controller, code) {
 function updateTerrainHoverLabel(controller) {
     const { map, hoverName, hoverPoint, hoveredCode } = controller;
     const terrain = controller.preferences.terrain && !controller.usingFallbackStyle;
-    const country = terrain && controller.layersInstalled && hoverPoint
+    const favorite = Boolean(hoveredCode && controller.hoveredFavoriteCode === hoveredCode);
+    const country = (terrain || favorite) && controller.layersInstalled && hoverPoint
         && !controller.suspended && !map.isMoving() && controller.countriesByCode.get(hoveredCode);
     // Query the normal label's placement, including collision and zoom rules.
     // Paint opacity does not remove it from rendered-feature queries, so hiding
     // its text below does not change whether it qualifies for enlargement.
-    const labelVisible = country && controller.preferences.countryNames && map.queryRenderedFeatures({
+    const labelVisible = terrain && country && controller.preferences.countryNames && map.queryRenderedFeatures({
         layers: [LAYERS.countryNames],
         filter: ["==", ["get", "iso_a2"], hoveredCode],
     }).length > 0;
@@ -222,7 +225,7 @@ function updateTerrainHoverLabel(controller) {
         }
         controller.hoverLabelKey = labelCode;
     }
-    hoverName.hidden = !country || Boolean(labelVisible) || map.getZoom() >= COUNTRY_POINTER_LABEL_MAX_ZOOM;
+    hoverName.hidden = !country || (!favorite && (Boolean(labelVisible) || map.getZoom() >= COUNTRY_POINTER_LABEL_MAX_ZOOM));
     if (hoverName.hidden) return;
     hoverName.textContent = country.name;
     const halfWidth = hoverName.offsetWidth / 2;
@@ -270,7 +273,8 @@ function scheduleHoverUpdate(controller) {
             setHoveredCountry(controller, null);
             return;
         }
-        const hitCode = queryCountryCode(controller, controller.hoverPoint);
+        const hit = queryCountryHit(controller, controller.hoverPoint);
+        const hitCode = hit.code;
         if (hitCode) {
             cancelWaterHover(controller);
         } else if (controller.hoveredCode && controller.hoverWaterTimer === null) {
@@ -279,13 +283,13 @@ function scheduleHoverUpdate(controller) {
                 controller.hoverWaterTimer = null;
                 if (activeController !== controller || controller.abortController.signal.aborted || controller.suspended) return;
                 // A land move may have arrived just before this timer's frame.
-                const latestCode = controller.hoverPoint && controller.layersInstalled && !controller.map.isMoving()
-                    ? queryCountryCode(controller, controller.hoverPoint) : null;
-                setHoveredCountry(controller, latestCode);
+                const latest = controller.hoverPoint && controller.layersInstalled && !controller.map.isMoving()
+                    ? queryCountryHit(controller, controller.hoverPoint) : null;
+                setHoveredCountry(controller, latest?.code ?? null, {favorite: latest?.favorite});
             }, COUNTRY_WATER_HOVER_DELAY_MS);
         }
         // Brief water gaps retain the country for both hover and clicking.
-        setHoveredCountry(controller, hitCode ?? controller.hoveredCode);
+        setHoveredCountry(controller, hitCode ?? controller.hoveredCode, {favorite: hit.favorite});
     });
 }
 
@@ -598,11 +602,12 @@ function renderSelection(controller, code, { fit = true, focusDrawer = false } =
         // Re-clicking the selected country should keep loaded tabs and pending
         // requests intact. Initial/deep-link rendering still runs for a hidden drawer.
         const requestedSection = new URL(window.location.href).searchParams.get("section");
-        if (["overview", "notes"].includes(requestedSection)) selectCountrySection(controller, requestedSection);
+        if (COUNTRY_SECTIONS.includes(requestedSection)) selectCountrySection(controller, requestedSection);
         if (fit) focusCountry(controller, controller.countriesByCode.get(code));
         if (focusDrawer) drawer.focus({ preventScroll: true });
         return;
     }
+    const selectedSection = controller.page.querySelector('[data-country-section][aria-selected="true"]')?.dataset.countrySection ?? "articles";
     setSelectedCountry(controller, code);
     drawer.dataset.countryCode = code || "";
     personalSelectionChanged(controller);
@@ -623,7 +628,6 @@ function renderSelection(controller, code, { fit = true, focusDrawer = false } =
     controller.videoContent.replaceChildren();
     delete controller.videoContent.dataset.loadedCountry;
     controller.videoContent.setAttribute("aria-busy", "false");
-    selectCountrySection(controller, "articles");
     const flagImage = controller.page.querySelector("[data-country-flag]");
     const flagFallback = controller.page.querySelector("[data-country-flag-fallback]");
     flagImage.parentElement.hidden = false;
@@ -650,7 +654,8 @@ function renderSelection(controller, code, { fit = true, focusDrawer = false } =
     controller.page.classList.add("has-country-drawer");
     loadCountryNews(controller, code, country.name);
     const requestedSection = new URL(window.location.href).searchParams.get("section");
-    if (["overview", "notes"].includes(requestedSection)) selectCountrySection(controller, requestedSection);
+    selectCountrySection(controller, COUNTRY_SECTIONS.includes(requestedSection) ? requestedSection : selectedSection);
+    drawer.scrollTop = 0;
     if (fit) {
         focusCountry(controller, country);
     }
@@ -681,12 +686,20 @@ function closeCountry(controller, { pushHistory = true, focusMap = true } = {}) 
     }
 }
 
-function queryCountryCode(controller, point) {
+function queryCountryHit(controller, point) {
     const layers = [LAYERS.favoriteMarkers, LAYERS.hitTarget, LAYERS.fill].filter((layerId) => controller.map.getLayer(layerId));
     if (!layers.length) {
-        return null;
+        return {code: null, favorite: false};
     }
-    return controller.map.queryRenderedFeatures(point, { layers })[0]?.properties?.iso_a2 ?? null;
+    const features = controller.map.queryRenderedFeatures(point, { layers });
+    // Render queries also return fully transparent icons. Only a visible heart
+    // takes priority over nearby countries underneath its clickable area.
+    const heart = features.find(feature => feature.layer.id === LAYERS.favoriteMarkers
+        && controller.personal?.favorites.has(feature.properties.iso_a2)
+        && controller.favoriteMarkerVisibility?.get(feature.properties.iso_a2));
+    if (heart) return {code: heart.properties.iso_a2, favorite: true};
+    const country = features.find(feature => feature.layer.id !== LAYERS.favoriteMarkers);
+    return {code: country?.properties?.iso_a2 ?? null, favorite: false};
 }
 
 function isApplicationLayer(layer) {
@@ -829,6 +842,7 @@ function installCountryLayers(controller) {
     const { map } = controller;
     // A style can recreate layers while retaining the GeoJSON source itself.
     controller.appliedFavorites = null;
+    controller.favoriteMarkerVisibility = new Map();
     controller.labelLayoutKey = null;
     controller.cityLabelLayoutsInstalled = false;
     controller.cityLabelLayoutKey = null;
@@ -867,8 +881,12 @@ function installCountryLayers(controller) {
             id: LAYERS.favoriteMarkers, type: "symbol", source: CENTROID_SOURCE_ID,
             filter: ["in", ["get", "iso_a2"], ["literal", []]],
             layout: {
-                "icon-image": FAVORITE_ICON_ID, "icon-size": .9, "icon-anchor": "center", "icon-offset": [0, 0],
+                "icon-image": FAVORITE_ICON_ID, "icon-size": .9, "icon-anchor": "bottom", "icon-offset": [0, 3],
                 "icon-allow-overlap": true, "icon-ignore-placement": true,
+            },
+            paint: {
+                "icon-opacity": ["case", ["boolean", ["feature-state", "favoriteMarkerVisible"], false], 1, 0],
+                "icon-opacity-transition": {duration: 0, delay: 0},
             },
         });
     }
@@ -970,24 +988,12 @@ function installCountryLayers(controller) {
 }
 
 function createCentroids(countries) {
-    // Country labels wrap at seven ems. Estimate their lines conservatively so
-    // favorite hearts clear both short names and multi-line country labels.
-    const labelRows = name => {
-        let rows = 1, width = 0;
-        for (const word of name.split(/\s+/)) {
-            const length = [...word].reduce((total,char) => total+(/[MWmw]/.test(char) ? .85 : /[ilIjt.,]/.test(char) ? .3 : .6),0);
-            if (width && width+.3+length > 7) { rows++; width = 0; }
-            rows += Math.max(0,Math.ceil(length/7)-1);
-            width = (width ? width+.3 : 0)+length;
-        }
-        return rows;
-    };
     return {
         type: "FeatureCollection",
         features: countries.map((country) => ({
             type: "Feature",
             id: country.iso_a2,
-            properties: { iso_a2: country.iso_a2, name: country.name, small: country.small, label_rows: labelRows(country.name.toUpperCase()) },
+            properties: { iso_a2: country.iso_a2, name: country.name, small: country.small },
             geometry: { type: "Point", coordinates: country.centroid },
         })),
     };
@@ -1092,14 +1098,15 @@ function createMap(controller, styleUrl) {
     });
     // Recheck a stationary pointer once newly loaded tiles have been rendered.
     map.on("idle", () => scheduleHoverUpdate(controller));
+    map.on("render", () => updateFavoriteMarkerVisibility(controller));
     map.on("mousemove", (event) => {
         controller.hoverPoint = [event.point.x, event.point.y];
         scheduleHoverUpdate(controller);
     });
     map.on("click", (event) => {
-        // A real country hit takes priority. On water, use the still-active
-        // hover, which is cleared when the 500 ms grace period expires.
-        const code = queryCountryCode(controller, event.point) ?? controller.hoveredCode;
+        // A direct hit takes priority over the retained water hover, which is
+        // cleared when the 500 ms grace period expires.
+        const code = queryCountryHit(controller, event.point).code ?? controller.hoveredCode;
         if (code) {
             selectCountry(controller, code, { fit: true, focusDrawer: true });
         }
@@ -1271,6 +1278,7 @@ async function initializeMapPage() {
         capitals: null,
         selectedCode: null,
         hoveredCode: null,
+        hoveredFavoriteCode: null,
         hoverPoint: null,
         hoverFrame: null,
         hoverWaterTimer: null,
@@ -1524,7 +1532,7 @@ function resumeMapPage(controller) {
         renderSelection(controller, requested.code, {fit: Boolean(requested.code) && !target});
     } else {
         const section = new URL(location.href).searchParams.get("section");
-        if (["overview", "notes"].includes(section)) selectCountrySection(controller, section);
+        if (COUNTRY_SECTIONS.includes(section)) selectCountrySection(controller, section);
     }
     controller.searchFocusRequested = false;
     if (!target) controller.lastSearchTargetId = null;

@@ -5,27 +5,6 @@ site_url: https://mihail-pop.github.io/world-journal/
 repo_name: world-journal
 repo_url: https://github.com/mihail-pop/world-journal
 
-exclude_docs: |
-  adventure-map.md
-  backups.md
-  countries-page.md
-  country-data.md
-  country-facts.md
-  custom-territories.md
-  frontend-refresh.md
-  journal-statistics.md
-  journal.md
-  map-providers.md
-  news-archive.md
-  news-background.md
-  news-page.md
-  news-rss.md
-  news-settings.md
-  notifications.md
-  page-memory.md
-  personal-map.md
-  player-and-bookmarks.md
-
 theme:
   name: material
   custom_dir: overrides
@@ -62,7 +41,6 @@ nav:
   - Configuration:
     - Authentication: configuration/authentication.md
     - Remote Access: configuration/remote-access.md
-    - Data and Backups: configuration/data-and-backups.md
   - App Guide:
     - How to use: app-guide/how-to-use.md
     - How it works: app-guide/how-it-works.md

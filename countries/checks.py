@@ -12,7 +12,7 @@ def check_country_data(app_configs, **kwargs):
         return [
             checks.Error(
                 str(error),
-                hint="Run tools/build_country_data.py and review docs/country-data.md.",
+                hint="Run tools/build_country_data.py and review the generated country data.",
                 id="countries.E001",
             )
         ]

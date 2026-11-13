@@ -36,6 +36,7 @@ function capturePage(page, url) {
             .filter(element => element.scrollTop || element.scrollLeft)
             .map(element => [element, element.scrollLeft, element.scrollTop]),
         focus: page.contains(document.activeElement) ? document.activeElement : null,
+        mapCountryCode: page.querySelector("[data-country-drawer]")?.dataset.countryCode,
         journalDirty: remembered.get(page.dataset.page)?.journalDirty || false,
     };
 }
@@ -54,6 +55,9 @@ function restorePosition() {
         if (activePage !== state.page || !state.page.isConnected) return;
         if (state.focus?.isConnected && !state.focus.disabled) state.focus.focus({preventScroll: true});
         for (const [element, left, top] of state.scrolls) {
+            // A search can reuse the Map node while opening a different country.
+            // Its fresh drawer must not inherit the previous country's scroll.
+            if (element.matches("[data-country-drawer]") && element.dataset.countryCode !== state.mapCountryCode) continue;
             element.scrollLeft = left;
             element.scrollTop = top;
         }
