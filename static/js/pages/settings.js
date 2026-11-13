@@ -1,4 +1,5 @@
 import { notify } from "../notifications.js";
+import { readAppPreferences, writeAppPreferences } from "../app_preferences.js";
 import {
     clearSavedMapViewport,
     MAP_BOOLEAN_PREFERENCES,
@@ -9,12 +10,11 @@ import {
 let lifecycleRegistered = false;
 let activeController = null;
 let activeInformationController = null;
-const FONT_STORAGE_KEY = "world-journal:font";
 
 function initializeAppFont() {
     const select = document.querySelector("[data-app-font]");
     if (!select) return;
-    select.value = document.documentElement.dataset.font;
+    select.value = readAppPreferences().font;
     select.disabled = false;
     select.dispatchEvent(new Event("change"));
 }
@@ -93,6 +93,8 @@ async function initializeSettingsPage() {
         }
         document.addEventListener("world-journal:map-preferences-change", event => {
             controller.preferences = event.detail;
+            controller.select.value = event.detail.homeCountry ?? "";
+            controller.select.dispatchEvent(new Event("change"));
             mapType.value = event.detail.mapType;
             mapType.dispatchEvent(new Event("change"));
             for (const input of labelChoices) {
@@ -168,16 +170,9 @@ export function registerSettingsPage() {
     lifecycleRegistered = true;
     document.addEventListener("change", event => {
         if (!event.target.matches("[data-app-font]")) return;
-        const font = event.target.value;
-        document.documentElement.dataset.font = font;
-        document.dispatchEvent(new CustomEvent("world-journal:font-change", {detail: {font}}));
-        try {
-            localStorage.setItem(FONT_STORAGE_KEY, font);
-            document.dispatchEvent(new CustomEvent("world-journal:preferences-saved"));
-        } catch {
-            document.dispatchEvent(new CustomEvent("world-journal:preference-storage-error"));
-        }
+        writeAppPreferences({font: event.target.value}, {notifySaved: true});
     });
+    document.addEventListener("world-journal:app-preferences-change", initializeAppFont);
     document.addEventListener("world-journal:page-ready", (event) => {
         if (event.detail.page === "settings") {
             initializeAppFont();

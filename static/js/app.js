@@ -15,8 +15,10 @@ import { registerUiControls } from "./ui_controls.js";
 import { registerNotifications } from "./notifications.js";
 import { registerCountryMetadata } from "./country_metadata.js";
 import { initializePlaceSearch } from "./search.js";
+import { initializeAppPreferences } from "./app_preferences.js";
 
 function initializeApplication() {
+    initializeAppPreferences();
     initializeTheme();
     registerNotifications();
     registerCountryMetadata();

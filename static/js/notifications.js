@@ -201,12 +201,7 @@ export function registerNotifications() {
     deliver(JSON.parse(document.querySelector("#app-notices").textContent));
     document.addEventListener("world-journal:server-notices", event => deliver(event.detail.notices));
     document.addEventListener("world-journal:preferences-saved", () => {
-        dismissNotice("preference-storage");
         notify({id: "preferences-saved", kind: "success", title: "Preferences saved"});
-    });
-    document.addEventListener("world-journal:preference-storage-error", () => {
-        dismissNotice("preferences-saved");
-        notify({id: "preference-storage", kind: "warning", title: "Browser preferences could not be kept", message: "Your choice applies now, but may reset after a refresh. Allow local storage for this site to remember it."});
     });
     const dialog = document.querySelector("[data-action-dialog]");
     dialog.addEventListener("cancel", event => {

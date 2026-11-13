@@ -108,15 +108,6 @@ def preset_groups(preset):
     return result + [{"color": color, "title": "", "countries": codes} for color, codes in grouped.items()]
 
 
-class MapPersonalState(models.Model):
-    # One shared active preset; zero or one row exists, always at key 1.
-    id = models.PositiveSmallIntegerField(primary_key=True, default=1, editable=False)
-    active_preset = models.ForeignKey(MapPreset, null=True, blank=True, on_delete=models.SET_NULL)
-
-    class Meta:
-        constraints = [models.CheckConstraint(condition=models.Q(id=1), name="map_personal_state_singleton")]
-
-
 class CountryProfile(models.Model):
     country = models.OneToOneField(Country, primary_key=True, on_delete=models.CASCADE, related_name="profile")
     entry = models.OneToOneField("journal.Entry", null=True, blank=True, on_delete=models.SET_NULL, related_name="country_profile")

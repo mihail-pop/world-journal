@@ -10,6 +10,7 @@ urlpatterns = [
     path("journal/", views.journal_page, name="journal"),
     path("settings/", views.settings_page, name="settings"),
     path("settings/theme/", views.save_theme, name="save_theme"),
+    path("settings/preferences/", views.preferences, name="preferences"),
     path("api/version-info/", views.version_info, name="version_info"),
     path("settings/backups/", backup_views.backups, name="backups"),
     path("settings/backups/export/", backup_views.export_backup, name="export_backup"),

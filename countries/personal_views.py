@@ -10,20 +10,22 @@ from django.views.decorators.http import require_http_methods
 
 from core.database import database_write, is_database_busy, write_transaction
 from core.views import render_page
+from core.models import AppSettings
+from core.preferences import preferences_snapshot, save_preferences
 from journal.formatting import render_body
 from journal.forms import default_collection
 from journal.models import Entry
 from journal.views import ConfirmationForm, navigate
 
 from .forms import ColorGroups, CountryProfileForm, DuplicatePresetForm, PresetForm, TerritoryDetailsForm
-from .models import Country, CountryFavorite, CountryProfile, MapPersonalState, MapPreset, PresetColorGroup, PresetCountry, TerritoryDetails, preset_groups
+from .models import Country, CountryFavorite, CountryProfile, MapPreset, PresetColorGroup, PresetCountry, TerritoryDetails, preset_groups
 
 
 PRESET_BUSY_MESSAGE = "The database is still busy. Try saving again."
 
 
 def personal_snapshot():
-    state = MapPersonalState.objects.select_related("active_preset").filter(pk=1).first()
+    state = AppSettings.objects.select_related("active_preset").filter(pk=1).first()
     active = state.active_preset if state else None
     return {
         "favorites": list(CountryFavorite.objects.values_list("country_id", flat=True)),
@@ -33,6 +35,7 @@ def personal_snapshot():
         "groups": preset_groups(active) if active else [],
         "default_color": active.default_color if active else "",
         "colors": dict(active.country_colors.values_list("country_id", "color")) if active else {},
+        "preferences": preferences_snapshot(state or AppSettings(pk=1)),
     }
 
 
@@ -83,7 +86,7 @@ def page(request, template, context):
 
 @require_http_methods(["GET"])
 def preset_list(request):
-    state = MapPersonalState.objects.filter(pk=1).first()
+    state = AppSettings.objects.filter(pk=1).first()
     presets = MapPreset.objects.prefetch_related("country_colors__country", "color_groups")
     for preset in presets:
         preset.display_groups = preset_groups(preset)
@@ -176,7 +179,7 @@ def preset_data(request, pk=None):
                 preset = save_preset(form, groups)
                 if preset is None:
                     return JsonResponse({"error": form.errors["name"][0]}, status=400)
-                MapPersonalState.objects.update_or_create(pk=1, defaults={"active_preset": preset})
+                save_preferences({"active_preset_id": preset.pk})
         except OperationalError as error:
             if not is_database_busy(error):
                 raise
@@ -187,8 +190,7 @@ def preset_data(request, pk=None):
 @require_http_methods(["POST"])
 def preset_activate(request, pk=None):
     preset = get_object_or_404(MapPreset, pk=pk) if pk else None
-    with database_write():
-        MapPersonalState.objects.update_or_create(pk=1, defaults={"active_preset": preset})
+    save_preferences({"active_preset_id": preset.pk if preset else None})
     if request.headers.get("Accept") == "application/json":
         return JsonResponse(personal_snapshot())
     return navigate(request, reverse("countries:preset_list"))
@@ -215,7 +217,9 @@ def preset_delete(request, pk):
     preset = get_object_or_404(MapPreset, pk=pk)
     form = ConfirmationForm(request.POST if request.method == "POST" else None)
     if request.method == "POST" and form.is_valid():
-        with database_write():
+        with write_transaction():
+            if AppSettings.objects.filter(pk=1, active_preset=preset).exists():
+                save_preferences({"active_preset_id": None})
             preset.delete()
         messages.success(request, "Color preset deleted. Favorites and Journal entries are kept.")
         return navigate(request, reverse("countries:preset_list"))

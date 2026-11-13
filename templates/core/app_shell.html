@@ -1,6 +1,6 @@
 {% load static %}
 <!doctype html>
-<html lang="en" data-theme="{{ theme }}" data-font="inter" data-app-name="{{ app_display_name }}">
+<html lang="en" data-theme="{{ theme }}" data-font="{{ app_font }}" data-app-name="{{ app_display_name }}">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -21,12 +21,6 @@
                 segoe: [],
             };
             const root = document.documentElement;
-            try {
-                const saved = localStorage.getItem("world-journal:font");
-                if (Object.hasOwn(files, saved)) root.dataset.font = saved;
-            } catch {
-                // Keep Inter when browser storage is unavailable.
-            }
             for (const href of files[root.dataset.font]) {
                 const link = document.createElement("link");
                 link.rel = "preload";
@@ -45,7 +39,8 @@
     <script src="{% static 'vendor/htmx/htmx-2.0.8.min.js' %}" defer></script>
     <script type="module" src="{% static 'js/app.js' %}"></script>
 </head>
-<body hx-ext="page-memory" data-news-cache-url="{% url 'news:cached_drawers' %}" data-journal-new-url="{% url 'journal:new' %}" data-journal-quick-save-url="{% url 'journal:quick_save' %}">
+<body hx-ext="page-memory" data-preferences-url="{% url 'core:preferences' %}" data-news-cache-url="{% url 'news:cached_drawers' %}" data-journal-new-url="{% url 'journal:new' %}" data-journal-quick-save-url="{% url 'journal:quick_save' %}">
+    {{ app_preferences|json_script:"app-preferences" }}
     <header class="app-header">
         <a class="app-name" href="{% url 'core:map' %}" aria-label="{{ app_display_name }} map">{{ app_display_name }}</a>
         <nav class="primary-nav" aria-label="Primary" hx-boost="true" hx-target="#app-content" hx-push-url="true" hx-swap="innerHTML show:top">

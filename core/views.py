@@ -5,7 +5,8 @@ from django.conf import settings
 from django.contrib.messages import get_messages
 from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
-from django.views.decorators.http import require_GET, require_POST
+from django.views.decorators.cache import never_cache
+from django.views.decorators.http import require_GET, require_POST, require_http_methods
 
 from config.version import (
     APP_VERSION,
@@ -17,19 +18,21 @@ from config.version import (
 )
 from countries.models import MapPreset, preset_groups
 
-from .database import database_write
 from .models import AppSettings
+from .preferences import preferences_snapshot, save_preferences, validate_preferences
 
 
 def render_page(request: HttpRequest, page: str, *, page_template: str | None = None, context: dict | None = None) -> HttpResponse:
     from news.services.background import feed_warmer
 
     feed_warmer.start()
-    saved_theme = AppSettings.objects.filter(pk=1).values_list("theme", flat=True).first()
+    preferences = preferences_snapshot()
     page_context = {
         "active_page": page,
         "app_display_name": settings.APP_DISPLAY_NAME,
-        "theme": saved_theme or AppSettings.Theme.DARK,
+        "theme": preferences["theme"],
+        "app_font": preferences["font"],
+        "app_preferences": preferences,
         "map_style_url": settings.MAP_STYLE_URL,
         "map_terrain": settings.MAP_TERRAIN_CONFIG,
         "page_template": page_template or f"core/partials/{page}.html",
@@ -45,6 +48,8 @@ def render_page(request: HttpRequest, page: str, *, page_template: str | None = 
     response = render(request, template_name, page_context)
     if notices and request.headers.get("HX-Request") == "true":
         response.headers["HX-Trigger"] = json.dumps({"world-journal:server-notices": {"notices": notices}}, ensure_ascii=True)
+    if request.headers.get("HX-Request") == "true":
+        response.headers["HX-Trigger-After-Swap"] = json.dumps({"world-journal:app-preferences-loaded": preferences})
     return response
 
 
@@ -102,11 +107,22 @@ def save_theme(request: HttpRequest) -> HttpResponse:
     theme = request.POST.get("theme")
     if theme not in AppSettings.Theme.values:
         return JsonResponse({"error": "Choose an available theme."}, status=400)
-    with database_write():
-        AppSettings.objects.update_or_create(pk=1, defaults={"theme": theme})
+    saved = save_preferences({"theme": theme})
     if request.headers.get("Accept") == "application/json":
-        return JsonResponse({"theme": theme})
+        return JsonResponse(preferences_snapshot(saved))
     return redirect("core:settings")
+
+
+@never_cache
+@require_http_methods(["GET", "POST"])
+def preferences(request: HttpRequest) -> JsonResponse:
+    if request.method == "GET":
+        return JsonResponse(preferences_snapshot())
+    try:
+        values = validate_preferences(json.loads(request.body))
+    except (ValueError, UnicodeDecodeError) as error:
+        return JsonResponse({"error": str(error) or "Preferences could not be read."}, status=400)
+    return JsonResponse(preferences_snapshot(save_preferences(values)))
 
 
 def version_info(request: HttpRequest) -> JsonResponse:

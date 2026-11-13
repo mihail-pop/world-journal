@@ -1,4 +1,4 @@
-"""Versioned portable data archives; feed caches and browser preferences are excluded."""
+"""Versioned portable data archives; feed caches and browser positions are excluded."""
 
 import hashlib
 import io
@@ -20,13 +20,14 @@ from django.db import models, transaction
 from django.utils import timezone
 from PIL import Image
 
-from countries.models import Country, CountryFavorite, CountryProfile, MapPersonalState, MapPreset, PresetColorGroup, PresetCountry, TerritoryDetails
+from countries.models import Country, CountryFavorite, CountryProfile, MapPreset, PresetColorGroup, PresetCountry, TerritoryDetails
 from journal.models import Attachment, Collection, Entry, EntrySection
 from news.models import CustomSource, NewsPreferences, SourcePreference
+from .models import AppSettings
 
 
 FORMAT = "world-journal-backup"
-VERSION = 5
+VERSION = 6
 MANIFEST_LIMIT = 32 * 1024 * 1024
 RECORD_LIMIT = 100_000
 IMAGE_TYPES = {"image/jpeg": (".jpg", "JPEG"), "image/png": (".png", "PNG"), "image/webp": (".webp", "WEBP"), "image/gif": (".gif", "GIF")}
@@ -40,7 +41,7 @@ DATASETS = {
     "favorites": CountryFavorite, "preset_groups": PresetColorGroup, "preset_colors": PresetCountry,
     "country_profiles": CountryProfile, "custom_sources": CustomSource, "source_preferences": SourcePreference,
     "territory_details": TerritoryDetails,
-    "news_preferences": NewsPreferences, "map_state": MapPersonalState,
+    "news_preferences": NewsPreferences, "app_settings": AppSettings,
 }
 LABELS = {
     "territory_details": "Custom territory details",
@@ -49,7 +50,7 @@ LABELS = {
     "preset_colors": "Preset country colors", "country_profiles": "Country overview notes",
     "preset_groups": "Preset color groups",
     "source_preferences": "Source choices", "news_preferences": "News preferences",
-    "map_state": "Active map preset",
+    "app_settings": "App preferences",
     "custom_sources": "Custom news sources",
 }
 
@@ -58,6 +59,7 @@ LABELS = {
 # Version 3 adds custom_sources; older archives import with no custom sources.
 # Version 4 adds parent_id for grouped custom article feeds.
 # Version 5 adds user-edited custom territory details.
+# Version 6 consolidates all Preferences, including the active preset, in AppSettings.
 # New backup versions must retain a reader for older archive versions.
 CONTENT_FIELDS = "title body body_format entry_type source_url source_name source_published_at youtube_video_id youtube_start_seconds"
 SCHEMA_FIELDS = {
@@ -73,7 +75,7 @@ SCHEMA_FIELDS = {
     TerritoryDetails: "country_id name population area capital languages currency government notes updated_at",
     SourcePreference: "source_id enabled updated_at",
     NewsPreferences: "id freshness_minutes updated_at",
-    MapPersonalState: "id active_preset_id",
+    AppSettings: "id theme font map_type home_country_id active_preset_id country_names capital_names city_names region_names small_country_markers protected_areas vegetation relief water transport buildings land_use administrative_borders points_of_interest all_other_text",
     CustomSource: "id parent_id kind name url feed_format channel_id verified_at last_checked_at last_error created_at updated_at",
 }
 
@@ -98,6 +100,8 @@ def export_archive():
     try:
         with transaction.atomic():
             records = {name: [_record(obj) for obj in model.objects.all()] for name, model in DATASETS.items()}
+            if not records["app_settings"]:
+                records["app_settings"] = [_record(AppSettings(pk=1))]
             # A list per entry preserves multi-country associations.
             tags = {}
             for entry_id, code in Entry.objects.values_list("pk", "countries__pk"):
@@ -155,10 +159,12 @@ def _read_archive(archive):
     if total > settings.BACKUP_MAX_BYTES:
         raise BackupError("The expanded backup exceeds the configured size limit.")
     manifest = json.loads(archive.read("manifest.json"))
-    if not isinstance(manifest, dict) or manifest.get("format") != FORMAT or type(manifest.get("version")) is not int or manifest["version"] not in {1, 2, 3, 4, VERSION}:
-        raise BackupError("Unsupported backup format or version. Use a World Journal version 1–5 archive.")
+    if not isinstance(manifest, dict) or manifest.get("format") != FORMAT or type(manifest.get("version")) is not int or manifest["version"] not in {1, 2, 3, 4, 5, VERSION}:
+        raise BackupError("Unsupported backup format or version. Use a World Journal version 1–6 archive.")
     records, media = manifest.get("records"), manifest.get("media")
     expected_datasets = set(DATASETS) - ({"preset_groups"} if manifest["version"] == 1 else set()) - ({"custom_sources"} if manifest["version"] < 3 else set()) - ({"territory_details"} if manifest["version"] < 5 else set())
+    if manifest["version"] < 6:
+        expected_datasets = (expected_datasets - {"app_settings"}) | {"map_state"}
     if not isinstance(records, dict) or set(records) != expected_datasets or not isinstance(media, dict):
         raise BackupError("The backup manifest has missing or unrecognized datasets.")
     if manifest["version"] == 1:
@@ -171,6 +177,11 @@ def _read_archive(archive):
         raise BackupError("The attachment list does not match the files in the archive.")
     if any(not isinstance(items, list) for items in records.values()) or sum(map(len, records.values())) > RECORD_LIMIT:
         raise BackupError("The backup has invalid datasets or too many records.")
+    if manifest["version"] < 6:
+        states = records.pop("map_state")
+        if any(not isinstance(state, dict) or set(state) != {"id", "active_preset_id"} for state in states):
+            raise BackupError("The active preset fields do not match the backup version.")
+        records["app_settings"] = [{**_record(AppSettings(pk=1)), **state} for state in states]
     if manifest["version"] == 3:
         for record in records["custom_sources"]:
             if not isinstance(record, dict) or "parent_id" in record:
@@ -227,7 +238,7 @@ def _decode_records(records):
             if model is PresetColorGroup:
                 obj.color = obj.color.lower()
                 seen.add(obj.pk)
-            if model in (MapPersonalState, NewsPreferences) and obj.pk != 1:
+            if model in (AppSettings, NewsPreferences) and obj.pk != 1:
                 raise BackupError("Shared preferences must use their singleton identifier.")
             if model is Entry:
                 codes = record["countries"]

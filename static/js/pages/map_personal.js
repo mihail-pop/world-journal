@@ -1,5 +1,6 @@
 import { countryFillColors } from "./country_paint.js";
 import { notify } from "../notifications.js";
+import { acceptAppPreferences } from "../app_preferences.js";
 
 const FAVORITE_LAYER = "world-journal-country-favorites";
 const COUNTRY_NAMES_LAYER = "world-journal-country-names";
@@ -180,6 +181,7 @@ export async function loadPersonalData(controller) {
         state.activePresetName = snapshot.active_preset_name;
         state.groups = snapshot.groups || [];
         state.defaultColor = snapshot.default_color;
+        acceptAppPreferences(snapshot.preferences);
         state.colors = validColors(snapshot);
         state.ready = true;
         state.status.textContent = state.activePreset ? "Preset colors are active." : "";
@@ -254,6 +256,11 @@ export function initializePersonalMap(controller, selectCountry) {
         status: page.querySelector("[data-personal-map-status]"), retry: page.querySelector("[data-personal-map-retry]"),
         favoriteStatus: page.querySelector("[data-country-favorite-status]"), notesContent: page.querySelector("[data-country-notes-content]"),
     };
+    document.addEventListener("world-journal:app-preferences-change", event => {
+        if (!state.ready || state.activating || event.detail.activePreset === state.activePreset) return;
+        if (controller.suspended) controller.personalDirty = true;
+        else loadPersonalData(controller);
+    }, {signal});
     signal.addEventListener("abort", () => {state.notesId += 1; state.notesAbort?.abort();}, {once: true});
     const workspace = page.querySelector(".map-workspace");
     const drawer = page.querySelector("[data-country-drawer]");
@@ -313,6 +320,7 @@ export function initializePersonalMap(controller, selectCountry) {
             state.presets = snapshot.presets;
             state.colors = validColors(snapshot);
             state.defaultColor = snapshot.default_color;
+            acceptAppPreferences(snapshot.preferences);
             state.status.textContent = id ? "Preset colors are active." : "Preset colors are off.";
         } catch (error) {
             if (error.name !== "AbortError") {
