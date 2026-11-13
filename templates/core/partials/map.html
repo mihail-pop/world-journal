@@ -20,6 +20,7 @@
     data-favorite-icon-url="{% static 'vendor/heroicons/heart-map.svg' %}"
     aria-labelledby="map-title"
 >
+    {{ map_search_target|json_script:"map-search-target" }}
     <div hidden data-personal-csrf>{% csrf_token %}</div>
     <h1 id="map-title" class="visually-hidden">Map</h1>
     <div class="map-workspace">

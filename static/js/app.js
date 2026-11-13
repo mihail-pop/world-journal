@@ -14,12 +14,14 @@ import { initializeTheme } from "./theme.js";
 import { registerUiControls } from "./ui_controls.js";
 import { registerNotifications } from "./notifications.js";
 import { registerCountryMetadata } from "./country_metadata.js";
+import { initializePlaceSearch } from "./search.js";
 
 function initializeApplication() {
     initializeTheme();
     registerNotifications();
     registerCountryMetadata();
     registerUiControls();
+    initializePlaceSearch();
     initializePlayer();
     registerJournalBookmarks();
     initializeNewsCache();

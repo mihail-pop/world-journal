@@ -5,7 +5,7 @@ from django.conf import settings
 from django.contrib.messages import get_messages
 from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_GET, require_POST
 
 from config.version import (
     APP_VERSION,
@@ -49,7 +49,20 @@ def render_page(request: HttpRequest, page: str, *, page_template: str | None = 
 
 
 def map_page(request: HttpRequest) -> HttpResponse:
-    return render_page(request, "map")
+    from .place_search import map_search_target
+
+    target = map_search_target(request.GET.get("place", ""), request.GET.get("country", ""))
+    return render_page(request, "map", context={"map_search_target": target})
+
+
+@require_GET
+def place_search(request: HttpRequest) -> JsonResponse:
+    from .place_search import search_places
+
+    category = request.GET.get("type", "all")
+    if category not in {"all", "countries", "capitals", "cities"}:
+        return JsonResponse({"error": "Choose an available place type."}, status=400)
+    return JsonResponse({"results": search_places(request.GET.get("q", ""), category)})
 
 
 def journal_page(request: HttpRequest) -> HttpResponse:

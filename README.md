@@ -8,6 +8,7 @@ The app is usable but still work in progress, I will update the readme and docum
 ## Features
 
 - Explore 238 countries and 14 custom territories on Simple, Terrain and Adventure maps.
+- Search countries, capitals and over 7,000 cities and towns from any page, and open them on the map.
 - Follow country and world news from Google News, regional RSS feeds and public YouTube feeds.
 - Keep Markdown notes, article references, video timestamps, country tags and local images in one journal.
 - Organize entries into collections and search or filter them by country, date and type.

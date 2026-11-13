@@ -65,3 +65,17 @@ The generator selects records only when `ADM0CAP` is `1` and `ISO_A2` exactly jo
 Natural Earth marks 200 records as national capitals. The strict ISO join includes 198 records across 194 countries. It preserves all source-designated capitals for Bolivia (La Paz and Sucre), Côte d'Ivoire (Abidjan and Yamoussoukro), and South Africa (Bloemfontein, Cape Town, and Pretoria). Pristina/Kosovo and Hargeisa/Somaliland are excluded because their source records use `ISO_A2=-99`; no code or country assignment is guessed. Countries and territories absent from this Natural Earth national-capital classification are left without a capital marker rather than supplemented from another source.
 
 The generated `static/data/capitals.geojson` is 29,395 bytes. It contains only stable feature IDs, canonical joined ISO alpha-2 codes, display names, and point coordinates needed by the runtime map layers.
+
+## Header place search
+
+The global header search uses the canonical country catalog and a separate bundled `data/place_search.json` index. It includes all 7,342 populated-place records from the pinned source above: national capitals, major cities and selected smaller towns, rather than every settlement. Searches run on the local server and return only matching results; the browser does not download the full index or contact a geocoder. The All, Countries, Capitals and Cities filters share this index. Capitals are also included under Cities, and All lists each place once. Names and available source aliases are matched without accents; country and region names can qualify a city query.
+
+Rebuild the search index separately, using only Python's standard library:
+
+```powershell
+python tools/build_place_search.py
+```
+
+The builder verifies the same pinned DBF hash and unique `NE_ID` identities. It uses exact ISO alpha-2 joins first, then canonical alpha-3 joins for French overseas places. Reviewed source identifiers join Kosovo (`KOS` → `XK`), Northern Cyprus (`CYN` → `XC`), Somaliland (`SOL` → `XL`) and Svalbard/Jan Mayen (`SJM` → Norway). This does not change map geometry or the existing capital-marker asset. The index also retains the native Romanian spelling București as an alias for Bucharest.
+
+Results use durable map URLs with a country code and optional place ID. The server validates the place's country before providing its coordinates. Country results fit the country's bounds; city/capital results focus the place and open its country drawer. The retained Map receives the incoming destination even when its canvas is reused, and ordinary header navigation continues to preserve the user's camera.

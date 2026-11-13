@@ -117,6 +117,12 @@ export function registerPageMemory() {
                     else oldArchive.dataset.archiveRevision = currentArchive.dataset.archiveRevision;
                 }
             }
+            if (reuse && name === "map") {
+                // The canvas is retained, but a search deep link carries a new
+                // server-validated destination, including within the same country.
+                const target = incoming.querySelector("#map-search-target");
+                if (target) saved.page.querySelector("#map-search-target")?.replaceWith(target);
+            }
             if (reuse) incoming.replaceWith(saved.page);
             outgoingUrl = null;
             resumeJournal = false;

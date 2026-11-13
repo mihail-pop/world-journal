@@ -1,0 +1,23 @@
+<div id="place-search-overlay" role="dialog" aria-modal="true" aria-label="Search places" data-search-url="{% url 'core:place_search' %}" hidden>
+    <div class="place-search-panel">
+        <form class="place-search-bar" role="search">
+            <div class="place-search-controls">
+                <div class="place-search-input-container">
+                    {% include 'core/partials/search_icon.html' %}
+                    <input id="place-search-input" type="text" placeholder="Search.." aria-label="Search countries, capitals and cities" autocomplete="off" spellcheck="false" maxlength="160" aria-controls="place-search-results">
+                </div>
+                <div class="place-search-select">
+                    <button type="button" id="place-search-type-toggle" aria-expanded="false" aria-controls="place-search-types" aria-label="Choose place type"><span data-search-type-label>All</span><span class="place-search-arrow" aria-hidden="true"></span></button>
+                    <div id="place-search-types" hidden>
+                        <button type="button" data-search-type="all" aria-pressed="true">All</button>
+                        <button type="button" data-search-type="countries" aria-pressed="false">Countries</button>
+                        <button type="button" data-search-type="capitals" aria-pressed="false">Capitals</button>
+                        <button type="button" data-search-type="cities" aria-pressed="false">Cities</button>
+                    </div>
+                </div>
+            </div>
+        </form>
+        <div id="place-search-results" hx-boost="true" hx-target="#app-content" hx-push-url="true" hx-swap="innerHTML show:top"></div>
+        <span class="visually-hidden" data-search-status role="status"></span>
+    </div>
+</div>

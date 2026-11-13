@@ -145,6 +145,7 @@ function selectedCodeFromUrl(countriesByCode) {
 function updateHistory(code) {
     const url = new URL(window.location.href);
     url.searchParams.delete("section");
+    url.searchParams.delete("place");
     if (code) {
         url.searchParams.set("country", code);
     } else {
@@ -310,6 +311,26 @@ function focusCountry(controller, country, animate = true) {
         padding: drawerPadding(),
         retainPadding: false,
         maxZoom: country.small ? 7 : 5.5,
+        duration: animate && !reducedMotion ? 650 : 0,
+    });
+}
+
+function searchTarget(controller) {
+    const url = new URL(location.href);
+    const placeId = url.searchParams.get("place");
+    if (!placeId) return null;
+    const target = JSON.parse(controller.page.querySelector("#map-search-target")?.textContent || "null");
+    return target?.id === placeId && target.country === url.searchParams.get("country")?.toUpperCase()
+        && Array.isArray(target.coordinates) && target.coordinates.length === 2 && target.coordinates.every(Number.isFinite)
+        ? target : null;
+}
+
+function focusSearchTarget(controller, target, animate = true) {
+    controller.lastSearchTargetId = target.id;
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    controller.map.easeTo({
+        center: target.coordinates, zoom: 7, bearing: 0, pitch: 0,
+        padding: drawerPadding(), retainPadding: false,
         duration: animate && !reducedMotion ? 650 : 0,
     });
 }
@@ -637,7 +658,7 @@ function selectCountry(controller, code, options = {}) {
         return;
     }
     if (selectPresetCountry(controller, code)) return;
-    if (options.pushHistory !== false && code !== controller.selectedCode) {
+    if (options.pushHistory !== false && (code !== controller.selectedCode || new URL(location.href).searchParams.has("place"))) {
         updateHistory(code);
     }
     renderSelection(controller, code, options);
@@ -1089,7 +1110,10 @@ function createMap(controller, styleUrl) {
     // startup requests tiles for the provisional camera, then a second set for
     // the fitted home country as soon as country layers are installed.
     const openingCountry = selectedCountry ?? homeCountry;
-    if (openingCountry) focusCountry(controller, openingCountry, false);
+    const target = searchTarget(controller);
+    if (target && selectedCountry) focusSearchTarget(controller, target, false);
+    else if (openingCountry) focusCountry(controller, openingCountry, false);
+    controller.searchFocusRequested = false;
     map.setStyle(controller.providerStyleRequested ? styleUrl : bundledMapStyle(), {
         transformStyle: localMapStyle, diff: false,
     });
@@ -1347,6 +1371,9 @@ async function initializeMapPage() {
             closeCountry(controller);
         }
     }, { signal: abortController.signal });
+    document.addEventListener("world-journal:place-search-navigate", () => {
+        controller.searchFocusRequested = true;
+    }, { signal: abortController.signal });
     document.addEventListener("world-journal:theme-change", () => updateLayerTheme(controller), { signal: abortController.signal });
     document.addEventListener("world-journal:font-change", () => updateLayerTheme(controller), { signal: abortController.signal });
     document.addEventListener("world-journal:map-preferences-change", event => {
@@ -1364,7 +1391,10 @@ async function initializeMapPage() {
         if (controller.presetEditor?.active) return;
         const requested = selectedCodeFromUrl(controller.countriesByCode);
         showNotice(controller, requested.unsupported ? `Country code ${requested.unsupported} is not available in the bundled dataset.` : "");
-        renderSelection(controller, requested.code, { fit: Boolean(requested.code) });
+        const target = searchTarget(controller);
+        renderSelection(controller, requested.code, { fit: Boolean(requested.code) && !target });
+        if (target) focusSearchTarget(controller, target);
+        else controller.lastSearchTargetId = null;
         document.dispatchEvent(new CustomEvent("world-journal:location-change"));
     }, { signal: abortController.signal });
     document.addEventListener("world-journal:data-changed", event => {
@@ -1478,15 +1508,20 @@ function resumeMapPage(controller) {
     updateLayerTheme(controller);
     applyPreferences(controller);
     const requested = controller.presetEditor?.active ? {code: null, unsupported: null} : selectedCodeFromUrl(controller.countriesByCode);
-    const camera = requested.code === controller.selectedCode ? controller.pausedCamera : null;
+    const target = controller.presetEditor?.active ? null : searchTarget(controller);
+    const focusPlace = target && (target.id !== controller.lastSearchTargetId || controller.searchFocusRequested);
+    const focusCountryResult = controller.searchFocusRequested && !target && requested.code;
+    const camera = requested.code === controller.selectedCode && !focusPlace && !focusCountryResult ? controller.pausedCamera : null;
     controller.pausedCamera = null;
     showNotice(controller, requested.unsupported ? `Country code ${requested.unsupported} is not available in the bundled dataset.` : "");
-    if (requested.code !== controller.selectedCode) {
-        renderSelection(controller, requested.code, {fit: Boolean(requested.code)});
+    if (requested.code !== controller.selectedCode || focusCountryResult) {
+        renderSelection(controller, requested.code, {fit: Boolean(requested.code) && !target});
     } else {
         const section = new URL(location.href).searchParams.get("section");
         if (["overview", "notes"].includes(section)) selectCountrySection(controller, section);
     }
+    controller.searchFocusRequested = false;
+    if (!target) controller.lastSearchTargetId = null;
     if (controller.personalDirty) {
         controller.personalDirty = false;
         loadPersonalData(controller);
@@ -1515,7 +1550,8 @@ function resumeMapPage(controller) {
     requestAnimationFrame(() => {
         if (activeController === controller && !controller.suspended) {
             controller.map.resize();
-            if (camera && controller.selectedCode === requested.code) controller.map.jumpTo(camera);
+            if (focusPlace && controller.selectedCode === requested.code) focusSearchTarget(controller, target);
+            else if (camera && controller.selectedCode === requested.code) controller.map.jumpTo(camera);
         }
     });
 }
