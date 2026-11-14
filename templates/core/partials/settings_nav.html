@@ -1,5 +1,5 @@
 <header class="settings-page-heading"><h1 id="{{ heading_id|default:'settings-title' }}">Settings</h1></header>
-<nav class="settings-tabs" aria-label="Settings sections" hx-boost="true" hx-target="#app-content" hx-push-url="true">
+<nav class="settings-tabs" aria-label="Settings sections" data-version-info-url="{% url 'core:version_info' %}" hx-boost="true" hx-target="#app-content" hx-push-url="true">
     <a href="{% url 'core:settings' %}"{% if section == 'preferences' %} aria-current="page"{% endif %}>Preferences</a>
     <a href="{% url 'core:backups' %}"{% if section == 'backup' %} aria-current="page"{% endif %}>Backup</a>
     <a href="{% url 'news:settings' %}"{% if section == 'sources' %} aria-current="page"{% endif %}>Sources</a>

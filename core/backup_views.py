@@ -9,7 +9,7 @@ from django import forms
 from django.conf import settings
 from django.contrib import messages
 from django.db import DatabaseError
-from django.http import FileResponse, HttpResponse
+from django.http import FileResponse, HttpResponse, JsonResponse
 from django.shortcuts import redirect
 from django.urls import reverse
 from django.utils import timezone
@@ -91,7 +91,7 @@ def backups(request):
         action = request.POST.get("action")
         if action == "cancel":
             _discard(request)
-            messages.info(request, "Import preview discarded. No data was imported.")
+            messages.success(request, "Import preview discarded. No data was imported.")
             return _navigate(request)
         if action == "preview":
             upload = UploadBackupForm(request.POST, request.FILES)
@@ -107,9 +107,13 @@ def backups(request):
                     summary = plan_summary(import_plan(data)[0])
                     request.session["backup_preview_token"] = token
                     confirmation = ConfirmImportForm(initial={"token": token})
+                    messages.success(request, "Backup ready to review.")
                 except (BackupError, OSError) as error:
                     path.unlink(missing_ok=True)
-                    upload.add_error("archive", str(error) if isinstance(error, BackupError) else "The backup could not be staged on disk. Check available space and folder access.")
+                    message = str(error) if isinstance(error, BackupError) else "The backup could not be staged on disk. Check available space and folder access."
+                    upload.add_error("archive", message)
+                    if isinstance(error, OSError):
+                        messages.error(request, message)
                     path = None
         elif action == "confirm":
             confirmation = ConfirmImportForm(request.POST)
@@ -125,6 +129,8 @@ def backups(request):
                     except (BackupError, DatabaseError, OSError) as error:
                         message = str(error) if isinstance(error, BackupError) else "Import could not finish. Database changes were rolled back. Check available space and try again."
                         confirmation.add_error(None, message)
+                        if not isinstance(error, BackupError):
+                            messages.error(request, message)
                         logging.getLogger(__name__).warning("A backup import was rejected or rolled back (%s).", type(error).__name__)
                     else:
                         _discard(request)
@@ -153,7 +159,10 @@ def export_backup(request):
     try:
         archive = export_archive()
     except (BackupError, OSError, DatabaseError) as error:
-        messages.error(request, str(error) if isinstance(error, BackupError) else "Backup could not be created. Check disk space and local file access.")
+        message = str(error) if isinstance(error, BackupError) else "Backup could not be created. Check disk space and local file access."
+        if request.headers.get("Accept") == "application/zip":
+            return JsonResponse({"error": message}, status=500)
+        messages.error(request, message)
         return redirect("core:backups")
     filename = f"world-journal-{timezone.now():%Y%m%d-%H%M%S}.zip"
     return FileResponse(archive, as_attachment=True, filename=filename, content_type="application/zip")

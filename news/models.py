@@ -31,6 +31,7 @@ class ArchivedNews(models.Model):
     publisher = models.CharField(max_length=200)
     summary = models.CharField(max_length=2000, blank=True)
     video_id = models.CharField(max_length=11, blank=True)
+    view_count = models.PositiveBigIntegerField(null=True, blank=True)
     published_at = models.DateTimeField(null=True, blank=True)
     first_seen_at = models.DateTimeField(default=timezone.now)
     sort_date = models.DateTimeField()

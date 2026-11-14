@@ -1,8 +1,0 @@
-<div class="source-control-row" data-source-row="{{ row.id }}">
-    <label class="source-choice" for="{{ row.toggle.id_for_label }}">{{ row.toggle }} Include this source</label>{{ row.toggle.errors }}
-</div>
-{% if row.disabled_reason %}<p class="field-note">{{ row.disabled_reason }}</p>{% endif %}
-{% if row.notes or row.feed_url %}<details class="source-details"><summary>Source information</summary>
-    {% if row.notes %}<p>{{ row.notes }}</p>{% endif %}
-    {% if row.feed_url %}<a href="{{ row.feed_url }}" target="_blank" rel="noopener noreferrer">Open feed ↗</a>{% endif %}
-</details>{% endif %}

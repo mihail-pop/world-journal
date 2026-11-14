@@ -5,6 +5,13 @@ from core.database import write_transaction
 from .models import CustomSource, NewsPreferences, SourcePreference
 
 
+def single_feed_providers(registry):
+    feeds = {}
+    for feed in registry.feeds:
+        feeds.setdefault(feed.provider_id, []).append(feed.id)
+    return {provider_id: identities[0] for provider_id, identities in feeds.items() if len(identities) == 1}
+
+
 class NewsPreferencesForm(forms.Form):
     freshness_minutes = forms.TypedChoiceField(
         label="Background refresh interval", coerce=int,
@@ -24,20 +31,27 @@ class NewsPreferencesForm(forms.Form):
                 initial=item.enabled_by_default and choices.get(item.id, True),
                 widget=forms.CheckboxInput(attrs={"form": "news-preferences", "data-source-choice": item.id}),
             )
+        self.single_feed_providers = single_feed_providers(registry)
+        for provider_id, feed_id in self.single_feed_providers.items():
+            provider_field = self.fields[f"enabled_{provider_id}"]
+            feed_field = self.fields[f"enabled_{feed_id}"]
+            provider_field.initial = provider_field.initial and feed_field.initial
+            provider_field.disabled = provider_field.disabled or feed_field.disabled
 
     def save(self):
+        feed_providers = {feed_id: provider_id for provider_id, feed_id in self.single_feed_providers.items()}
         with write_transaction():
             NewsPreferences.objects.update_or_create(pk=1, defaults={"freshness_minutes": self.cleaned_data["freshness_minutes"]})
             for item in self.items:
                 if item.enabled_by_default:
                     SourcePreference.objects.update_or_create(
-                        source_id=item.id, defaults={"enabled": self.cleaned_data[f"enabled_{item.id}"]},
+                        source_id=item.id, defaults={"enabled": self.cleaned_data[f"enabled_{feed_providers.get(item.id, item.id)}"]},
                     )
 
 
 class CustomSourceForm(forms.Form):
-    kind = forms.ChoiceField(label="Source type", choices=CustomSource.Kind.choices)
-    location = forms.CharField(label="Feed or channel", max_length=2048,
+    kind = forms.ChoiceField(label="Source type", choices=[(CustomSource.Kind.RSS, "News articles"), (CustomSource.Kind.YOUTUBE, "YouTube channel")])
+    location = forms.CharField(label="Link", max_length=2048,
                               widget=forms.TextInput(attrs={"placeholder": "https://…", "autocomplete": "off"}))
     name = forms.CharField(label="Name (optional)", max_length=160, required=False)
 

@@ -1,0 +1,49 @@
+<article class="source-library-item source-item-custom{% if row.feeds|length > 1 %} source-card-group{% endif %}" data-source-row="{{ row.id }}" data-source-enabled="{{ row.enabled|yesno:'true,false' }}">
+    {% include 'news/partials/source_switch.html' with source_link=row.homepage|default:row.record.url subtitle='Your source' %}
+    <form class="source-card-remove" method="post" action="{% url 'news:custom_action' row.record.pk 'remove' %}" hx-disabled-elt="find button">
+        {% csrf_token %}<input type="hidden" name="country" value="{{ country.pk }}">
+        <button class="source-remove-button" type="submit" aria-label="Remove {{ row.name }}" title="Remove source">{% include 'core/partials/icon.html' with name='close' %}</button>
+    </form>
+    {% if row.check_error or not row.available %}
+    <div class="source-needs-attention">
+        <p class="source-warning">{{ row.check_error|default:'This source could not be reached. Check its link and try again.' }}</p>
+        <form method="post" action="{% url 'news:custom_action' row.record.pk 'check' %}" hx-disabled-elt="find button" hx-indicator="find .source-check-progress">
+            {% csrf_token %}<input type="hidden" name="country" value="{{ country.pk }}">
+            <button class="journal-button" type="submit">Try again</button><span class="source-check-progress htmx-indicator">Checking link…</span>
+        </form>
+    </div>
+    {% endif %}
+    {% if row.feeds|length > 1 %}
+    <div class="source-topics">
+        {% for feed in row.feeds %}
+        <div class="source-topic{% if feed.record.parent_id %} source-topic-custom{% endif %}" data-source-row="{{ feed.id }}" data-source-enabled="{{ feed.enabled|yesno:'true,false' }}">
+            {% include 'news/partials/source_switch.html' with row=feed topic=True %}
+            {% if feed.record.parent_id %}
+            <form class="source-card-remove" method="post" action="{% url 'news:custom_action' feed.record.pk 'remove' %}" hx-disabled-elt="find button">
+                {% csrf_token %}<input type="hidden" name="country" value="{{ country.pk }}">
+                <button class="source-remove-button" type="submit" aria-label="Remove {{ feed.name }}" title="Remove feed">{% include 'core/partials/icon.html' with name='close' %}</button>
+            </form>
+            {% endif %}
+            {% if feed.check_error %}<p class="source-warning">{{ feed.check_error }}</p>{% endif %}
+            {% if not feed.available and feed.record.parent_id %}
+            <form method="post" action="{% url 'news:custom_action' feed.record.pk 'check' %}" hx-disabled-elt="find button" hx-indicator="find .source-check-progress">
+                {% csrf_token %}<input type="hidden" name="country" value="{{ country.pk }}">
+                <button class="journal-button" type="submit">Try again</button><span class="source-check-progress htmx-indicator">Checking link…</span>
+            </form>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    {% if row.feeds %}
+    <details class="source-add-feed" {% if row.add_feed_form.errors %}open{% endif %}>
+        <summary>Add another news feed</summary>
+        <form method="post" action="{% url 'news:custom_feed_add' row.record.pk %}" hx-disabled-elt="find button" hx-indicator="find .source-check-progress">
+            {% csrf_token %}<input type="hidden" name="country" value="{{ country.pk }}">{{ row.add_feed_form.kind }}{{ row.add_feed_form.non_field_errors }}
+            <div class="settings-field"><label for="{{ row.add_feed_form.location.id_for_label }}">News feed link</label>{{ row.add_feed_form.location }}{{ row.add_feed_form.location.errors }}</div>
+            <div class="settings-field"><label for="{{ row.add_feed_form.name.id_for_label }}">Name (optional)</label>{{ row.add_feed_form.name }}{{ row.add_feed_form.name.errors }}</div>
+            <button class="journal-button" type="submit">Add feed</button><span class="source-check-progress htmx-indicator">Checking link…</span>
+        </form>
+    </details>
+    {% endif %}
+</article>

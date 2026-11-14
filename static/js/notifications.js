@@ -203,6 +203,11 @@ export function registerNotifications() {
     document.addEventListener("world-journal:preferences-saved", () => {
         notify({id: "preferences-saved", kind: "success", title: "Preferences saved"});
     });
+    document.addEventListener("invalid", event => {
+        if (event.target.form?.closest(".settings-page")) {
+            notify({id: "form-validation", kind: "warning", title: "Check the highlighted fields", message: "Changes haven’t been saved."});
+        }
+    }, true);
     const dialog = document.querySelector("[data-action-dialog]");
     dialog.addEventListener("cancel", event => {
         event.preventDefault();
@@ -222,7 +227,7 @@ export function registerNotifications() {
         if (!form.dataset.confirmTitle && !removal) return;
         event.preventDefault();
         const title = form.dataset.confirmTitle || `${form.querySelector('button').getAttribute('aria-label') || "Remove this source"}?`;
-        const message = form.dataset.confirmMessage || (form.closest(".source-feed-row") ? "This feed will be removed. Entries saved to Journal are kept." : "This source and its feeds will be removed. Entries saved to Journal are kept.");
+        const message = form.dataset.confirmMessage || (form.closest(".source-feed-row, .source-topic") ? "This feed will be removed. Entries saved to Journal are kept." : "This source and its feeds will be removed. Entries saved to Journal are kept.");
         confirmAction({title, message, accept: form.dataset.confirmAccept || "Remove"}).then(accepted => {
             if (accepted && form.isConnected) event.detail.issueRequest(true);
         });
@@ -241,12 +246,20 @@ export function registerNotifications() {
         }
         if (dialogState?.form) finishDialog(true);
         if (event.detail.requestConfig?.verb !== "get" && response?.querySelector(".errorlist")) {
-            notify({id: "form-validation", kind: "warning", title: "Check the highlighted fields", message: "Changes haven’t been saved."});
+            let feedback = [];
+            try {
+                const triggers = JSON.parse(event.detail.xhr.getResponseHeader("HX-Trigger") || "{}");
+                feedback = triggers["world-journal:server-notices"]?.notices || [];
+            } catch { /* Plain event-name headers do not contain notices. */ }
+            if (!feedback.some(notice => notice.kind === "error" || notice.kind === "warning")) {
+                notify({id: "form-validation", kind: "warning", title: "Check the highlighted fields", message: "Changes haven’t been saved."});
+            }
         }
     });
     document.body.addEventListener("htmx:beforeRequest", event => {
         const form = event.detail.elt.closest?.("form");
         if (!form || event.detail.requestConfig?.verb === "get") return;
+        dismissNotice("form-validation");
         const path = new URL(form.getAttribute("action") || location.href, location.href).pathname;
         let label = form.dataset.taskLabel;
         if (!label && path.startsWith("/settings/news/")) label = path.endsWith("/remove/") ? "Removing source…" : "Checking source…";

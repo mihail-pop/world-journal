@@ -10,7 +10,7 @@ export function initializeTheme() {
     document.body.addEventListener("submit", event => {
         if (!event.target.matches("[data-theme-form]") || !event.submitter) return;
         event.preventDefault();
-        writeAppPreferences({theme: event.submitter.value});
+        writeAppPreferences({theme: event.submitter.value}, {notifySaved: true});
     });
     document.addEventListener("world-journal:app-preferences-change", render);
     document.addEventListener("world-journal:page-ready", render);

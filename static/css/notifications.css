@@ -1,12 +1,12 @@
 /* A single semantic palette: notification colors never change with the page theme. */
 :root { --notice-success: #3be07d; --notice-warning: #ffad36; --notice-error: #ff5f65; --notice-info: #78baff; }
 .notification-rack { position: fixed; z-index: 100; top: calc(var(--header-height) + .85rem); left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: .6rem; width: min(32rem, calc(100vw - 1.5rem)); max-height: calc(100dvh - var(--header-height) - 2rem); pointer-events: none; }
-.app-notification { --notice-tone: var(--notice-info); --notice-ink: #102c49; box-sizing: border-box; width: fit-content; max-width: 100%; min-width: min(16rem, 100%); padding: .95rem 1.4rem; border: 1px solid color-mix(in srgb, var(--notice-ink) 14%, var(--notice-tone)); border-radius: 10px; background: var(--notice-tone); color: var(--notice-ink); box-shadow: 0 7px 24px #0003, 0 2px 5px #0002; pointer-events: auto; opacity: 0; transform: translateY(-9px); transition: opacity 240ms ease, transform 280ms cubic-bezier(.2,.7,.2,1), background-color 200ms ease, color 200ms ease; }
+.app-notification { --notice-tone: var(--notice-info); --notice-ink: #fff; box-sizing: border-box; width: fit-content; max-width: 100%; min-width: min(16rem, 100%); padding: .95rem 1.4rem; border: 1px solid color-mix(in srgb, var(--notice-ink) 14%, var(--notice-tone)); border-radius: 10px; background: var(--notice-tone); color: var(--notice-ink); box-shadow: 0 7px 24px #0003, 0 2px 5px #0002; pointer-events: auto; opacity: 0; transform: translateY(-9px); transition: opacity 240ms ease, transform 280ms cubic-bezier(.2,.7,.2,1), background-color 200ms ease, color 200ms ease; }
 .app-notification.is-visible { opacity: 1; transform: translateY(0); }
 .app-notification.is-leaving { opacity: 0; transform: translateY(-6px); pointer-events: none; }
-.app-notification[data-kind="success"] { --notice-tone: var(--notice-success); --notice-ink: #10351e; }
-.app-notification[data-kind="warning"], .app-notification[data-kind="loading"] { --notice-tone: var(--notice-warning); --notice-ink: #422706; }
-.app-notification[data-kind="error"] { --notice-tone: var(--notice-error); --notice-ink: #430e14; }
+.app-notification[data-kind="success"] { --notice-tone: var(--notice-success); }
+.app-notification[data-kind="warning"], .app-notification[data-kind="loading"] { --notice-tone: var(--notice-warning); }
+.app-notification[data-kind="error"] { --notice-tone: var(--notice-error); }
 .notification-copy { min-width: 0; text-align: center; overflow-wrap: anywhere; }
 .notification-copy strong { display: block; margin: 0; font-size: 1.03rem; font-weight: 650; line-height: 1.4; }
 .notification-copy p { margin: .3rem 0 0; color: inherit; font-size: .95rem; line-height: 1.5; }

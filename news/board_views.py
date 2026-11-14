@@ -1,5 +1,3 @@
-from hashlib import sha256
-
 from django.http import HttpResponse
 from django.shortcuts import render
 from django.views.decorators.cache import never_cache
@@ -12,7 +10,6 @@ from news.paging import page_changed
 
 from .services.background import feed_warmer
 from .services.world_news import CachedNews, news_url, page_options
-from .services.archive import revision
 
 
 def _board(request):
@@ -30,15 +27,11 @@ def index(request):
     context = board.context()
     if page_changed(request, context["paging_version"]):
         return HttpResponse(status=409)
-    if request.headers.get("X-News-Paging") == "1":
+    if request.headers.get("X-News-Paging") == "1" or request.headers.get("X-News-Filtering") == "1":
         return render(request, "news/partials/board_results.html", context)
     context.update({
         "options": options, "countries": sorted(bundled_catalog()[0].values(), key=lambda country: country["name"]),
         "articles_url": news_url(options, tab="articles", source="all", sort="top", page=1),
-        "videos_url": news_url(options, tab="videos", source="all", sort="newest", page=1),
-        "archive_country": options["country"] if options["tab"] == "articles" else "WORLD",
-        "archive_kind": options["tab"], "archive_source":options["source"], "archive_revision":revision(),
-        "archive_query": options["q"], "archive_open": bool(options["q"]),
-        "archive_config":sha256(repr((board.keys, options["q"])).encode()).hexdigest()[:16],
+        "videos_url": news_url(options, tab="videos", source="all", sort="views", page=1),
     })
     return render_page(request, "news", page_template="news/index.html", context=context)

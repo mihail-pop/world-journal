@@ -16,6 +16,7 @@ function icon(name) {
 class SelectControl {
     constructor(select) {
         this.select = select;
+        this.inline = select.multiple && select.hasAttribute("data-inline-select");
         // HTMX history snapshots can restore generated markup without its JS
         // controller. Rebuild around the native field instead of nesting menus.
         const restoredWrapper = select.closest(".select-control");
@@ -28,6 +29,7 @@ class SelectControl {
             || [...select.options].filter(option => /^[A-Z]{2}$/.test(option.value)).length > 5;
         this.wrapper = document.createElement("div");
         this.wrapper.className = "select-control";
+        this.wrapper.classList.toggle("select-inline", this.inline);
         select.before(this.wrapper);
         this.wrapper.append(select);
         select.classList.add("select-native");
@@ -37,7 +39,7 @@ class SelectControl {
         select.setAttribute("aria-hidden", "true");
         const id = `custom-select-${++nextId}`;
         const labels = [...select.labels];
-        this.label = labels.map(label => label.textContent.trim()).join(" ") || "Choose an option";
+        this.label = labels.map(label => label.textContent.trim()).join(" ") || select.getAttribute("aria-label") || "Choose an option";
         this.trigger = document.createElement("button");
         this.trigger.type = "button";
         this.trigger.className = "select-trigger";
@@ -69,7 +71,7 @@ class SelectControl {
         this.search = document.createElement("input");
         this.search.type = "search";
         this.search.className = "select-search";
-        this.search.placeholder = this.country ? "Search countries…" : "Search options…";
+        this.search.placeholder = "Search";
         this.search.setAttribute("aria-label", this.country ? "Search countries" : `Search ${this.label}`);
         this.search.autocomplete = "off";
         this.search.spellcheck = false;
@@ -83,7 +85,29 @@ class SelectControl {
         this.status.className = "select-status";
         this.status.setAttribute("aria-live", "polite");
         this.menu.append(this.search, this.list, this.status);
-        if (select.multiple) {
+        if (this.inline) {
+            this.menu.classList.add("select-menu-inline");
+            this.wrapper.insertBefore(this.tags, this.trigger);
+            this.wrapper.insertBefore(this.search, this.trigger);
+            this.search.className = "select-inline-search";
+            this.search.setAttribute("role", "combobox");
+            this.search.setAttribute("aria-haspopup", "listbox");
+            this.search.setAttribute("aria-controls", `${id}-list`);
+            this.search.setAttribute("aria-expanded", "false");
+            this.trigger.setAttribute("role", "button");
+            this.trigger.removeAttribute("aria-labelledby");
+            this.value.hidden = true;
+            this.search.addEventListener("focus", () => this.open());
+            this.search.addEventListener("keydown", event => {
+                if (event.key === "Enter") {
+                    event.preventDefault();
+                    this.list.querySelector(".select-option:not(:disabled)")?.click();
+                } else this.onMenuKey(event);
+            });
+            this.wrapper.addEventListener("click", event => {
+                if (event.target === this.wrapper || event.target === this.tags) this.open();
+            });
+        } else if (select.multiple) {
             const done = document.createElement("button");
             done.type = "button";
             done.className = "select-done";
@@ -91,7 +115,14 @@ class SelectControl {
             done.addEventListener("click", () => this.close(true));
             this.menu.append(done);
         }
-        this.trigger.addEventListener("click", () => this.menu.hidden ? this.open() : this.close(true));
+        this.trigger.addEventListener("click", () => {
+            if (this.inline && this.select.selectedOptions.length) {
+                for (const option of this.select.options) option.selected = false;
+                this.select.dispatchEvent(new Event("change", {bubbles: true}));
+                this.close(true);
+            } else if (this.menu.hidden) this.open();
+            else this.close(true);
+        });
         this.trigger.addEventListener("keydown", event => {
             if (["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) {
                 event.preventDefault();
@@ -129,9 +160,15 @@ class SelectControl {
         this.trigger.setAttribute("aria-required", String(this.select.required));
         const selected = [...this.select.selectedOptions].filter(option => !this.select.multiple || option.value);
         const text = selected.length ? selected.map(option => option.textContent.trim()).join(", ")
-            : this.country ? "Choose countries" : "Choose an option";
+            : this.select.dataset.selectPlaceholder || (this.country ? "Choose countries" : "Choose an option");
         if (this.value.textContent !== text) this.value.textContent = text;
         this.trigger.title = text;
+        if (this.inline) {
+            this.wrapper.classList.toggle("has-items", selected.length > 0);
+            this.trigger.setAttribute("aria-label", `${selected.length ? "Clear" : "Open"} ${this.label.toLowerCase()}`);
+            this.trigger.title = this.trigger.getAttribute("aria-label");
+            this.search.placeholder = selected.length ? "" : this.menu.hidden ? this.select.dataset.selectPlaceholder || this.label : "Search";
+        }
         this.tags.replaceChildren();
         if (this.select.multiple) {
             for (const option of selected) {
@@ -141,7 +178,8 @@ class SelectControl {
                 tag.append(document.createTextNode(option.textContent.trim()), icon("close"));
                 tag.setAttribute("aria-label", `Remove ${option.textContent.trim()}`);
                 tag.disabled = this.select.matches(":disabled") || option.disabled;
-                tag.addEventListener("click", () => {
+                tag.addEventListener("click", event => {
+                    event.stopPropagation();
                     option.selected = false;
                     this.select.dispatchEvent(new Event("change", {bubbles: true}));
                     this.trigger.focus();
@@ -174,6 +212,7 @@ class SelectControl {
             button.tabIndex = -1;
             button.disabled = option.disabled || option.parentElement.disabled === true;
             button.textContent = option.textContent.trim();
+            if (this.inline && option.selected) button.append(icon("close"));
             if (this.select.hasAttribute("data-app-font")) {
                 button.dataset.font = option.value;
                 const sample = document.createElement("span");
@@ -184,6 +223,7 @@ class SelectControl {
             button.addEventListener("click", () => {
                 if (this.select.multiple) option.selected = !option.selected;
                 else this.select.selectedIndex = index;
+                if (this.inline) this.search.value = "";
                 this.select.dispatchEvent(new Event("change", {bubbles: true}));
                 if (this.select.multiple && !this.menu.hidden) this.list.querySelector(`[data-option-index="${index}"]`)?.focus();
                 else this.close(true);
@@ -192,20 +232,25 @@ class SelectControl {
             count++;
         }
         const selectedCount = [...this.select.selectedOptions].filter(option => option.value).length;
-        this.status.textContent = !count ? "No matching options" : this.select.multiple ? `${selectedCount} selected` : "";
+        this.status.textContent = !count ? "No matching options" : this.select.multiple && !this.inline ? `${selectedCount} selected` : "";
         if (focusedIndex !== null) this.list.querySelector(`[data-option-index="${focusedIndex}"]`)?.focus();
         if (!this.menu.hidden) this.position();
     }
 
     open(focusSearch = true) {
         if (this.select.matches(":disabled") || !this.select.isConnected) return;
+        if (this.inline && !this.menu.hidden) return;
         activeControl?.close();
         activeControl = this;
         this.search.value = "";
-        this.search.hidden = !(this.country || this.select.options.length > 7);
+        this.search.hidden = !this.inline && !(this.country || this.select.options.length > 7);
         this.menu.hidden = false;
-        document.body.append(this.menu);
+        (this.select.closest("dialog") || document.body).append(this.menu);
         this.trigger.setAttribute("aria-expanded", "true");
+        if (this.inline) {
+            this.search.setAttribute("aria-expanded", "true");
+            this.search.placeholder = "Search";
+        }
         this.renderOptions();
         if (focusSearch && !this.search.hidden) this.search.focus({preventScroll: true});
         else this.focusOption(0);
@@ -215,12 +260,17 @@ class SelectControl {
         this.menu.hidden = true;
         this.menu.remove();
         this.trigger.setAttribute("aria-expanded", "false");
+        if (this.inline) {
+            this.search.setAttribute("aria-expanded", "false");
+            this.search.value = "";
+            this.search.placeholder = this.select.selectedOptions.length ? "" : this.select.dataset.selectPlaceholder || this.label;
+        }
         if (activeControl === this) activeControl = null;
         if (restoreFocus && this.trigger.isConnected && !this.trigger.disabled) this.trigger.focus({preventScroll: true});
     }
 
     position() {
-        const rect = this.trigger.getBoundingClientRect();
+        const rect = (this.inline ? this.wrapper : this.trigger).getBoundingClientRect();
         const viewport = window.visualViewport;
         const viewportTop = viewport?.offsetTop || 0;
         const viewportHeight = viewport?.height || window.innerHeight;
@@ -247,9 +297,11 @@ class SelectControl {
         if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); this.close(true); return; }
         if (event.key === "Tab") {
             this.close(true);
-            const focusable = [...document.querySelectorAll('a[href], button, input, select, textarea, [tabindex]')]
+            const focusRoot = this.select.closest("dialog") || document;
+            const focusable = [...focusRoot.querySelectorAll('a[href], button, input, select, textarea, [tabindex]')]
                 .filter(element => element.tabIndex >= 0 && !element.disabled && element.getClientRects().length);
-            const next = focusable[focusable.indexOf(this.trigger) + (event.shiftKey ? -1 : 1)];
+            const origin = this.inline && event.target === this.search ? this.search : this.trigger;
+            const next = focusable[focusable.indexOf(origin) + (event.shiftKey ? -1 : 1)];
             if (next) { event.preventDefault(); next.focus(); }
             return;
         }
@@ -304,6 +356,9 @@ export function registerUiControls() {
     observer.observe(content, {childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ["disabled", "selected", "label"]});
     document.addEventListener("world-journal:page-ready", () => enhance(content));
     document.addEventListener("world-journal:page-cleanup", () => activeControl?.close());
+    document.addEventListener("close", event => {
+        if (activeControl && event.target instanceof HTMLDialogElement && event.target.contains(activeControl.select)) activeControl.close();
+    }, true);
     document.addEventListener("pointerdown", event => {
         if (activeControl && !activeControl.wrapper.contains(event.target) && !activeControl.menu.contains(event.target)) activeControl.close();
     });

@@ -1,0 +1,13 @@
+<label class="source-choice {% if topic %}source-topic-choice{% else %}source-card-choice{% endif %}" for="{{ row.toggle.id_for_label }}">
+    {{ row.toggle }}
+    {% if topic %}
+    <span>{{ row.name }}</span>
+    {% else %}
+    <span class="source-card-copy">
+        <span class="source-card-title">{% if source_link or row.homepage %}<a href="{{ source_link|default:row.homepage }}" target="_blank" rel="noopener noreferrer">{{ row.name }}</a>{% else %}{{ row.name }}{% endif %}</span>
+        {% if subtitle or row.region %}<span class="source-card-region">{{ subtitle|default:row.region }}</span>{% endif %}
+        {% if not row.available %}<span class="source-warning">Unavailable</span>{% endif %}
+    </span>
+    {% endif %}
+</label>
+{{ row.toggle.errors }}

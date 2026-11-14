@@ -139,12 +139,6 @@ export function registerPageMemory() {
                     if (previousResults.querySelector(".news-board-status[open]")) results.querySelector(".news-board-status")?.setAttribute("open", "");
                     previousResults.replaceWith(results);
                 }
-                const currentArchive = incoming.querySelector("[data-news-archive]");
-                const oldArchive = saved.page.querySelector("[data-news-archive]");
-                if (currentArchive && oldArchive) {
-                    if (["archiveCountry","archiveKind","archiveSource","archiveConfig"].some(key => oldArchive.dataset[key] !== currentArchive.dataset[key])) oldArchive.replaceWith(currentArchive);
-                    else oldArchive.dataset.archiveRevision = currentArchive.dataset.archiveRevision;
-                }
             }
             if (reuse && name === "map") {
                 // The canvas is retained, but a search deep link carries a new
@@ -165,7 +159,7 @@ export function registerPageMemory() {
     });
 
     document.body.addEventListener("htmx:configRequest", event => {
-        const link = event.detail.elt?.closest("[data-nav-page]");
+        const link = event.detail.elt?.closest("[data-nav-page], .news-board-tabs a");
         // Boosted anchors capture href when first processed. Read the current
         // remembered href here too, so the sent request and history agree.
         if (link && event.detail.verb === "get") event.detail.path = link.getAttribute("href");

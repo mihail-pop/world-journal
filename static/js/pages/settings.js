@@ -1,4 +1,4 @@
-import { notify } from "../notifications.js";
+import { beginTask, notify } from "../notifications.js";
 import { readAppPreferences, writeAppPreferences } from "../app_preferences.js";
 import {
     clearSavedMapViewport,
@@ -9,7 +9,41 @@ import {
 
 let lifecycleRegistered = false;
 let activeController = null;
-let activeInformationController = null;
+let versionInformation = null;
+let versionExpiresAt = 0;
+let versionRequest = null;
+let backupExportPending = false;
+
+async function createBackup(button) {
+    if (backupExportPending) return;
+    backupExportPending = true;
+    button.setAttribute("aria-disabled", "true");
+    const finish = beginTask("Creating backup…");
+    try {
+        const response = await fetch(button.href, {headers: {"Accept": "application/zip"}});
+        if (!response.ok || !response.headers.get("Content-Type")?.startsWith("application/zip")) {
+            const result = await response.json().catch(() => null);
+            throw new Error(result?.error || "Check that the server is running and try again.");
+        }
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        const download = document.createElement("a");
+        download.href = url;
+        download.download = response.headers.get("Content-Disposition")?.match(/filename="([^"]+)"/)?.[1] || "world-journal-backup.zip";
+        download.setAttribute("hx-boost", "false");
+        document.body.append(download);
+        download.click();
+        download.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 60000);
+        notify({id: "backup-export", kind: "success", title: "Backup ready", message: "The ZIP file is ready to save."});
+    } catch (error) {
+        notify({id: "backup-export", kind: "error", title: "Backup could not be created", message: error.message});
+    } finally {
+        finish();
+        backupExportPending = false;
+        button.removeAttribute("aria-disabled");
+    }
+}
 
 function initializeAppFont() {
     const select = document.querySelector("[data-app-font]");
@@ -122,44 +156,54 @@ async function initializeSettingsPage() {
     }
 }
 
-async function initializeInformationPage() {
-    const page = document.querySelector('[data-page="settings"]');
-    const section = page?.querySelector("[data-version-information]");
-    if (!section || activeInformationController?.page === page) return;
-    activeInformationController?.abortController.abort();
-    const controller = {page, abortController: new AbortController()};
-    activeInformationController = controller;
+function renderVersionInformation(section, data) {
+    if (!section?.isConnected) return;
     const latest = section.querySelector("[data-latest-release]");
     const status = section.querySelector("[data-version-status]");
-    try {
-        const response = await fetch(section.dataset.versionInfoUrl, {signal: controller.abortController.signal});
-        if (!response.ok) throw new Error(`Version information returned HTTP ${response.status}`);
-        const data = await response.json();
-        if (activeInformationController !== controller) return;
-        latest.textContent = data.latest_version || "Unable to check";
-        latest.href = data.latest_url;
-        status.href = data.latest_url;
-        status.textContent = data.is_latest === true
-            ? "You have the latest version"
-            : data.is_latest === false ? "Update available" : "View releases";
-        status.classList.toggle("is-current", data.is_latest === true);
-        status.classList.toggle("is-update", data.is_latest === false);
-    } catch (error) {
-        if (error.name === "AbortError") return;
-        latest.textContent = "Unable to check";
-        status.textContent = "View releases";
-        console.error("World Journal version check failed", error);
+    latest.textContent = data?.latest_version || "Unable to check";
+    if (data?.latest_url) latest.href = data.latest_url;
+    if (data?.releases_url) status.href = data.releases_url;
+    status.textContent = data?.is_latest === true ? "✓ You have the latest version" : data?.is_latest === false ? "↻ Update available" : "";
+    status.hidden = typeof data?.is_latest !== "boolean";
+    status.classList.toggle("is-current", data?.is_latest === true);
+    status.classList.toggle("is-update", data?.is_latest === false);
+}
+
+function loadVersionInformation(url) {
+    if (Date.now() < versionExpiresAt) return Promise.resolve(versionInformation);
+    if (!versionRequest) {
+        versionRequest = fetch(url).then(async response => {
+            if (!response.ok) throw new Error(`Version information returned HTTP ${response.status}`);
+            const data = await response.json();
+            if (!data || typeof data.current_version !== "string") throw new Error("Invalid version information");
+            versionInformation = data;
+            versionExpiresAt = Date.now() + (data.latest_version ? 15 * 60 * 1000 : 60 * 1000);
+            return data;
+        }).catch(() => {
+            if (versionInformation) {
+                versionInformation = {...versionInformation, latest_version: null, latest_url: versionInformation.releases_url, is_latest: null};
+            }
+            versionExpiresAt = Date.now() + 60 * 1000;
+            return versionInformation;
+        }).finally(() => { versionRequest = null; });
     }
+    return versionRequest;
+}
+
+function initializeInformationPage() {
+    const page = document.querySelector('[data-page="settings"]');
+    const url = page?.querySelector("[data-version-info-url]")?.dataset.versionInfoUrl;
+    if (!url) return;
+    const section = page?.querySelector("[data-version-information]");
+    if (versionInformation) renderVersionInformation(section, versionInformation);
+    // Share one request across tabs; visiting Settings warms the result for Information.
+    void loadVersionInformation(url).then(data => renderVersionInformation(section, data));
 }
 
 export function cleanupSettingsPage() {
     if (activeController) {
         activeController.abortController.abort();
         activeController = null;
-    }
-    if (activeInformationController) {
-        activeInformationController.abortController.abort();
-        activeInformationController = null;
     }
 }
 
@@ -169,6 +213,12 @@ export function registerSettingsPage() {
     }
     lifecycleRegistered = true;
     document.addEventListener("click", event => {
+        const create = event.target.closest("[data-backup-create]");
+        if (create) {
+            event.preventDefault();
+            void createBackup(create);
+            return;
+        }
         const button = event.target.closest("[data-backup-open]");
         if (!button) return;
         const input = button.closest("[data-backup-upload]").querySelector('input[type="file"]');

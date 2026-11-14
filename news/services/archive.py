@@ -245,13 +245,19 @@ def _collect(job, snapshot, registry, now, cache_key, stamp):
             values = {"title":item.title[:300], "link":link[:2048],
                       "publisher":(item.channel_name if kind == "videos" else item.publisher)[:200],
                       "summary":item.summary[:2000] if kind == "articles" else "",
-                      "video_id":item.video_id if kind == "videos" else ""}
+                      "video_id":item.video_id if kind == "videos" else "",
+                      "view_count":(item.view_count if item.view_count is not None else row.view_count) if kind == "videos" else None}
             for name, value in values.items():
                 setattr(row, name, value)
             row.published_at = item.published_at
             row.metadata_bytes = len(json.dumps(values, ensure_ascii=False).encode("utf-8")) + 1024
             if not created:
                 updates[row.pk] = row
+        elif kind == "videos" and item.view_count is not None and item.view_count != row.view_count:
+            row.view_count = item.view_count
+            values = {name: getattr(row, name) for name in ("title", "link", "publisher", "summary", "video_id", "view_count")}
+            row.metadata_bytes = len(json.dumps(values, ensure_ascii=False).encode("utf-8")) + 1024
+            updates[row.pk] = row
         selected.setdefault(row.pk, set()).update(codes)
 
     row_ids = set(selected)
@@ -267,7 +273,7 @@ def _collect(job, snapshot, registry, now, cache_key, stamp):
         if new_rows:
             ArchivedNews.objects.bulk_create(new_rows.values(), ignore_conflicts=True)
         if updates:
-            ArchivedNews.objects.bulk_update(updates.values(), ["title", "link", "publisher", "summary", "video_id", "published_at", "metadata_bytes"])
+            ArchivedNews.objects.bulk_update(updates.values(), ["title", "link", "publisher", "summary", "video_id", "view_count", "published_at", "metadata_bytes"])
         if missing_origins:
             ArchivedNewsSource.objects.bulk_create([ArchivedNewsSource(item_id=identity, feed_id=feed_id,
                 source_id=source_id, category=category) for identity in missing_origins], ignore_conflicts=True)

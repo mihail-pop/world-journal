@@ -1,0 +1,12 @@
+<article class="source-library-item{% if provider.feeds|length > 1 %} source-card-group{% endif %}" data-source-row="{{ provider.id }}" data-source-enabled="{{ provider.enabled|yesno:'true,false' }}">
+    {% include 'news/partials/source_switch.html' with row=provider %}
+    {% if provider.feeds|length > 1 %}
+    <div class="source-topics">
+        {% for row in provider.feeds %}
+        <div class="source-topic" data-source-row="{{ row.id }}" data-source-enabled="{{ row.enabled|yesno:'true,false' }}">
+            {% include 'news/partials/source_switch.html' with topic=True %}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+</article>

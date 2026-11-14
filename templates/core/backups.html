@@ -7,13 +7,16 @@
         <form method="post" action="{% url 'core:backups' %}" enctype="multipart/form-data" hx-encoding="multipart/form-data" hx-disabled-elt="find button" hx-indicator="find .htmx-indicator" class="backup-form backup-upload-form" data-backup-upload>
             {% csrf_token %}<input type="hidden" name="action" value="preview">
             <div class="backup-actions">
-                <a class="journal-button" href="{% url 'core:export_backup' %}" hx-boost="false">Create Backup</a>
-                <button class="journal-button" type="button" data-backup-open>Load Backup</button>
+                <a class="journal-button" href="{% url 'core:export_backup' %}" hx-boost="false" data-backup-create>{% include 'core/partials/icon.html' with name='download' %}Create Backup</a>
+                <button class="journal-button" type="button" data-backup-open>{% include 'core/partials/icon.html' with name='upload' %}Load Backup</button>
             </div>
             <div hidden>{{ upload_form.archive }}</div>
             {{ upload_form.non_field_errors }}{{ upload_form.archive.errors }}
             <span class="htmx-indicator" role="status">Reading backup…</span>
         </form>
+        <div class="backup-help">
+            <p><strong>Keep the downloaded backup file as it is (.zip) for loading.</strong></p>
+        </div>
         {% if summary %}
         <div class="backup-preview" aria-labelledby="preview-title">
             <h3 id="preview-title">Import preview</h3>

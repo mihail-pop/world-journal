@@ -100,7 +100,7 @@ def settings_page(request: HttpRequest) -> HttpResponse:
         default_color = preset.default_color.lower()
         if default_color and default_color not in colors:
             colors.append(default_color)
-        preset_previews.append({"name": preset.name, "colors": colors[:3]})
+        preset_previews.append({"pk": preset.pk, "name": preset.name, "colors": colors[:3]})
     return render_page(request, "settings", context={
         "theme_choices": AppSettings.Theme.choices,
         "preset_previews": preset_previews,

@@ -1,28 +1,31 @@
 <section class="page page-standard settings-page" data-page="settings" data-country-metadata-url="{% url 'countries:metadata' %}" aria-labelledby="settings-title">
     {% include 'core/partials/settings_nav.html' with section='preferences' %}
     <div class="settings-grid settings-preferences-grid">
-        <section class="settings-card"><h2>{% include 'core/partials/icon.html' with name='globe' %}Map</h2><div class="settings-field"><label for="settings-map-type">Map type</label><select id="settings-map-type" data-settings-map-type disabled><option value="terrain">Terrain</option><option value="plain">Simple</option><option value="adventure">Adventure</option></select></div><div class="settings-field"><label for="home-country">Home country</label><select id="home-country" data-home-country-select data-country-select disabled><option value="">World view</option></select><p class="settings-status" data-settings-status role="status" aria-live="polite">Loading countries…</p></div></section>
-        <section class="settings-card settings-preset-card">
-            <h2>{% include 'core/partials/icon.html' with name='layers' %}Color presets</h2>
+        <section class="settings-card"><h2>Map</h2><div class="settings-field"><label for="settings-map-type">Map type</label><select id="settings-map-type" data-settings-map-type disabled><option value="terrain">Terrain</option><option value="plain">Simple</option><option value="adventure">Adventure</option></select></div><div class="settings-field"><label for="home-country">Home country</label><select id="home-country" data-home-country-select data-country-select disabled><option value="">World view</option></select><p class="settings-status" data-settings-status role="status" aria-live="polite" hidden></p></div></section>
+        <section class="settings-card settings-preset-card" hx-boost="true" hx-target="#app-content" hx-push-url="true">
+            <h2>Color presets</h2>
             {% if preset_previews %}
             <ul class="settings-preset-previews" aria-label="Saved color presets" role="list">
                 {% for preset in preset_previews %}
-                <li class="settings-preset-preview">
-                    <h3>{{ preset.name }}</h3>
-                    <ul class="settings-preset-colors" aria-label="Preset colors" role="list">
-                        {% for color in preset.colors %}
-                        <li style="--preset-swatch: {{ color }}" title="{{ color }}"><span class="visually-hidden">{{ color }}</span></li>
-                        {% endfor %}
-                    </ul>
+                <li>
+                    <a class="settings-preset-preview" href="{% url 'countries:preset_edit' preset.pk %}" aria-label="Edit {{ preset.name }}">
+                        <h3>{{ preset.name }}</h3>
+                        <ul class="settings-preset-colors" aria-label="Preset colors" role="list">
+                            {% for color in preset.colors %}
+                            <li style="--preset-swatch: {{ color }}" title="{{ color }}"><span class="visually-hidden">{{ color }}</span></li>
+                            {% endfor %}
+                        </ul>
+                    </a>
                 </li>
                 {% endfor %}
             </ul>
+            <div class="settings-preset-actions"><a class="journal-button" href="{% url 'countries:preset_list' %}">Manage presets</a></div>
+            {% else %}
+            <div class="settings-preset-actions is-empty"><a class="journal-button" href="{% url 'countries:preset_new' %}">Create Preset</a></div>
             {% endif %}
-            <a class="journal-button" href="{% url 'countries:preset_list' %}" hx-boost="true" hx-target="#app-content" hx-push-url="true">Manage presets{% include 'core/partials/icon.html' with name='edit' %}</a>
-            <p class="field-note settings-preset-description">Group countries with your own colors.</p>
         </section>
         <section class="settings-card">
-            <h2 id="theme-title">{% include 'core/partials/icon.html' with name='palette' %}Theme</h2>
+            <h2 id="theme-title">Theme</h2>
             <form class="theme-choices" method="post" action="{% url 'core:save_theme' %}" aria-labelledby="theme-title" data-theme-form>
                 {% csrf_token %}
                 {% for value, label in theme_choices %}

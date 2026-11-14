@@ -1,4 +1,4 @@
-// One lazy archive viewer for Map, Countries and News. Feed history never
+// One lazy archive viewer for Map and Countries. Feed history never
 // preloads into all 238 browser drawers and never creates a separate player.
 let registered = false;
 let generation = 0;

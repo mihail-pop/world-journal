@@ -1,16 +1,16 @@
 <section class="page page-standard settings-page" data-page="settings" aria-labelledby="settings-title">
     {% include 'core/partials/settings_nav.html' with section='information' %}
     <div class="settings-grid">
-        <section class="settings-card" data-version-information data-version-info-url="{% url 'core:version_info' %}">
+        <section class="settings-card version-information" data-version-information>
             <h2>Version Information</h2>
-            <dl class="compact-definition-list">
-                <div><dt>Your Release</dt><dd><a href="{{ current_release_url }}" target="_blank" rel="noopener noreferrer">{{ app_version }}</a></dd></div>
-                <div><dt>Latest Release</dt><dd><a href="{{ releases_url }}" target="_blank" rel="noopener noreferrer" data-latest-release>Checking...</a></dd></div>
-            </dl>
-            <p class="version-status"><a href="{{ releases_url }}" target="_blank" rel="noopener noreferrer" data-version-status>Checking for updates...</a></p>
-            <div class="information-links version-support-links">
-                <a href="{{ issues_url }}" target="_blank" rel="noopener noreferrer"><strong>Report an issue</strong><span>GitHub Issues</span>{% include 'core/partials/icon.html' with name='external' %}</a>
-                <a href="{{ discussions_url }}" target="_blank" rel="noopener noreferrer"><strong>Ask a question</strong><span>GitHub Discussions</span>{% include 'core/partials/icon.html' with name='external' %}</a>
+            <div class="version-info-content">
+                <p>Your Release <a href="{{ current_release_url }}" target="_blank" rel="noopener noreferrer">{{ app_version }}</a></p>
+                <p>Latest Release <a href="{{ releases_url }}" target="_blank" rel="noopener noreferrer" data-latest-release>View releases</a></p>
+                <p class="version-status"><a href="{{ releases_url }}" target="_blank" rel="noopener noreferrer" data-version-status hidden></a></p>
+            </div>
+            <div class="version-support-links">
+                <a href="{{ issues_url }}" target="_blank" rel="noopener noreferrer">Report an issue</a>
+                <a href="{{ discussions_url }}" target="_blank" rel="noopener noreferrer">Ask a question</a>
             </div>
         </section>
     </div>

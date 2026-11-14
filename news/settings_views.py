@@ -1,5 +1,4 @@
 import json
-from datetime import UTC, datetime
 from urllib.parse import urlencode
 
 from django.contrib import messages
@@ -8,15 +7,16 @@ from django.core.exceptions import ValidationError
 from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse
+from django.utils import timezone
 from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_http_methods
 
-from core.database import database_write
+from core.database import database_write, write_transaction
 from core.views import render_page
 from countries.models import Country
 
 from .cache_backend import CacheWriteError
-from .forms import AdditionalFeedForm, CustomSourceForm, NewsPreferencesForm
+from .forms import AdditionalFeedForm, CustomSourceForm, NewsPreferencesForm, single_feed_providers
 from .models import CustomSource, FeedState, NewsPreferences, SourcePreference
 from .preferences import effective_registry, freshness_seconds, source_choices
 from .registry import get_source_registry
@@ -24,7 +24,7 @@ from .services.cache import fixed_feed_cache_key, google_cache_key, parse_dateti
 from .services.country_news import get_country_news
 from .services.regional_news import get_fixed_feed
 from .services.youtube_news import get_youtube_feed
-from .services.custom_sources import check_custom_source, format_label, registry_items, with_custom_sources
+from .services.custom_sources import check_custom_source, registry_items, with_custom_sources
 from .services.background import feed_warmer
 from .types import SourceKind
 
@@ -54,97 +54,92 @@ def _navigate(request, country):
     return redirect(url)
 
 
-def _health(snapshot, enabled, fresh_seconds):
-    snapshot = snapshot if isinstance(snapshot, dict) else {}
-    attempted = parse_datetime(snapshot.get("last_attempt_at"))
-    successful = parse_datetime(snapshot.get("fetched_at")) if snapshot.get("last_success_at") else None
-    items = snapshot.get("items")
-    count = len(items) if successful and isinstance(items, list) else None
-    failed = bool(snapshot.get("last_error"))
-    if not enabled:
-        label = "Off"
-    elif failed:
-        label = "Last refresh failed" + (" · cached results retained" if successful else "")
-    elif successful:
-        age = (datetime.now(UTC) - successful).total_seconds()
-        label = "Fresh cache" if age < fresh_seconds else "Refresh due"
-        if count == 0:
-            label += " · empty feed"
+def _refresh_progress():
+    feed_warmer.start()
+    result = feed_warmer.status()
+    if result["busy"]:
+        summary = f"Updating news · {result['completed']} of {result['total']}" if result["total"] else "Updating news…"
+    elif not result["enabled"]:
+        summary = "Choose a source below"
+    elif result["failed"]:
+        summary = f"{result['failed']} source{' needs' if result['failed'] == 1 else 's need'} attention"
+    elif result["missing"]:
+        summary = f"Waiting for {result['missing']} update{'s' if result['missing'] != 1 else ''}"
     else:
-        label = "No retained check"
+        summary = "Ready to read"
     return {
-        "label": label, "failed": failed and enabled,
-        "last_attempt": attempted, "last_success": successful, "item_count": count,
-        "error_detail": snapshot.get("last_error_detail", "") if failed else "",
+        **result, "summary": summary, "progress_max": max(1, result["total"]),
+        "progress_value": result["completed"] if result["total"] else int(not result["busy"] and not result["missing"]),
+        "current_label": (" · ".join(result["current"]) or "Getting the next update…") if result["busy"] else "",
     }
 
 
-def _context(registry, choices, form, country, fresh_seconds):
+def _context(registry, choices, form, country):
     effective = effective_registry(registry, choices)
     enabled = {item.id: item.enabled_by_default for item in (*effective.sources, *effective.providers, *effective.feeds)}
-    keys = {feed.id: fixed_feed_cache_key(feed) for feed in registry.feeds}
-    for source in registry.sources:
-        if source.kind is SourceKind.YOUTUBE:
-            keys[source.id] = youtube_cache_key(source)
-        elif source.kind is SourceKind.DYNAMIC_COUNTRY_RSS and country:
-            keys[source.id] = google_cache_key(source, country.pk)
-    snapshots = cache.get_many(list(keys.values()))
+    custom_records = list(CustomSource.objects.select_related("parent"))
+    custom_keys = {}
+    for record in custom_records:
+        item, feed = registry_items(record)
+        custom_keys[record.pk] = fixed_feed_cache_key(feed) if feed else youtube_cache_key(item)
+    attempts = {
+        key: parse_datetime(metadata.get("last_attempt_at"))
+        for key, metadata in FeedState.objects.filter(
+            cache_key__in=custom_keys.values(), expires_at__gt=timezone.now(),
+        ).values_list("cache_key", "metadata")
+    }
+
+    def check_error(record):
+        attempted = attempts.get(custom_keys[record.pk])
+        return record.last_error if record.last_error and (
+            not attempted or not record.last_checked_at or record.last_checked_at >= attempted
+        ) else ""
 
     def row(item):
         return {
             "id": item.id, "toggle": form[f"enabled_{item.id}"],
             "name": getattr(item, "display_name", getattr(item, "section_label", item.id)),
             "homepage": getattr(item, "homepage_url", ""),
-            "feed_url": item.youtube_feed_url if getattr(item, "kind", None) is SourceKind.YOUTUBE else getattr(item, "feed_url", ""),
-            "notes": getattr(item, "operational_notes", ""),
             "region": REGION_LABELS.get(getattr(item, "editorial_region", ""), ""),
-            "verification_date": getattr(item, "verification_date", None),
-            "disabled_reason": getattr(item, "disabled_reason", "") or ("Unavailable in the curated configuration." if not item.enabled_by_default else ""),
             "enabled": enabled[item.id],
             "available": item.enabled_by_default,
-            "health": _health(snapshots.get(keys.get(item.id)), enabled[item.id], fresh_seconds),
         }
 
     providers = []
     for provider in sorted((provider for provider in registry.providers if not provider.id.startswith("custom_")), key=lambda item: (item.display_priority, item.id)):
         provider_row = row(provider)
         provider_row["feeds"] = [row(feed) for feed in registry.feeds if feed.provider_id == provider.id]
-        provider_row["enabled_feed_count"] = sum(feed["enabled"] for feed in provider_row["feeds"])
+        if len(provider_row["feeds"]) == 1:
+            provider_row["enabled"] &= provider_row["feeds"][0]["enabled"]
+            provider_row["available"] &= provider_row["feeds"][0]["available"]
         providers.append(provider_row)
     custom_rows = []
-    custom_records = list(CustomSource.objects.select_related("parent"))
     for record in (record for record in custom_records if not record.parent_id):
         item, feed = registry_items(record)
         if feed:
             item = registry.get_provider(item.id)
         source_row = row(item)
-        source_row.update({"record": record, "format": format_label(record.feed_format), "feed_url": record.url, "feeds": []})
+        source_row.update(record=record, feeds=[], check_error=check_error(record))
         if feed:
-            source_row["health"] = _health(snapshots.get(keys[feed.id]), enabled[feed.id], fresh_seconds)
             for child in (child for child in custom_records if child.pk == record.pk or child.parent_id == record.pk):
                 _provider, child_feed = registry_items(child)
                 feed_row = row(registry.get_feed(child_feed.id))
-                child_attempt = feed_row["health"]["last_attempt"]
-                child_error = child.last_error if child.last_error and (not child_attempt or not child.last_checked_at or child.last_checked_at >= child_attempt) else ""
-                feed_row.update(record=child, format=format_label(child.feed_format), check_error=child_error)
+                feed_row.update(record=child, check_error=check_error(child))
                 source_row["feeds"].append(feed_row)
             source_row["add_feed_form"] = AdditionalFeedForm(prefix=f"feed-{record.pk}")
-        health = source_row["health"]
-        check_error = record.last_error if record.last_error and (
-            not health["last_attempt"] or not record.last_checked_at or record.last_checked_at >= health["last_attempt"]
-        ) else ""
-        source_row["check_error"] = check_error
-        if check_error and source_row["enabled"]:
-            health.update(label="Last check failed · cached results retained", failed=True)
-        if not item.enabled_by_default:
-            health.update(label="Check failed · paused", failed=True)
+            if len(source_row["feeds"]) == 1:
+                source_row["enabled"] &= source_row["feeds"][0]["enabled"]
+                source_row["available"] &= source_row["feeds"][0]["available"]
         custom_rows.append(source_row)
     return {
+        "refresh_status": _refresh_progress(),
         "form": form, "country": country, "countries": Country.objects.all(),
         "google_sources": [row(source) for source in registry.sources if source.kind is SourceKind.DYNAMIC_COUNTRY_RSS],
         "youtube_sources": [row(source) for source in registry.sources if source.kind is SourceKind.YOUTUBE and not source.id.startswith("custom_")],
         "providers": providers,
         "custom_sources": custom_rows, "custom_form": CustomSourceForm(),
+        "custom_news_sources": [row for row in custom_rows if row["record"].kind == CustomSource.Kind.RSS],
+        "custom_youtube_sources": [row for row in custom_rows if row["record"].kind == CustomSource.Kind.YOUTUBE],
     }
 
 
@@ -164,7 +159,7 @@ def source_settings(request):
         feed_warmer.rescan()
         messages.success(request, "News-source preferences saved. Background refresh and cached results now use these choices.")
         return _navigate(request, country)
-    return render_page(request, "settings", page_template="news/settings.html", context=_context(registry, choices, form, country, fresh_seconds))
+    return render_page(request, "settings", page_template="news/settings.html", context=_context(registry, choices, form, country))
 
 
 @never_cache
@@ -187,14 +182,19 @@ def save_preference(request):
         value = request.POST.get("value")
         if value not in {"true", "false"}:
             return JsonResponse({"error": "Invalid source choice."}, status=400)
-        with database_write():
+        related_feed_id = single_feed_providers(registry).get(identity)
+        if related_feed_id and not registry.get_feed(related_feed_id).enabled_by_default:
+            return JsonResponse({"error": "This source is not available right now."}, status=400)
+        with write_transaction():
             SourcePreference.objects.update_or_create(source_id=identity, defaults={"enabled": value == "true"})
+            if related_feed_id:
+                SourcePreference.objects.update_or_create(source_id=related_feed_id, defaults={"enabled": value == "true"})
     from .services.background import feed_warmer
 
     feed_warmer.rescan()
     choices, interval = source_choices(), freshness_seconds()
     form = NewsPreferencesForm(registry=registry, choices=choices, freshness=interval)
-    context = _context(registry, choices, form, _country(request), interval)
+    context = _context(registry, choices, form, _country(request))
     rows = [*context["google_sources"], *context["youtube_sources"], *context["custom_sources"]]
     for source in context["custom_sources"]:
         rows.extend(source["feeds"])
@@ -206,8 +206,7 @@ def save_preference(request):
 @never_cache
 @require_http_methods(["GET"])
 def refresh_status(request):
-    feed_warmer.start()
-    return JsonResponse(feed_warmer.status())
+    return JsonResponse(_refresh_progress())
 
 
 @never_cache
@@ -233,16 +232,15 @@ def add_publisher_feed(request, source_id):
         if success:
             messages.success(request, "Feed added to this publisher and checked.")
         else:
-            messages.warning(request, "Feed saved, but its check failed. See its reason in Feed details.")
+            messages.warning(request, "Feed saved, but it could not be reached. Check the message below and try again.")
         return _navigate(request, _country(request))
     country = _country(request)
     registry, choices, interval = with_custom_sources(get_source_registry()), source_choices(), freshness_seconds()
     preferences_form = NewsPreferencesForm(registry=registry, choices=choices, freshness=interval)
-    context = _context(registry, choices, preferences_form, country, interval)
+    context = _context(registry, choices, preferences_form, country)
     for row in context["custom_sources"]:
         if row["record"].pk == publisher.pk:
             row["add_feed_form"] = form
-            row["details_open"] = True
     return render_page(request, "settings", page_template="news/settings.html", context=context)
 
 
@@ -254,7 +252,7 @@ def add_custom_source(request):
         country = _country(request)
         registry, choices, interval = with_custom_sources(get_source_registry()), source_choices(), freshness_seconds()
         preferences_form = NewsPreferencesForm(registry=registry, choices=choices, freshness=interval)
-        context = _context(registry, choices, preferences_form, country, interval)
+        context = _context(registry, choices, preferences_form, country)
         context["custom_form"] = form
         return render_page(request, "settings", page_template="news/settings.html", context=context)
     record = CustomSource(kind=form.cleaned_data["kind"], url=form.cleaned_data["location"], name=form.cleaned_data["name"])
