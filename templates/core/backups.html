@@ -2,19 +2,17 @@
     {% include 'core/partials/settings_nav.html' with section='backup' heading_id='backups-title' %}
     {% if page_error %}<p class="source-settings-message is-warning" role="alert">{{ page_error }}</p>{% endif %}
 
-    <div class="settings-grid"><section class="backup-section settings-card" aria-labelledby="export-title">
-        <h2 id="export-title">{% include 'core/partials/icon.html' with name='download' %} Export</h2><p>Download your journal, images and shared preferences.</p>
-
-        <a class="journal-button is-primary" href="{% url 'core:export_backup' %}" hx-boost="false">Download backup ZIP</a>
-    </section>
-
-    <section class="backup-section settings-card" aria-labelledby="import-title">
-        <h2 id="import-title">{% include 'core/partials/icon.html' with name='upload' %} Import</h2>
-        <p>Review a backup before importing. Maximum size: {{ backup_limit_mb }} MB.</p>
-        <form method="post" action="{% url 'core:backups' %}" enctype="multipart/form-data" hx-encoding="multipart/form-data" hx-disabled-elt="find button" hx-indicator="find .htmx-indicator" class="backup-form">
+    <section class="backup-section backup-panel settings-card" aria-labelledby="backup-restore-title">
+        <h2 id="backup-restore-title">Backup &amp; Restore</h2>
+        <form method="post" action="{% url 'core:backups' %}" enctype="multipart/form-data" hx-encoding="multipart/form-data" hx-disabled-elt="find button" hx-indicator="find .htmx-indicator" class="backup-form backup-upload-form" data-backup-upload>
             {% csrf_token %}<input type="hidden" name="action" value="preview">
-            {{ upload_form.as_p }}
-            <button class="journal-button" type="submit">Preview import</button><span class="htmx-indicator" role="status">Reading backup…</span>
+            <div class="backup-actions">
+                <a class="journal-button" href="{% url 'core:export_backup' %}" hx-boost="false">Create Backup</a>
+                <button class="journal-button" type="button" data-backup-open>Load Backup</button>
+            </div>
+            <div hidden>{{ upload_form.archive }}</div>
+            {{ upload_form.non_field_errors }}{{ upload_form.archive.errors }}
+            <span class="htmx-indicator" role="status">Reading backup…</span>
         </form>
         {% if summary %}
         <div class="backup-preview" aria-labelledby="preview-title">
@@ -35,9 +33,4 @@
         {% if not summary %}{{ confirmation_form.non_field_errors }}{% endif %}
     </section>
 
-    <section class="backup-section settings-card" aria-labelledby="manual-backup-title"><h2 id="manual-backup-title">Backup info</h2><p>ZIP backups include saved research, images, country favorites, color presets, source preferences and all Preferences choices.</p><details><summary>Details &amp; full local copy</summary><p>Feed caches and browser positions such as the last map view and player position are excluded. Save open editors before exporting.</p>
-
-        <p>For an exact snapshot, stop the server, copy <code>db.sqlite3</code> and the entire <code>media</code> folder together, then restart. Store the copy somewhere separate from this project.</p>
-
-    </details></section></div>
 </section>

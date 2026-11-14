@@ -143,7 +143,6 @@ def backups(request):
             page_error = str(error)
     return render_page(request, "settings", page_template="core/backups.html", context={
         "upload_form": upload, "confirmation_form": confirmation, "summary": summary,
-        "backup_limit_mb": settings.BACKUP_MAX_BYTES // (1024 * 1024),
         "page_error": page_error,
     })
 

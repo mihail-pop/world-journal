@@ -152,11 +152,12 @@ details[open] > summary { margin-bottom: .9rem; color: var(--ui-text); }
 .journal-back-link { display: inline-flex; align-items: center; gap: .35rem; color: var(--ui-muted); margin: 0; font-size: .95rem; text-decoration: none; }
 /* Settings: real section links, regular cards and a consistent three-column grid. */
 .settings-page { max-width: 76rem; }
-.settings-page-heading { margin-bottom: 1.2rem; }
-.settings-tabs { display: flex; gap: 1.2rem; border-bottom: 1px solid var(--ui-border); margin-bottom: 1.6rem; }
-.settings-tabs a { display: inline-flex; align-items: center; gap: .45rem; padding: .65rem .15rem .8rem; border-bottom: 2px solid transparent; color: var(--ui-muted); text-decoration: none; font-size: .95rem; }
-.settings-tabs a:hover { color: var(--ui-text); }
-.settings-tabs a[aria-current=page] { color: var(--ui-text); border-color: var(--ui-accent); }
+.settings-page-heading { margin-bottom: 1rem; }
+.settings-page-heading h1 { font-size: 1.8rem; font-weight: 700; line-height: normal; letter-spacing: normal; color: var(--text-primary); }
+.settings-tabs { display: flex; gap: 0; border-bottom: 2px solid var(--ui-border); margin-bottom: 2rem; }
+.settings-tabs a { display: inline-flex; align-items: center; justify-content: center; padding: 1rem 2rem; border-top: 3px solid transparent; border-radius: 4px 4px 0 0; background: var(--bg-tertiary); color: var(--text-primary); text-decoration: none; font-size: 1rem; font-weight: 600; transition: background-color .3s ease, color .3s ease, border-color .3s ease; }
+.settings-tabs a:hover { background: var(--ui-surface); color: var(--text-secondary); }
+.settings-tabs a[aria-current=page] { background: var(--ui-surface); color: var(--text-secondary); border-top-color: var(--text-secondary); }
 .settings-grid, .source-card-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.15rem; align-items: stretch; }
 .settings-grid.settings-preferences-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) minmax(18rem, 1fr); }
 .settings-card { min-width: 0; padding: 1.3rem; border: 1px solid var(--ui-border); border-radius: 7px; background: var(--ui-surface); overflow-wrap: anywhere; }
@@ -287,8 +288,12 @@ details[open] > summary { margin-bottom: .9rem; color: var(--ui-text); }
 .custom-extra-feed-add input { width: 100%; min-width: 0; min-height: 2.5rem; }
 @media (max-width: 600px) { .custom-source-fields { grid-template-columns: minmax(0, 1fr); } }
 .backup-section { margin: 0; }
-.backup-inclusions { margin-block: 1rem; }
-.backup-inclusions p { font-size: .9rem; color: var(--ui-muted); }
+.backup-panel { width: 100%; max-width: 900px; margin-inline: auto; }
+.backup-actions { display: flex; justify-content: center; flex-wrap: wrap; gap: 1rem; }
+.backup-actions .journal-button { min-width: 180px; padding: .8rem 1.5rem; border-width: 2px; border-radius: 6px; background: var(--bg-tertiary); color: var(--text-secondary); font-size: 1rem; font-weight: 600; }
+.backup-actions .journal-button:hover { border-color: var(--text-secondary); }
+.backup-upload-form > .htmx-indicator { display: none; }
+.backup-upload-form.htmx-request > .htmx-indicator { display: block; margin-top: 1rem; text-align: center; }
 .backup-form { margin-block: 1rem; }
 .backup-form p { display: grid; gap: .5rem; }
 .backup-form p:has(input[type=checkbox]) { display: block; }
@@ -486,9 +491,8 @@ details[open] > summary { margin-bottom: .9rem; color: var(--ui-text); }
 @media (max-width: 46rem) {
     #app-content { padding: 1.15rem .9rem 3rem; }
     .page-standard h1 { font-size: 1.25rem; }
-    .settings-tabs { gap: 0; justify-content: space-between; }
-    .settings-tabs a { gap: .3rem; padding: .5rem .15rem .7rem; font-size: .9rem; }
-    .settings-tabs .icon { width: 1rem; height: 1rem; }
+    .settings-tabs { flex-wrap: wrap; gap: 2px; }
+    .settings-tabs a { flex: 1 1 auto; padding: .8rem 1.2rem; font-size: .9rem; white-space: nowrap; }
     .settings-grid, .settings-grid.settings-preferences-grid, .source-card-grid { grid-template-columns: minmax(0, 1fr); }
     .settings-card-medium, .settings-card-wide { grid-column: auto; }
     .settings-card { padding: 1.1rem; }
@@ -561,7 +565,6 @@ html { overflow-y: scroll; scrollbar-gutter: stable; }
 .app-name, h1, h2, h3, h4, .journal-rendered, code, pre { font-family: var(--ui-font-family); }
 .settings-grid, .source-card-grid { align-items: stretch; }
 .settings-card > .journal-button { align-self: flex-start; }
-.settings-tabs a { font-size: 1rem; }
 .settings-card > p, .settings-help p { font-size: 1rem; }
 .settings-toggle-list { align-items: stretch; }
 .country-heading { padding-right: 5.5rem; }
@@ -847,9 +850,6 @@ select.select-native { display: none !important; }
     .news-board-card h2 { font-size: 1.1rem; }
 }
 @media (max-width: 46rem) {
-    .settings-tabs { gap: .6rem; flex-wrap: wrap; justify-content: flex-start; }
-    .settings-tabs a { font-size: .95rem; }
-    .settings-tabs .icon { display: none; }
     .country-heading { gap: .6rem; padding-right: 4.75rem; }
     .country-heading h2 { font-size: 1.4rem; }
     .country-flag { width: 3.25rem; height: 2.4rem; }

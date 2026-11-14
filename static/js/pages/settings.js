@@ -168,7 +168,18 @@ export function registerSettingsPage() {
         return;
     }
     lifecycleRegistered = true;
+    document.addEventListener("click", event => {
+        const button = event.target.closest("[data-backup-open]");
+        if (!button) return;
+        const input = button.closest("[data-backup-upload]").querySelector('input[type="file"]');
+        input.value = "";
+        input.click();
+    });
     document.addEventListener("change", event => {
+        if (event.target.matches('[data-backup-upload] input[type="file"]')) {
+            if (event.target.files.length) event.target.form.requestSubmit();
+            return;
+        }
         if (!event.target.matches("[data-app-font]")) return;
         writeAppPreferences({font: event.target.value}, {notifySaved: true});
     });
