@@ -9,7 +9,7 @@ services:
     environment:
       - PYTHONDONTWRITEBYTECODE=1
       - PYTHONUNBUFFERED=1
-      - WORLD_JOURNAL_DATA_DIR=/app/runtime
+      - WORLD_JOURNAL_DATA_DIR=/app/database
       # Add your timezone, otherwise it will default to UTC
       # - TZ=Europe/Bucharest
       # Use a unique value before exposing the app remotely
@@ -19,7 +19,7 @@ services:
       # Enable authentication to secure your app
       # - REQUIRE_LOGIN=True
     volumes:
-      - ./runtime:/app/runtime
+      - ./database:/app/database
       - ./media:/app/media
     security_opt:
       - no-new-privileges:true

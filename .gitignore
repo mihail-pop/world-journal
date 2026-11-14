@@ -8,9 +8,11 @@ __pycache__/
 .env.*
 
 # Django runtime data
-db.sqlite3
-db.sqlite3-journal
-media/
+db.sqlite3*
+database/*
+!database/.gitkeep
+media/*
+!media/.gitkeep
 .backup-imports/
 runtime/
 staticfiles/

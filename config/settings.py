@@ -21,7 +21,11 @@ os.environ['DJANGO_RUNSERVER_HIDE_WARNING'] = 'true'
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
-RUNTIME_ROOT = Path(os.environ.get("WORLD_JOURNAL_DATA_DIR", BASE_DIR))
+# Writable files stay separate from the bundled country/feed data in data/.
+DATABASE_ROOT = Path(os.environ.get("WORLD_JOURNAL_DATA_DIR") or BASE_DIR / "database").expanduser()
+if not DATABASE_ROOT.is_absolute():
+    DATABASE_ROOT = BASE_DIR / DATABASE_ROOT
+DATABASE_ROOT.mkdir(parents=True, exist_ok=True)
 APP_DISPLAY_NAME = 'World Journal'
 MAP_STYLE_URL = 'https://tiles.openfreemap.org/styles/liberty'
 MAP_TERRAIN_CONFIG = {
@@ -146,7 +150,7 @@ WSGI_APPLICATION = 'config.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': RUNTIME_ROOT / 'db.sqlite3',
+        'NAME': DATABASE_ROOT / 'db.sqlite3',
         # Cache and archive transactions read before they write. Acquire the
         # write lock up front so SQLite can wait for a concurrent writer.
         'OPTIONS': {'transaction_mode': 'IMMEDIATE', 'timeout': 30},
@@ -226,7 +230,7 @@ MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 JOURNAL_IMAGE_MAX_BYTES = 10 * 1024 * 1024
 BACKUP_MAX_BYTES = 512 * 1024 * 1024
-BACKUP_STAGING_ROOT = RUNTIME_ROOT / ".backup-imports"
+BACKUP_STAGING_ROOT = DATABASE_ROOT / ".backup-imports"
 
 # Country facts ship as a dated local Wikidata snapshot; no API calls on browsing.
 COUNTRY_FACTS_PATH = BASE_DIR / "data" / "country_facts.json"
