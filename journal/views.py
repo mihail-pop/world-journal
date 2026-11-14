@@ -1,16 +1,18 @@
 import json
 from datetime import UTC
+from hashlib import sha256
 
 from django import forms
 from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.core.paginator import Paginator
-from django.db.models import Count
+from django.db.models import Count, Max
 from django.http import HttpResponse, JsonResponse, QueryDict
-from django.shortcuts import get_object_or_404, redirect
+from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils.dateparse import parse_datetime
 from django.views.decorators.http import require_http_methods
+from django.views.decorators.cache import never_cache
 
 from core.database import database_write, write_transaction
 from core.views import render_page
@@ -47,23 +49,47 @@ def index(request):
     return navigate(request, reverse("journal:edit", args=[latest]) if latest else reverse("journal:new"))
 
 
+@never_cache
 @require_http_methods(["GET"])
 def list_entries(request):
     entries = filtered_entries(request.GET)
-    paginator = Paginator(entries, 30)
     params = request.GET.copy()
     params.pop("page", None)
-    return page(request, "core/partials/journal.html", {
-        "entries_page": paginator.get_page(request.GET.get("page")),
+    params.pop("v", None)
+    signature = json.dumps(sorted(params.lists()), separators=(",", ":"))
+    query_signature = sha256(signature.encode()).hexdigest()[:20]
+    summary = filtered_entries(params, for_display=False).values("pk", "updated_at").aggregate(
+        total=Count("pk", distinct=True), latest=Max("updated_at"))
+    version = sha256(f"{query_signature}:{summary['total']}:{summary['latest']}".encode()).hexdigest()[:20]
+    is_paging = request.headers.get("X-Journal-Paging") == "1"
+    if is_paging and request.GET.get("v") and request.GET["v"] != version:
+        return HttpResponse(status=409)
+    paginator = Paginator(entries, 30)
+    paginator.count = summary["total"]
+    entries_page = paginator.get_page(request.GET.get("page"))
+    refresh_url = reverse("journal:list") + ("?" + params.urlencode() if params else "")
+    next_url = ""
+    if entries_page.has_next():
+        next_params = params.copy()
+        next_params["page"], next_params["v"] = str(entries_page.next_page_number()), version
+        next_url = reverse("journal:list") + "?" + next_params.urlencode()
+    context = {
+        "entries_page": entries_page, "paging_version": version, "query_signature": query_signature,
+        "refresh_url": refresh_url, "next_url": next_url,
+    }
+    if is_paging:
+        context["total_entries"] = summary["total"] or Entry.objects.exists()
+        return render(request, "journal/partials/entry_results.html", context)
+    context.update({
         "collections": Collection.objects.annotate(entry_count=Count("entries")),
         "unfiled_count": Entry.objects.filter(collection__isnull=True).count(),
         "countries": Country.objects.all(),
         "entry_types": EntryType.choices,
         "filters": request.GET,
         "selected_countries": [code.upper() for code in request.GET.getlist("country")],
-        "pagination_query": params.urlencode(),
         "total_entries": Entry.objects.count(),
     })
+    return page(request, "core/partials/journal.html", context)
 
 
 @require_http_methods(["GET"])

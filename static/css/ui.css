@@ -819,8 +819,8 @@ select.select-native { display: none !important; }
 .news-board-filters .settings-field { margin: 0; min-width: 0; }
 .news-board-filters > button { align-self: end; }
 .news-search-bar { grid-column: 1 / -1; margin-bottom: .35rem; }
-.news-load-more { display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: .75rem; min-height: 4.5rem; padding: 1rem 0; color: var(--ui-muted); overflow-anchor: none; }
-.news-load-more [hidden] { display: none; }
+.news-load-more, .journal-load-more { display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: .75rem; min-height: 4.5rem; padding: 1rem 0; color: var(--ui-muted); overflow-anchor: none; }
+.news-load-more [hidden], .journal-load-more [hidden] { display: none; }
 .news-board-about { margin: 1rem 0 1.3rem; }
 .news-board-about p { max-width: 65rem; }
 .news-board-summary { display: flex; justify-content: space-between; flex-wrap: wrap; gap: .5rem; margin-bottom: 1rem; color: var(--ui-muted); font-size: .95rem; }

@@ -1,5 +1,6 @@
 import { registerJournalAutosave } from "./journal_autosave.js";
 import { notify } from "../notifications.js";
+import { registerInfiniteScroll } from "../infinite_scroll.js";
 
 let registered = false;
 const pendingPreviews = new Set();
@@ -194,6 +195,14 @@ function showFieldErrors(editor, {errors = {}, focus = false}) {
 export function registerJournalPage() {
     if (registered) return;
     registered = true;
+    registerInfiniteScroll({
+        prefix: "journal",
+        header: "X-Journal-Paging",
+        changedMessage: "Your journal has changed. Refresh these results to continue.",
+        reloadCollection: "[data-journal-collection]",
+        reloadRoot: "[data-journal-list]",
+        reloadForm: ".journal-search-form",
+    });
     registerJournalAutosave();
     function openCard(event) {
         const card = event.target.closest("[data-journal-entry-card]");

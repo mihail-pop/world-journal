@@ -2,6 +2,7 @@
 // so canvas state, form values, file selections and text cursors survive.
 // Other pages still use normal server-rendered HTMX navigation.
 const remembered = new Map();
+let journalList = null;
 let activePage = null;
 let activeUrl = null;
 let outgoingUrl = null;
@@ -70,6 +71,7 @@ export function registerPageMemory() {
     activeUrl = currentUrl();
     if (activePage && ["map", "journal", "news", "countries"].includes(activePage.dataset.page)) {
         remembered.set(activePage.dataset.page, capturePage(activePage, activeUrl));
+        if (activePage.matches("[data-journal-list]")) journalList = remembered.get("journal");
     }
     updateHeaderLinks();
 
@@ -80,14 +82,16 @@ export function registerPageMemory() {
             if (!incoming) return false;
             const outgoing = target.querySelector(":scope > [data-page]");
             const name = incoming.dataset.page;
+            const preserveList = outgoing?.matches("[data-journal-list]") && resetPage !== "journal";
             const preserve = outgoing && ["map", "journal", "news", "countries"].includes(outgoing.dataset.page)
                 && resetPage !== outgoing.dataset.page
                 && (outgoing.dataset.page === "map"
-                    || outgoing.dataset.page === "journal" && (name !== "journal" || resumeJournal)
+                    || outgoing.dataset.page === "journal" && (name !== "journal" || resumeJournal || preserveList)
                     || outgoing.dataset.page === "news" && (name !== "news" || resumeNews)
                     || outgoing.dataset.page === "countries" && (name !== "countries" || resumeCountries));
             if (preserve) {
                 remembered.set(outgoing.dataset.page, capturePage(outgoing, outgoingUrl ?? activeUrl));
+                if (preserveList) journalList = remembered.get("journal");
             }
             document.dispatchEvent(new CustomEvent("world-journal:page-cleanup", {
                 detail: {preserveMap: resetPage !== "map", preserveJournal: Boolean(preserve && outgoing.dataset.page === "journal"), preserveCountries: Boolean(preserve && outgoing.dataset.page === "countries"), page: outgoing?.dataset.page},
@@ -96,9 +100,15 @@ export function registerPageMemory() {
             // remain in the target and receive HTMX's ordinary cleanup instead.
             if (preserve) outgoing.remove();
             if (resetPage) remembered.delete(resetPage);
-            const saved = remembered.get(name);
+            const saved = incoming.matches("[data-journal-list]") && journalList?.url === currentUrl() && !resetPage
+                ? journalList : remembered.get(name);
+            const incomingList = incoming.querySelector("[data-journal-collection]");
+            const savedList = saved?.page.querySelector("[data-journal-collection]");
+            const changedList = incomingList && savedList
+                && (incomingList.dataset.journalVersion !== savedList.dataset.journalVersion
+                    || incomingList.dataset.journalQuery !== savedList.dataset.journalQuery);
             const refreshJournal = name === "journal" && resumeJournal && saved?.url === currentUrl()
-                && saved.journalDirty && !saved.page.querySelector("[data-journal-editor]");
+                && (saved.journalDirty || changedList) && !saved.page.querySelector("[data-journal-editor]");
             const reuse = !refreshJournal && saved && (name === "map"
                 || (name === "journal" && resumeJournal && saved.url === currentUrl())
                 || (name === "news" && resumeNews && saved.url === currentUrl())
@@ -190,6 +200,10 @@ export function registerPageMemory() {
             // Replace the one remembered Journal screen after in-Journal
             // navigation/save. A saved/deleted record never resurrects its editor.
             remembered.set(activePage.dataset.page, capturePage(activePage, activeUrl));
+            if (activePage.matches("[data-journal-list]")) {
+                journalList = remembered.get("journal");
+                journalList.journalDirty = false;
+            }
         }
         updateHeaderLinks();
     });
@@ -222,6 +236,7 @@ export function registerPageMemory() {
         }
     });
     document.addEventListener("world-journal:data-changed", event => {
+        if (event.detail?.path?.startsWith("/journal/") && journalList) journalList.journalDirty = true;
         if (event.detail?.path !== document.body.dataset.journalQuickSaveUrl) return;
         const saved = remembered.get("journal");
         if (saved) saved.journalDirty = true;
