@@ -115,7 +115,12 @@ export function registerPageMemory() {
                 }
                 const results = incoming.querySelector("[data-news-board-results]");
                 const previousResults = saved.page.querySelector("[data-news-board-results]");
-                if (results && previousResults) {
+                const currentCollection = results?.querySelector("[data-news-collection]");
+                const previousCollection = previousResults?.querySelector("[data-news-collection]");
+                const sameResults = currentCollection && previousCollection
+                    && currentCollection.dataset.newsVersion === previousCollection.dataset.newsVersion
+                    && currentCollection.dataset.newsQuery === previousCollection.dataset.newsQuery;
+                if (results && previousResults && !sameResults) {
                     const openItems = new Set([...previousResults.querySelectorAll("[data-news-item] details[open]")]
                         .map(details => details.closest("[data-news-item]").dataset.newsItem));
                     for (const card of results.querySelectorAll("[data-news-item]")) {

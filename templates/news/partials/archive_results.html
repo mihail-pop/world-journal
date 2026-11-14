@@ -1,7 +1,8 @@
+<div data-news-collection data-news-version="{{ paging_version }}" data-news-query="{{ query_signature }}" data-news-refresh-url="{{ refresh_url }}">
 {% if unavailable %}<p class="country-news-message">Earlier coverage is temporarily unavailable.</p><button class="journal-button" type="button" data-archive-retry>Retry</button>
 {% elif cards %}
-    <p class="news-archive-count">{{ result_page.paginator.count }} retained {{ kind }} · Page {{ result_page.number }} of {{ result_page.paginator.num_pages }}</p>
-    <ol class="{% if kind == 'videos' %}country-video-list{% else %}country-news-list{% endif %}">
+    <p class="news-archive-count">{{ result_page.paginator.count }} retained {{ kind }}{% if query %} matching “{{ query }}”{% endif %}</p>
+    <ol class="{% if kind == 'videos' %}country-video-list{% else %}country-news-list{% endif %}" data-news-items>
     {% for card in cards %}{% with item=card.item %}
         {% if kind == 'videos' %}
             <li class="country-video-item" data-news-item="archive-{{ item.identity }}">
@@ -12,7 +13,7 @@
                 </div>
             </li>
         {% else %}
-            <li class="country-news-item"><a class="country-news-link" href="{{ item.link }}" target="_blank" rel="noopener noreferrer">{{ item.title }}</a>
+            <li class="country-news-item" data-news-item="archive-{{ item.identity }}"><a class="country-news-link" href="{{ item.link }}" target="_blank" rel="noopener noreferrer">{{ item.title }}</a>
                 <p class="country-news-byline"><span>{{ item.publisher }}</span>{% if item.published_at %}<time datetime="{{ item.published_at|date:'c' }}">{{ item.published_at|date:'M j, Y, H:i' }}</time>{% else %}<span>First seen {{ item.first_seen_at|date:'M j, Y' }}</span>{% endif %}</p>
                 {% if item.summary %}<details class="news-summary-details"><summary>Summary</summary><p class="country-news-summary">{{ item.summary }}</p></details>{% endif %}
                 <a class="news-save-journal" href="{{ card.save_url }}" hx-boost="true" hx-target="#app-content" hx-push-url="true">{% include 'core/partials/icon.html' with name='bookmark' %} Save</a>
@@ -20,8 +21,7 @@
         {% endif %}
     {% endwith %}{% endfor %}
     </ol>
-    <nav class="news-archive-pagination" aria-label="Earlier coverage pages">
-        {% if previous_url %}<a class="journal-button" href="{{ previous_url }}" hx-get="{{ previous_url }}" hx-target="closest [data-archive-content]" hx-swap="innerHTML">Previous</a>{% endif %}
-        {% if next_url %}<a class="journal-button" href="{{ next_url }}" hx-get="{{ next_url }}" hx-target="closest [data-archive-content]" hx-swap="innerHTML">Next</a>{% endif %}
-    </nav>
+    {% include 'news/partials/load_more.html' %}
+{% elif query %}<p class="country-news-message">No earlier coverage matches “{{ query }}”.</p>
 {% else %}<p class="country-news-message">No earlier coverage has been retained here yet. History builds from feeds the app encounters while running; it does not retrieve missing past editions.</p>{% endif %}
+</div>

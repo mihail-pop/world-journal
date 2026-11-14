@@ -1,0 +1,6 @@
+{% if next_url %}<div class="news-load-more" data-news-pagination>
+    <a class="journal-button" href="{{ next_url }}" data-news-more>Load more</a>
+    <span role="status" data-news-loading hidden>Loading more…</span>
+    <span role="status" data-news-page-error hidden></span>
+    <button class="journal-button" type="button" data-news-reload hidden>Refresh results</button>
+</div>{% endif %}

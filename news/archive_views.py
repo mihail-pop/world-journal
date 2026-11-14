@@ -4,7 +4,7 @@ from django.conf import settings
 from django.core.paginator import Paginator
 from django.core.cache import cache
 from django.db import DatabaseError
-from django.http import Http404
+from django.http import Http404, HttpResponse
 from django.shortcuts import render
 from django.urls import reverse
 from django.views.decorators.cache import never_cache
@@ -12,7 +12,8 @@ from django.views.decorators.http import require_GET
 
 from .adapters.youtube import build_thumbnail_url
 from .adapters.rss import clean_article_text, is_google_news_link
-from .services.archive import archived_items
+from .services.archive import archived_items, country_revisions, enabled_feed_ids, identities, revision
+from .paging import page_changed, paging_time, result_version, search_archive, search_query
 from .services.cache import deserialize_items, deserialize_video_items, fixed_feed_cache_key, google_cache_key, youtube_cache_key
 from .services.country_news import _countries_by_code, get_country_news_page
 from .services.presentation import CachedDrawers
@@ -27,6 +28,7 @@ def earlier_coverage(request):
     kind = request.GET.get("kind", "articles")
     code = request.GET.get("country", "WORLD").upper()
     category = request.GET.get("source", "all")
+    query, at = search_query(request.GET), paging_time(request.GET)
     if kind not in {"articles", "videos"} or code != "WORLD" and code not in _countries_by_code():
         raise Http404("Unknown country coverage")
     excluded = ()
@@ -61,6 +63,13 @@ def earlier_coverage(request):
         excluded = tuple(current)
     try:
         rows = archived_items(kind, None if code == "WORLD" else code, category=category, exclude=excluded, registry=registry)
+        rows = search_archive(rows.filter(first_seen_at__lte=at), query)
+        query_signature = result_version([kind, code, category, query,
+            enabled_feed_ids(registry, kind, None if code == "WORLD" else code, category)])
+        archive_stamp = revision() if code == "WORLD" else country_revisions([code])[code]
+        version = result_version([query_signature, archive_stamp, [identities(item, kind) for item in excluded]])
+        if page_changed(request, version):
+            return HttpResponse(status=409)
         result_page = Paginator(rows, settings.NEWS_ARCHIVE_PAGE_SIZE).get_page(request.GET.get("page", "1"))
         cards = []
         for item in result_page:
@@ -79,9 +88,11 @@ def earlier_coverage(request):
             cards.append({"item":item, "save_url":reverse("journal:new")+"?"+urlencode(initial),
                           "thumbnail_url":build_thumbnail_url(item.video_id) if kind == "videos" else ""})
         def page_url(number):
-            return reverse("news:archive") + "?" + urlencode({"country":code, "kind":kind, "source":category, "page":number})
+            return reverse("news:archive") + "?" + urlencode({"country":code, "kind":kind, "source":category,
+                "q":query, "page":number, "v":version, "at":at.isoformat()})
         context = {"cards":cards, "kind":kind, "result_page":result_page,
-                   "previous_url":page_url(result_page.previous_page_number()) if result_page.has_previous() else "",
+                   "query": query, "paging_version": version, "query_signature": query_signature,
+                   "refresh_url":reverse("news:archive")+"?"+urlencode({"country":code, "kind":kind, "source":category, "q":query}),
                    "next_url":page_url(result_page.next_page_number()) if result_page.has_next() else ""}
     except DatabaseError:
         context = {"cards":[], "kind":kind, "unavailable":True}

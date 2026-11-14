@@ -6,6 +6,11 @@
     </nav>
     <form class="news-board-filters" method="get" action="{% url 'news:index' %}" hx-get="{% url 'news:index' %}" hx-target="#app-content" hx-push-url="true" hx-swap="innerHTML show:top" hx-sync="this:replace" data-news-board-filters>
         <input type="hidden" name="tab" value="{{ tab }}">
+        <div class="journal-search-bar news-search-bar">
+            {% include 'core/partials/icon.html' with name='search' %}
+            <input type="search" id="news-search" name="q" value="{{ options.q }}" maxlength="200" placeholder="Search headlines, sources and summaries…" aria-label="Search saved news" autocomplete="off" data-news-search>
+            <button class="journal-button" type="submit">Search</button>
+        </div>
         <div class="settings-field"><label for="news-source">{% if tab == 'videos' %}Channel{% else %}Source{% endif %}</label><select name="source" id="news-source">{% for value,label in options.sources %}<option value="{{ value }}" {% if options.source == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
         {% if tab == 'articles' %}{% if options.source == 'all' or options.source == 'google' %}<div class="settings-field"><label for="news-country">Google coverage</label><select name="country" id="news-country" data-country-select><option value="WORLD" {% if options.country == 'WORLD' %}selected{% endif %}>World headlines</option>{% for country in countries %}<option value="{{ country.iso_a2 }}" {% if options.country == country.iso_a2 %}selected{% endif %}>{{ country.name }}</option>{% endfor %}</select></div>{% endif %}{% endif %}
         <div class="settings-field"><label for="news-period">Published</label><select name="period" id="news-period"><option value="day" {% if options.period == 'day' %}selected{% endif %}>Past 24 hours</option><option value="week" {% if options.period == 'week' %}selected{% endif %}>{% if tab == 'videos' %}Past 3 days{% else %}Past 7 days{% endif %}</option><option value="all" {% if options.period == 'all' %}selected{% endif %}>All recent feed items</option></select></div>

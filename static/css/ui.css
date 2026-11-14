@@ -818,6 +818,9 @@ select.select-native { display: none !important; }
 .news-board-filters { display: grid; grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); gap: .85rem; align-items: end; }
 .news-board-filters .settings-field { margin: 0; min-width: 0; }
 .news-board-filters > button { align-self: end; }
+.news-search-bar { grid-column: 1 / -1; margin-bottom: .35rem; }
+.news-load-more { display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: .75rem; min-height: 4.5rem; padding: 1rem 0; color: var(--ui-muted); overflow-anchor: none; }
+.news-load-more [hidden] { display: none; }
 .news-board-about { margin: 1rem 0 1.3rem; }
 .news-board-about p { max-width: 65rem; }
 .news-board-summary { display: flex; justify-content: space-between; flex-wrap: wrap; gap: .5rem; margin-bottom: 1rem; color: var(--ui-muted); font-size: .95rem; }
@@ -859,7 +862,6 @@ select.select-native { display: none !important; }
 .news-board-thumbnail:hover::after { background: #0004; }
 .news-board-thumbnail:hover .news-board-thumbnail-play { background: #000e; border-color: #fff; }
 .news-board-thumbnail:focus-visible { outline: 3px solid var(--ui-accent); outline-offset: -3px; }
-.news-board-pagination { display: flex; justify-content: center; align-items: center; gap: 1rem; margin-top: 1.5rem; color: var(--ui-muted); }
 .news-board-empty { padding: 2rem 1rem; border: 1px dashed var(--ui-border); border-radius: 6px; text-align: center; color: var(--ui-muted); line-height: 1.7; }
 @media (max-width: 65rem) { .news-board-videos { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 46rem) {
@@ -905,7 +907,6 @@ html::-webkit-scrollbar-thumb { background: var(--ui-border); border: 3px solid 
 .news-archive > summary { cursor: pointer; padding-block: .5rem; color: var(--ui-text); font-weight: 600; }
 .news-archive > summary span { margin-left: .5rem; color: var(--ui-muted); font-size: .85rem; font-weight: 400; }
 .news-archive-count { color: var(--ui-muted); font-size: .85rem; }
-.news-archive-pagination { display: flex; gap: .75rem; margin-top: 1rem; }
 
 /* Countries: a compact index beside the full country reading surface. */
 .page-countries { max-width: 90rem; margin-inline: auto; }

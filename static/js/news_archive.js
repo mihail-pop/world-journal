@@ -7,8 +7,11 @@ function load(details, force = false) {
     const target = details.querySelector("[data-archive-content]");
     if (!target || !details.isConnected) return;
     const version = `${generation}:${details.dataset.archiveRevision || ""}`;
-    if (!force && target.dataset.archiveLoaded === version) return;
+    if (!force && (target.dataset.archiveLoaded === version || target.dataset.archivePending === version)) return;
     target.dataset.archiveRequested = version;
+    // A newly opened search can arrive before HTMX's settling pass has wired
+    // this fragment's custom trigger. Process it before dispatching the event.
+    window.htmx?.process(target);
     window.htmx?.trigger(target,"archive-open");
 }
 
@@ -37,6 +40,14 @@ export function registerNewsArchive() {
     document.body.addEventListener("htmx:afterSwap",event => {
         const target = event.detail.target;
         if (target?.matches("[data-archive-content]")) target.dataset.archiveLoaded = target.dataset.archiveRequested;
+    });
+    document.body.addEventListener("htmx:beforeRequest",event => {
+        const target = event.detail.elt;
+        if (target?.matches("[data-archive-content]")) target.dataset.archivePending = target.dataset.archiveRequested;
+    });
+    document.body.addEventListener("htmx:afterRequest",event => {
+        const target = event.detail.elt;
+        if (target?.matches("[data-archive-content]")) delete target.dataset.archivePending;
     });
     document.addEventListener("world-journal:page-ready",() => {
         for (const details of document.querySelectorAll("[data-news-archive][open]")) load(details);

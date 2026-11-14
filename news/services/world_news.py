@@ -9,6 +9,7 @@ from django.core.paginator import Paginator
 from django.urls import reverse
 
 from news.preferences import freshness_seconds
+from news.paging import paging_time, result_version, search_query, search_terms
 from news.types import SourceKind
 
 from .cache import fixed_feed_cache_key, google_cache_key, google_pause_until, youtube_cache_key
@@ -41,11 +42,12 @@ def page_options(query, registry):
     if sort not in dict(sorts):
         sort = sorts[0][0]
     return {"tab": tab, "source": source, "country": country, "period": period, "sort": sort,
+            "q": search_query(query), "at": paging_time(query),
             "page": query.get("page", "1"), "sources": sources, "sorts": sorts}
 
 
 def news_url(options, **changes):
-    values = {key: options[key] for key in ("tab", "source", "country", "period", "sort")}
+    values = {key: options[key] for key in ("tab", "source", "country", "period", "sort", "q")}
     values.update(changes)
     return reverse("news:index") + "?" + urlencode(values)
 
@@ -84,7 +86,7 @@ def _balanced(items):
 class CachedNews:
     def __init__(self, options, registry):
         self.options, self.registry = options, registry
-        self.interval, self.now = freshness_seconds(), datetime.now(UTC)
+        self.interval, self.now = freshness_seconds(), options["at"]
         self.google = registry.get("google_news_country")
         selected = options["source"]
         self.google_enabled = options["tab"] == "articles" and selected in {"all", "google"} and self.google.enabled_by_default
@@ -122,12 +124,19 @@ class CachedNews:
             if result.refresh_failed:
                 errors.append((source.display_name, "Showing cached videos." if result.items else result.error or "Channel temporarily unavailable."))
 
-        cutoff = self.now - timedelta(days=1 if self.options["period"] == "day" else 7)
+        days = 1 if self.options["period"] == "day" else 3 if self.options["tab"] == "videos" else 7
+        cutoff = self.now - timedelta(days=days)
+        terms = search_terms(self.options["q"])
         def in_period(item):
             return self.options["period"] == "all" or bool(item.published_at and cutoff <= item.published_at <= self.now)
-        google_items = [item for item in google_items if in_period(item)]
-        regional_items = [item for item in regional_items if in_period(item)]
-        video_items = [item for item in video_items if in_period(item)]
+        def matches(item):
+            fields = [item.title, getattr(item, "publisher", ""), getattr(item, "provider_name", ""),
+                      getattr(item, "channel_name", ""), getattr(item, "summary", "")]
+            text = " ".join(fields).casefold()
+            return in_period(item) and all(term in text for term in terms)
+        google_items = [item for item in google_items if matches(item)]
+        regional_items = [item for item in regional_items if matches(item)]
+        video_items = [item for item in video_items if matches(item)]
         if self.options["tab"] == "articles":
             items = _unique_articles(google_items + _balanced(_unique_articles(regional_items)))
             if self.options["sort"] == "newest":
@@ -139,6 +148,10 @@ class CachedNews:
             else:
                 items.sort(key=_newest, reverse=True)
         page = Paginator(items, 30).get_page(self.options["page"])
+        query_signature = result_version([
+            {key: self.options[key] for key in ("tab", "source", "country", "period", "sort", "q")}, self.keys,
+        ])
+        version = result_version([query_signature, [item.video_id if self.options["tab"] == "videos" else item.link for item in items]])
         cards = []
         for item in page:
             video = self.options["tab"] == "videos"
@@ -155,8 +168,9 @@ class CachedNews:
                       or not (snapshot.get("last_success_at") or snapshot.get("last_attempt_at")) for key in self.keys)
         return {
             "cards": cards, "tab": self.options["tab"], "pending": pending,
+            "query": self.options["q"], "paging_version": version, "query_signature": query_signature,
+            "refresh_url": news_url(self.options),
             "errors": errors, "enabled_count": len(self.keys), "total": len(items), "result_page": page,
-            "previous_url": news_url(self.options, page=page.previous_page_number()) if page.has_previous() else "",
-            "next_url": news_url(self.options, page=page.next_page_number()) if page.has_next() else "",
+            "next_url": news_url(self.options, page=page.next_page_number(), v=version, at=self.now.isoformat()) if page.has_next() else "",
             "missing_views": self.options["tab"] == "videos" and self.options["sort"] == "views" and any(item.view_count is None for item in items),
         }
