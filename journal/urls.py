@@ -9,6 +9,7 @@ urlpatterns = [
     path("all/", views.list_entries, name="list"),
     path("new/", views.edit, name="new"),
     path("quick-save/", views.quick_save, name="quick_save"),
+    path("player/<str:video_id>/", views.player_video, name="player_video"),
     path("preview/", views.preview, name="preview"),
     path("statistics/", views.statistics, name="statistics"),
     path("collections/new/", views.collection_edit, name="collection_new"),

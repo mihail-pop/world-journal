@@ -53,6 +53,11 @@ def render_page(request: HttpRequest, page: str, *, page_template: str | None = 
     return response
 
 
+@never_cache
+def player_page(request: HttpRequest) -> HttpResponse:
+    return render(request, "core/player.html")
+
+
 def map_page(request: HttpRequest) -> HttpResponse:
     from .place_search import map_search_target
 

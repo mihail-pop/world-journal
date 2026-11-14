@@ -1,4 +1,4 @@
-// One bookmark interaction for country drawers, News cards and the shell player.
+// Shared bookmark actions for country drawers and News cards.
 import { beginTask, notify } from "./notifications.js";
 const saved = new Map();
 const pending = new Map();
@@ -39,6 +39,7 @@ function sync(wrapper) {
 
 function enhance(root) {
     for (const link of root.querySelectorAll("a[href]")) {
+        if (link.id === "mp-info") continue;
         const url = new URL(link.dataset.bookmarkUrl || link.href, location.origin);
         if (url.origin !== location.origin || url.pathname !== document.body.dataset.journalNewUrl
             || !["article", "youtube"].includes(url.searchParams.get("type"))) {
@@ -103,7 +104,6 @@ export function registerJournalBookmarks() {
     registered = true;
     enhance(document);
     document.addEventListener("world-journal:page-ready", () => enhance(document));
-    document.addEventListener("world-journal:player-bookmark-changed", () => enhance(document));
     document.addEventListener("world-journal:data-changed", event => {
         if (!event.detail?.path?.startsWith("/journal/") || !event.detail.path.endsWith("/delete/")) return;
         saved.clear();

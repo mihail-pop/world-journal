@@ -72,6 +72,11 @@
       "related_terms": ["Omani"],
       "acronyms": []
     },
+    "PS": {
+      "name_aliases": ["Palestine", "Palestinian territories", "Gaza", "Gaza Strip", "West Bank"],
+      "related_terms": ["Palestinian", "Palestinians"],
+      "acronyms": []
+    },
     "RO": {
       "name_aliases": ["Romania"],
       "related_terms": ["Romanian"],

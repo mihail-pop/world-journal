@@ -1,0 +1,34 @@
+<aside id="persistent-player" class="persistent-player" aria-label="Video player" data-player-state="empty" data-popout-url="{% url 'core:player' %}" data-video-url="{% url 'journal:player_video' video_id='VIDEOIDHERE' %}">
+    <div id="mp-wrapper">
+        <div id="mp-left">
+            <div id="mp-controls" role="toolbar" aria-label="Video controls">
+                <div class="mp-ctrl-group">
+                    <button id="mp-heart" class="mp-btn" type="button" title="Favorite in Journal" aria-label="Favorite in Journal"></button>
+                    <a id="mp-info" class="mp-btn" title="Details in Journal" aria-label="Details in Journal" href="{% url 'journal:new' %}" hx-boost="true" hx-target="#app-content" hx-push-url="true"></a>
+                    <button id="mp-toggle-hist" class="mp-btn" type="button" title="Toggle History" aria-label="Toggle history"></button>
+                </div>
+                <div class="mp-ctrl-group mp-ctrl-center">
+                    <button id="mp-prev" class="mp-btn" type="button" title="Previous" aria-label="Previous"></button>
+                    <button id="mp-playpause" class="mp-btn" type="button" title="Play" aria-label="Play" disabled></button>
+                    <button id="mp-next" class="mp-btn" type="button" title="Next" aria-label="Next"></button>
+                </div>
+                <div class="mp-ctrl-group mp-ctrl-right">
+                    <div class="mp-size-menu">
+                        <button id="mp-expand" class="mp-btn" type="button" title="Medium Mode" aria-label="Medium mode"></button>
+                        <div class="mp-size-popover"><button id="mp-popout" class="mp-btn" type="button" title="Open player in a separate window" aria-label="Pop out player"><span>Pop out player</span></button></div>
+                    </div>
+                    <button id="mp-fullscreen" class="mp-btn" type="button" title="Fullscreen" aria-label="Fullscreen"></button>
+                    <button id="mp-dock" class="mp-btn" type="button" title="Return player to page" aria-label="Return player to page"></button>
+                    <button id="mp-close" class="mp-btn" type="button" title="Close" aria-label="Close"></button>
+                </div>
+            </div>
+            <div id="mp-video-wrap">
+                <div id="music-player"></div>
+                <div class="mp-drag-zone mp-drag-zone-left" title="Drag to move player"></div>
+                <div class="mp-drag-zone mp-drag-zone-right" title="Drag to move player"></div>
+                <p id="mp-notice" role="status" hidden><span></span> <a target="_blank" rel="noopener noreferrer">Open on YouTube</a></p>
+            </div>
+        </div>
+        <div id="mp-history" aria-label="Playback history"></div>
+    </div>
+</aside>

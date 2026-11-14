@@ -1,0 +1,17 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="csrf-token" content="{{ csrf_token }}">
+    <title>Player - World Journal</title>
+    <link rel="icon" href="{% static 'icons/favicon.ico' %}" type="image/x-icon">
+    <link rel="stylesheet" href="{% static 'css/player.css' %}">
+    <style>html, body { margin: 0; height: 100%; overflow: hidden; background: #000; }</style>
+</head>
+<body data-player-popout="true" data-journal-new-url="{% url 'journal:new' %}">
+    {% include 'core/partials/player.html' %}
+    <script type="module">import { initializePlayer } from "{% static 'js/player.js' %}"; initializePlayer();</script>
+</body>
+</html>

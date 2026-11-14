@@ -15,7 +15,7 @@ QUERY_OVERRIDES = {
     "JO": '"Jordan" country',
     "KR": '"South Korea" OR "Republic of Korea"',
     "KP": '"North Korea" OR "Democratic People\'s Republic of Korea"',
-    "PS": '"Palestine" OR "Palestinian territories"',
+    "PS": '"Palestine" OR "Palestinian territories" OR "Gaza" OR "West Bank"',
     "TD": '"Chad" country',
     "TR": '"Turkey" OR "Turkiye"',
     "US": '"United States" OR "United States of America"',

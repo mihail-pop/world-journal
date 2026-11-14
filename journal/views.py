@@ -23,6 +23,42 @@ from .forms import AttachmentForm, CollectionForm, EntryForm, SectionFormSet
 from .models import Attachment, Collection, Entry, EntryType
 from .query import filtered_entries
 from .statistics import statistics_context
+from .validators import VIDEO_ID
+
+
+@never_cache
+@require_http_methods(["GET", "POST"])
+def player_video(request, video_id):
+    if not VIDEO_ID.fullmatch(video_id):
+        return JsonResponse({"message": "Choose a valid YouTube video."}, status=400)
+    if request.method == "POST":
+        if request.POST.get("favorite") not in {"true", "false"}:
+            return JsonResponse({"message": "Choose a favorite state."}, status=400)
+        favorite = request.POST["favorite"] == "true"
+        initial = initial_entry(request, request.POST)
+        with write_transaction():
+            entry = Entry.objects.filter(youtube_video_id=video_id).first()
+            if entry is None and favorite:
+                entry = Entry.objects.create(
+                    title=(request.POST.get("title", "").strip() or "YouTube video")[:300],
+                    source_name=request.POST.get("channel", "YouTube")[:200],
+                    entry_type=EntryType.YOUTUBE,
+                    youtube_video_id=video_id,
+                    source_url=f"https://www.youtube.com/watch?v={video_id}",
+                    source_published_at=initial.get("source_published_at"),
+                    is_favorite=True,
+                )
+            elif entry is not None and entry.is_favorite != favorite:
+                entry.is_favorite = favorite
+                entry.save(update_fields=["is_favorite", "updated_at"])
+            if entry is not None and favorite:
+                entry.countries.add(*initial["countries"])
+    else:
+        entry = Entry.objects.filter(youtube_video_id=video_id).first()
+    return JsonResponse({
+        "favorite": bool(entry and entry.is_favorite),
+        "edit_url": reverse("journal:edit", args=[entry.pk]) if entry else None,
+    })
 
 
 class ConfirmationForm(forms.Form):

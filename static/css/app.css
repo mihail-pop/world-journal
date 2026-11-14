@@ -217,20 +217,6 @@ a {
     color: var(--text-secondary);
 }
 
-.player-actions button {
-    min-height: 2.5rem;
-    border: 1px solid var(--overview-border);
-    border-radius: 4px;
-    background: var(--button-bg);
-    color: var(--text-secondary);
-    cursor: pointer;
-    padding: 0.4rem 0.75rem;
-}
-
-.player-actions button:hover {
-    border-color: var(--special-color-hover);
-}
-
 #app-content {
     width: min(100%, var(--content-width));
     min-height: calc(100vh - var(--header-height) - 3.75rem);
@@ -967,72 +953,7 @@ body:has(.persistent-player[data-player-state="playing"]) #app-content:not(:has(
     color: var(--special-color-hover);
 }
 
-.persistent-player {
-    position: fixed;
-    z-index: 15;
-    right: clamp(0.75rem, 3vw, 2rem);
-    bottom: 0;
-    width: min(28rem, calc(100vw - 1.5rem));
-    border: 1px solid var(--overview-border);
-    border-bottom: 0;
-    border-radius: 8px 8px 0 0;
-    background: var(--overlay-bg);
-    box-shadow: 0 -0.5rem 2rem color-mix(in srgb, var(--bg-primary) 70%, transparent);
-}
 
-.persistent-player[data-player-state="empty"] {
-    display: none;
-}
-
-.player-heading {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 1rem;
-    padding: 0.8rem 1rem;
-}
-
-.player-title {
-    margin: 0;
-    color: var(--text-secondary);
-    font-weight: 700;
-    overflow-wrap: anywhere;
-}
-
-.player-channel {
-    margin: 0.2rem 0 0;
-    color: var(--text-primary);
-    font-size: 0.75rem;
-}
-
-.player-actions {
-    display: flex;
-    gap: 0.4rem;
-}
-
-.player-stage {
-    display: grid;
-    min-height: 2.75rem;
-    place-items: center;
-    padding: 0.65rem 1rem;
-    color: var(--text-primary);
-    font-size: 0.8rem;
-}
-
-.player-stage p {
-    margin: 0;
-}
-
-.player-stage iframe {
-    display: block;
-    width: 100%;
-    aspect-ratio: 16 / 9;
-    border: 0;
-}
-
-.persistent-player.is-minimized .player-stage {
-    display: none;
-}
 
 @keyframes page-arrive {
     from {
@@ -1077,12 +998,6 @@ body:has(.persistent-player[data-player-state="playing"]) #app-content:not(:has(
         left: 0.75rem;
         width: auto;
         max-height: min(44%, 21rem);
-    }
-
-    .persistent-player {
-        left: 0.5rem;
-        right: 0.5rem;
-        width: auto;
     }
 
     .country-video-item {

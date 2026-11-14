@@ -1,9 +1,33 @@
-const POSITION_KEY = "world-journal:player-position";
-const VIDEO_ID_PATTERN = /^[A-Za-z0-9_-]{11}$/;
+import { iconPlay, iconPause, iconPrev, iconNext, iconInfo, iconTheater, iconSmall,
+    iconFsEnter, iconFsExit, iconClose, iconHistory, iconHeart } from "./player_icons.js";
+
+const PREFIX = "world-journal:player:";
+const STATE = `${PREFIX}state`, LEASE = `${PREFIX}owner`, COMMAND = `${PREFIX}command`, LAYOUT = `${PREFIX}layout`;
+const VIDEO_ID = /^[A-Za-z0-9_-]{11}$/;
 let initialized = false;
 let apiPromise;
 
-// Load YouTube's supported control API only after the user starts a video.
+function read(key, fallback = null, storage = localStorage) {
+    try { return JSON.parse(storage.getItem(key)) ?? fallback; } catch { return fallback; }
+}
+function write(key, value, storage = localStorage) {
+    try {
+        if (value === null) storage.removeItem(key);
+        else storage.setItem(key, JSON.stringify(value));
+    } catch { /* Playback also works when browser storage is unavailable. */ }
+}
+function video(detail) {
+    if (!detail || !VIDEO_ID.test(detail.videoId)) return null;
+    const start = Number(detail.startSeconds ?? 0);
+    let saveUrl;
+    try {
+        const url = new URL(detail.saveUrl, location.origin);
+        if (url.origin === location.origin && (/^\/journal\/[a-f0-9-]{36}\/edit\/$/.test(url.pathname) || url.pathname === "/journal/new/")) saveUrl = url.href;
+    } catch { /* Build a Journal link from the validated video below. */ }
+    return {videoId: detail.videoId, title: String(detail.title || "YouTube video").slice(0, 300), saveUrl,
+        channel: String(detail.channel || "YouTube").slice(0, 200),
+        startSeconds: Number.isFinite(start) ? Math.max(0, Math.min(2147483647, Math.floor(start))) : 0};
+}
 function loadPlayerApi() {
     if (window.YT?.Player) return Promise.resolve(window.YT);
     if (apiPromise) return apiPromise;
@@ -33,221 +57,436 @@ function loadPlayerApi() {
 }
 
 export function initializePlayer() {
-    if (initialized) return;
-    const player = document.querySelector("#persistent-player");
-    if (!player) return;
+    const root = document.querySelector("#persistent-player");
+    if (initialized || !root) return;
     initialized = true;
-    const stage = player.querySelector("[data-player-stage]");
-    const playback = player.querySelector("[data-player-play-pause]");
-    const expand = player.querySelector("[data-player-expand]");
-    const drag = player.querySelector("[data-player-drag]");
-    const toggle = document.querySelector("[data-player-toggle]");
-    const bookmark = player.querySelector("[data-player-bookmark]");
-    const notice = player.querySelector("[data-player-notice]");
-    let api = null;
-    let position = null;
-    let dragging = null;
-    let layoutFrame = null;
-    try {
-        const stored = JSON.parse(localStorage.getItem(POSITION_KEY));
-        if (stored && [stored.x, stored.y].every(value => Number.isFinite(value) && value >= 0 && value <= 1)) position = stored;
-    } catch { /* The default dock works without local storage. */ }
+    const popout = document.body.dataset.playerPopout === "true";
+    const tabKey = `${PREFIX}${popout ? "popup-tab" : "tab"}`;
+    const tab = read(tabKey, null, sessionStorage) || crypto.randomUUID();
+    write(tabKey, tab, sessionStorage);
+    const byId = id => root.querySelector(`#mp-${id}`);
+    const wrapper = byId("wrapper"), controls = byId("controls"), history = byId("history");
+    const mount = root.querySelector("#music-player"), notice = byId("notice");
+    const playback = byId("playpause"), heart = byId("heart"), info = byId("info");
+    let layout = read(LAYOUT, {}), session = null, api = null, generation = 0, ready = false;
+    let favorite = false, popupWindow = null, layoutFrame = null, drag = null, leaving = false;
+    let returning = false, lockedScroll = null, favoriteRequest = null, popupFallback = null, releasedAt = 0;
+    let heartbeat = null, waitingForPopup = false;
 
-    function bounds() {
-        const headerBottom = document.querySelector(".app-header").getBoundingClientRect().bottom;
-        const rect = player.getBoundingClientRect();
-        const top = Math.max(8, headerBottom + 8);
-        return {left: 8, top, width: Math.max(0, document.documentElement.clientWidth - rect.width - 16),
-            height: Math.max(0, window.innerHeight - rect.height - top - 8)};
+    for (const [id, svg] of Object.entries({prev: iconPrev, next: iconNext, info: iconInfo,
+        "toggle-hist": iconHistory, dock: iconTheater, close: iconClose, playpause: iconPlay})) byId(id).innerHTML = svg;
+    heart.innerHTML = iconHeart(false);
+    byId("popout").insertAdjacentHTML("afterbegin", iconInfo);
+    if (popout) { info.target = "world-journal-main"; info.removeAttribute("hx-boost"); }
+
+    function lease() { return read(LEASE); }
+    function alive(owner = lease()) { return owner && Date.now() - owner.at < 120000; }
+    function ownsPlayer() { return lease()?.tab === tab; }
+    function claim() { write(LEASE, {tab, popup: popout, at: Date.now()}); }
+    function release() { if (ownsPlayer()) write(LEASE, null); }
+    function syncHeartbeat() {
+        if ((session || waitingForPopup) && heartbeat === null) heartbeat = setInterval(tick, 2000);
+        else if (!session && !waitingForPopup && heartbeat !== null) { clearInterval(heartbeat); heartbeat = null; }
     }
-
-    function syncLayout() {
-        layoutFrame = null;
-        const active = player.dataset.playerState !== "empty";
-        const expanded = player.classList.contains("is-expanded");
-        if (active && !expanded && position) {
-            const limit = bounds();
-            player.style.left = `${limit.left + position.x * limit.width}px`;
-            player.style.top = `${limit.top + position.y * limit.height}px`;
-            player.style.right = "auto";
-            player.style.bottom = "auto";
+    function current() { return session?.history[session.index]; }
+    function snapshot() {
+        if (!session) return null;
+        try {
+            if (ready) {
+                session.time = Math.max(0, api.getCurrentTime() || 0);
+                const state = api.getPlayerState();
+                if (state === 1 || state === 3) session.paused = false;
+                else if (state === 2 || state === 0) session.paused = true;
+            }
+        } catch { /* Keep the last known position while YouTube is loading. */ }
+        return session;
+    }
+    function persist() { if (session && ownsPlayer()) write(STATE, snapshot()); }
+    function lockScroll(lock) {
+        if (lock && lockedScroll === null) lockedScroll = {x: scrollX, y: scrollY};
+        document.documentElement.classList.toggle("wj-player-scroll-locked", lock);
+        document.body.classList.toggle("wj-player-scroll-locked", lock);
+        if (!lock && lockedScroll) {
+            const position = lockedScroll;
+            lockedScroll = null;
+            window.scrollTo(position.x, position.y);
         }
-        const rect = player.getBoundingClientRect();
+    }
+    function updateOffsets() {
+        const active = Boolean(session), fullscreen = !popout && active && layout.fullscreen;
+        const rect = root.getBoundingClientRect();
         const workspace = document.querySelector(".map-workspace")?.getBoundingClientRect();
         const drawer = document.querySelector("[data-country-drawer]")?.getBoundingClientRect();
-        const overlapsDrawer = drawer && rect.left < drawer.right && rect.right > drawer.left;
-        const mapOffset = active && !expanded && workspace && overlapsDrawer
-            ? Math.max(12, workspace.bottom - rect.top + 16) : 12;
-        document.documentElement.style.setProperty("--persistent-player-height", `${active && !expanded ? rect.height : 0}px`);
-        document.documentElement.style.setProperty("--persistent-player-map-offset", `${mapOffset}px`);
+        const overlaps = drawer && rect.left < drawer.right && rect.right > drawer.left;
+        const offset = active && !fullscreen && workspace && overlaps ? Math.max(12, workspace.bottom - rect.top + 16) : 12;
+        document.documentElement.style.setProperty("--persistent-player-height", `${active && !fullscreen ? rect.height : 0}px`);
+        document.documentElement.style.setProperty("--persistent-player-map-offset", `${offset}px`);
         document.dispatchEvent(new CustomEvent("world-journal:player-moved"));
     }
-    function scheduleLayout() {
-        if (layoutFrame === null) layoutFrame = requestAnimationFrame(syncLayout);
+    function position(x, y) {
+        const rect = root.getBoundingClientRect();
+        const left = Math.max(0, Math.min(x, innerWidth - rect.width));
+        const top = Math.max(0, Math.min(y, innerHeight - rect.height));
+        Object.assign(root.style, {left: `${left}px`, top: `${top}px`, right: "auto", bottom: "auto"});
+        return {x: left, y: top};
     }
-    function resetPositionStyles() {
-        for (const property of ["top", "left", "right", "bottom"]) player.style.removeProperty(property);
+    function size() {
+        layoutFrame = null;
+        const fullscreen = !popout && Boolean(session) && Boolean(layout.fullscreen);
+        const portrait = matchMedia("(orientation: portrait)").matches || innerHeight > innerWidth;
+        root.classList.toggle("mp-fullscreen", fullscreen);
+        wrapper.classList.toggle("mp-fullscreen", fullscreen);
+        wrapper.classList.toggle("mp-portrait", portrait);
+        wrapper.classList.toggle("mp-popout", popout);
+        lockScroll(fullscreen);
+        history.style.display = layout.history ? "flex" : "none";
+        controls.style.height = "";
+        history.style.width = "";
+        if (popout || fullscreen) {
+            Object.assign(root.style, {top: "0", left: "0", right: "0", bottom: "0", width: "100%", height: "100%", borderRadius: "0", zIndex: fullscreen ? "99999" : "9999"});
+            if (popout) controls.style.height = "40px";
+        } else {
+            const scale = portrait ? 1.5 : 1;
+            let width = (layout.medium ? 480 : 384) * scale;
+            if (portrait) {
+                const css = getComputedStyle(controls);
+                width = Math.min(Math.max(width, parseFloat(css.minWidth) || 0), Math.max(1, innerWidth - 2 * (parseFloat(css.paddingLeft) || 0)));
+            }
+            const controlsHeight = portrait ? Math.ceil(controls.getBoundingClientRect().height) : 40 * scale;
+            const historyWidth = layout.history && !portrait ? 200 * scale : 0;
+            Object.assign(root.style, {width: `${width + historyWidth}px`, height: `${width * 9 / 16 + controlsHeight}px`, borderRadius: "8px", zIndex: "9999", left: portrait ? "auto" : "20px", top: portrait ? "0" : "auto", right: portrait ? "0" : "auto", bottom: portrait ? "auto" : "20px"});
+            controls.style.height = `${controlsHeight}px`;
+            if (!portrait) history.style.width = `${historyWidth}px`;
+            if (Number.isFinite(layout.position?.x) && Number.isFinite(layout.position?.y)) position(layout.position.x, layout.position.y);
+        }
+        wrapper.style.setProperty("--mp-controls-height", `${Math.ceil(controls.getBoundingClientRect().height)}px`);
+        byId("expand").innerHTML = layout.medium ? iconTheater : iconSmall;
+        byId("expand").title = layout.medium ? "Small Mode" : "Medium Mode";
+        byId("expand").setAttribute("aria-label", byId("expand").title);
+        byId("fullscreen").innerHTML = fullscreen ? iconFsExit : iconFsEnter;
+        byId("fullscreen").title = fullscreen ? "Exit Fullscreen" : "Fullscreen";
+        byId("fullscreen").setAttribute("aria-label", byId("fullscreen").title);
+        byId("toggle-hist").setAttribute("aria-pressed", String(Boolean(layout.history)));
+        updateOffsets();
     }
-    function setExpanded(value) {
-        if (value && player.classList.contains("is-minimized")) setMinimized(false);
-        player.classList.toggle("is-expanded", value);
-        expand.setAttribute("aria-pressed", String(value));
-        expand.title = value ? "Return to small player" : "Expand to app view";
-        expand.setAttribute("aria-label", expand.title);
-        expand.querySelector("[data-player-expand-icon]").hidden = value;
-        expand.querySelector("[data-player-contract-icon]").hidden = !value;
-        drag.disabled = value;
-        resetPositionStyles();
-        syncLayout();
-    }
-    function setMinimized(value) {
-        if (value) setExpanded(false);
-        player.classList.toggle("is-minimized", value);
-        const minimize = player.querySelector("[data-player-minimize]");
-        minimize.title = value ? "Restore video player" : "Minimize video player";
-        minimize.setAttribute("aria-label", minimize.title);
-        minimize.querySelector("[data-player-minimize-icon]").hidden = value;
-        minimize.querySelector("[data-player-restore-icon]").hidden = !value;
-        toggle.hidden = !value;
-        toggle.setAttribute("aria-expanded", String(!value));
-        syncLayout();
-    }
-    function setPlayback(playing) {
-        playback.dataset.playing = String(playing);
+    function scheduleSize() { if (layoutFrame === null) layoutFrame = requestAnimationFrame(size); }
+    function saveLayout() { write(LAYOUT, layout); size(); }
+    function setPlaying(playing) {
+        playback.innerHTML = playing ? iconPause : iconPlay;
         playback.title = playing ? "Pause" : "Play";
-        playback.setAttribute("aria-label", playing ? "Pause video" : "Play video");
-        playback.querySelector("[data-player-play-icon]").hidden = playing;
-        playback.querySelector("[data-player-pause-icon]").hidden = !playing;
+        playback.setAttribute("aria-label", playback.title);
     }
-    function showNotice(message) {
-        notice.querySelector("[data-player-notice-text]").textContent = message;
-        notice.hidden = false;
-    }
-    function stop() {
+    function showNotice(message) { notice.querySelector("span").textContent = message; notice.hidden = false; }
+    function destroy() {
+        generation++;
+        ready = false;
         api?.destroy();
         api = null;
-        stage.replaceChildren();
-        player.dataset.playerState = "empty";
-        setMinimized(false);
-        setExpanded(false);
+        mount.replaceChildren();
         playback.disabled = true;
-        notice.hidden = true;
+        favoriteRequest?.abort();
     }
-    async function play(detail) {
-        const videoId = detail?.videoId;
-        const start = detail?.startSeconds ?? 0;
-        if (!VIDEO_ID_PATTERN.test(videoId ?? "") || !Number.isSafeInteger(start) || start < 0 || start > 2147483647) return;
-        const title = typeof detail.title === "string" && detail.title.trim() ? detail.title.trim() : "YouTube video";
-        api?.destroy();
-        api = null;
+    function hide() { destroy(); session = null; root.dataset.playerState = "empty"; size(); syncHeartbeat(); }
+    function journalUrl(item) {
+        if (item.saveUrl) return item.saveUrl;
+        const url = new URL(document.body.dataset.journalNewUrl, location.origin);
+        url.search = new URLSearchParams({type: "youtube", video: item.videoId, title: item.title, source: item.channel});
+        return url.href;
+    }
+    function updateFavorite(result) {
+        favorite = Boolean(result.favorite);
+        heart.innerHTML = iconHeart(favorite);
+        heart.setAttribute("aria-pressed", String(favorite));
+        heart.title = favorite ? "Remove from Journal favorites" : "Favorite in Journal";
+        info.href = result.edit_url || journalUrl(current());
+        window.htmx?.process(info);
+    }
+    async function favoriteStatus(item, desired) {
+        favoriteRequest?.abort();
+        const controller = new AbortController();
+        favoriteRequest = controller;
+        const changing = typeof desired === "boolean";
+        const body = new URL(journalUrl(item)).searchParams;
+        for (const [key, value] of Object.entries({favorite: String(desired), title: item.title, channel: item.channel})) body.set(key, value);
+        heart.disabled = true;
+        try {
+            const response = await fetch(root.dataset.videoUrl.replace("VIDEOIDHERE", item.videoId), {
+                method: changing ? "POST" : "GET", signal: controller.signal,
+                headers: {"Accept": "application/json", "X-CSRFToken": document.querySelector('meta[name="csrf-token"]').content},
+                ...(changing ? {body} : {}),
+            });
+            if (!response.ok) throw new Error("Could not update Journal favorites. Try again.");
+            const result = await response.json();
+            if (current()?.videoId !== item.videoId || favoriteRequest !== controller) return;
+            updateFavorite(result);
+            if (changing) document.dispatchEvent(new CustomEvent("world-journal:data-changed", {detail: {path: "/journal/"}}));
+        } catch (error) { if (error.name !== "AbortError" && changing) showNotice(error.message); }
+        finally { if (favoriteRequest === controller) heart.disabled = false; }
+    }
+    function queuedNext() {
+        if (!session?.queue.length) return null;
+        const index = session.queue.findIndex(item => item.videoId === current()?.videoId);
+        return session.queue[(index + 1) % session.queue.length];
+    }
+    function renderHistory() {
+        history.replaceChildren();
+        if (!session) return;
+        session.history.forEach((item, index) => {
+            const row = document.createElement("div");
+            row.className = `history-item${index === session.index ? " active" : ""}`;
+            row.tabIndex = 0;
+            row.setAttribute("role", "button");
+            const title = document.createElement("div");
+            title.className = "mp-history-title";
+            title.textContent = item.title;
+            title.title = item.title;
+            row.append(title);
+            const select = () => { session.index = index; session.time = item.startSeconds; session.paused = false; void renderVideo(); };
+            row.addEventListener("click", select);
+            row.addEventListener("keydown", event => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); select(); } });
+            history.append(row);
+        });
+        history.querySelector(".active")?.scrollIntoView({behavior: "smooth", block: "nearest"});
+    }
+    async function renderVideo() {
+        destroy();
+        const token = generation, item = current();
+        if (!item) return;
+        waitingForPopup = false;
+        claim();
+        syncHeartbeat();
+        root.dataset.playerState = "playing";
+        root.setAttribute("aria-label", `${item.title} · video player`);
+        if (popout) document.title = `${item.title} - World Journal`;
+        notice.hidden = true;
+        notice.querySelector("a").href = `https://www.youtube.com/watch?v=${item.videoId}`;
+        updateFavorite({favorite: false});
+        void favoriteStatus(item);
+        renderHistory();
+        size();
         const iframe = document.createElement("iframe");
-        const params = new URLSearchParams({autoplay: "1", enablejsapi: "1", origin: location.origin, playsinline: "1"});
-        if (start) params.set("start", start);
-        iframe.id = "shell-video-iframe";
-        iframe.src = `https://www.youtube-nocookie.com/embed/${videoId}?${params}`;
-        iframe.title = `${title} on YouTube`;
+        const params = new URLSearchParams({autoplay: session.paused ? "0" : "1", enablejsapi: "1", origin: location.origin, playsinline: "1", start: String(Math.floor(session.time || 0))});
+        iframe.src = `https://www.youtube-nocookie.com/embed/${item.videoId}?${params}`;
+        iframe.title = `${item.title} on YouTube`;
         iframe.allow = "autoplay; encrypted-media; picture-in-picture";
         iframe.referrerPolicy = "strict-origin-when-cross-origin";
         iframe.allowFullscreen = true;
-        stage.replaceChildren(iframe);
-        player.dataset.playerState = "playing";
-        player.setAttribute("aria-label", `${title} · video player`);
-        setMinimized(false);
-        setPlayback(false);
-        playback.disabled = true;
-        notice.hidden = true;
-        notice.querySelector("[data-player-external]").href = `https://www.youtube.com/watch?v=${videoId}`;
-        const saveUrl = new URL(document.body.dataset.journalNewUrl, location.origin);
-        saveUrl.search = new URLSearchParams({type: "youtube", video: videoId, title, source: detail.channel || "YouTube"});
-        // Only the app's Journal links may become the player's bookmark target.
-        let supplied;
-        try { supplied = new URL(detail.saveUrl, location.origin); } catch { /* Use the validated video's default link. */ }
-        const validSupplied = supplied?.origin === location.origin && (supplied.pathname === saveUrl.pathname || /^\/journal\/[a-f0-9-]{36}\/edit\/$/.test(supplied.pathname));
-        bookmark.removeAttribute("data-bookmark-url");
-        bookmark.removeAttribute("hx-get");
-        bookmark.href = validSupplied ? supplied.href : saveUrl.href;
-        window.htmx.process(bookmark);
-        document.dispatchEvent(new CustomEvent("world-journal:player-bookmark-changed"));
-        scheduleLayout();
+        mount.append(iframe);
+        setPlaying(false);
+        persist();
         try {
             const YT = await loadPlayerApi();
-            if (stage.querySelector("iframe") !== iframe) return;
+            if (token !== generation) return;
             api = new YT.Player(iframe, {host: "https://www.youtube-nocookie.com", events: {
                 onReady(event) {
-                    if (stage.querySelector("iframe") !== iframe) return;
+                    if (token !== generation) return;
+                    ready = true;
                     playback.disabled = false;
-                    setPlayback(event.target.getPlayerState() === YT.PlayerState.PLAYING);
+                    if (session.paused) event.target.pauseVideo(); else event.target.playVideo();
+                    setPlaying(event.target.getPlayerState() === 1);
                 },
                 onStateChange(event) {
-                    if (stage.querySelector("iframe") === iframe) setPlayback(event.data === YT.PlayerState.PLAYING || event.data === YT.PlayerState.BUFFERING);
+                    if (token !== generation) return;
+                    setPlaying(event.data === 1 || event.data === 3);
+                    if (event.data === 0) next(true); else persist();
                 },
-                onError() {
-                    if (stage.querySelector("iframe") !== iframe) return;
-                    playback.disabled = true;
-                    showNotice("This video cannot be played here.");
-                },
+                onError() { if (token === generation) showNotice("This video cannot be played here."); },
             }});
-        } catch (error) {
-            if (stage.querySelector("iframe") === iframe) showNotice(error.message);
+        } catch (error) { if (token === generation) showNotice(error.message); }
+    }
+    function visibleQueue() {
+        const unique = new Map();
+        for (const button of document.querySelectorAll("[data-video-id][data-video-title]")) {
+            const item = video({videoId: button.dataset.videoId, title: button.dataset.videoTitle, channel: button.dataset.videoChannel, startSeconds: button.dataset.videoStart});
+            if (item) unique.set(item.videoId, item);
+        }
+        return [...unique.values()].slice(0, 200);
+    }
+    function start(detail, queue = visibleQueue()) {
+        const item = video(detail);
+        if (!item) return;
+        const owner = lease();
+        if (!popout && alive(owner) && owner.popup) {
+            write(COMMAND, {id: crypto.randomUUID(), type: "play", detail: item, queue});
+            popupWindow?.focus();
+            return;
+        }
+        if (!session) session = {history: [], index: -1, queue: [], owner: tab, returnTo: tab, time: 0, paused: false};
+        session.history = session.history.slice(0, session.index + 1);
+        session.history.push(item);
+        if (session.history.length > 200) session.history.shift();
+        session.index = session.history.length - 1;
+        session.queue = queue.map(video).filter(Boolean).slice(0, 200);
+        session.time = item.startSeconds;
+        session.paused = false;
+        session.owner = popout ? "popup" : tab;
+        void renderVideo();
+    }
+    function next(ended = false) {
+        if (!session) return;
+        if (session.index < session.history.length - 1) {
+            session.index++;
+            session.time = current().startSeconds;
+            session.paused = false;
+            void renderVideo();
+        } else {
+            const item = queuedNext();
+            if (item) start(item, session.queue);
+            else if (ended) { session.paused = true; persist(); }
         }
     }
-    function rememberPosition(left, top) {
-        const limit = bounds();
-        position = {x: limit.width ? Math.max(0, Math.min(1, (left - limit.left) / limit.width)) : 0,
-            y: limit.height ? Math.max(0, Math.min(1, (top - limit.top) / limit.height)) : 0};
-        scheduleLayout();
+    function restore(saved) {
+        if (!saved || !Array.isArray(saved.history)) return;
+        const items = saved.history.map(video);
+        if (!items.length || items.some(item => !item) || items.length > 200 || !Number.isInteger(saved.index) || !items[saved.index]) return;
+        session = {...saved, history: items, queue: (Array.isArray(saved.queue) ? saved.queue : []).map(video).filter(Boolean).slice(0, 200)};
+        session.time = Number.isFinite(saved.time) ? Math.max(0, Math.min(saved.time, 2147483647)) : current().startSeconds;
+        session.owner = popout ? "popup" : tab;
+        session.returnTo = popout ? saved.returnTo : tab;
+        void renderVideo();
     }
-    function persistPosition() {
-        try { localStorage.setItem(POSITION_KEY, JSON.stringify(position)); } catch { /* Movement still works. */ }
+    function close() {
+        waitingForPopup = false;
+        write(STATE, null);
+        release();
+        hide();
+        if (popout) { returning = true; window.close(); }
     }
-    drag.addEventListener("pointerdown", event => {
-        if (event.button !== 0 || drag.disabled) return;
-        event.preventDefault();
-        const rect = player.getBoundingClientRect();
-        dragging = {id: event.pointerId, x: event.clientX - rect.left, y: event.clientY - rect.top};
-        drag.setPointerCapture(event.pointerId);
-        player.classList.add("is-dragging");
-    });
-    drag.addEventListener("pointermove", event => {
-        if (!dragging || dragging.id !== event.pointerId) return;
-        rememberPosition(event.clientX - dragging.x, event.clientY - dragging.y);
-    });
-    function finishDrag() {
-        if (!dragging) return;
-        dragging = null;
-        player.classList.remove("is-dragging");
-        persistPosition();
+    function popOut() {
+        if (!session || popout) return;
+        const popup = layout.popup || {};
+        const width = Math.max(320, popup.width || 640), height = Math.max(240, popup.height || 400);
+        popupWindow = window.open(root.dataset.popoutUrl, "world-journal-video-player", `popup,width=${width},height=${height},left=${popup.x ?? 20},top=${popup.y ?? Math.max(0, screen.availHeight - height - 20)},resizable=yes,scrollbars=no`);
+        if (!popupWindow) { showNotice("Allow pop-up windows to open the separate player."); return; }
+        const saved = {...snapshot(), owner: "popup", returnTo: tab};
+        waitingForPopup = true;
+        release();
+        write(STATE, saved);
+        hide();
+        popupWindow.focus();
     }
-    for (const type of ["pointerup", "pointercancel", "lostpointercapture"]) drag.addEventListener(type, finishDrag);
-    drag.addEventListener("keydown", event => {
-        const offsets = {ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1]};
-        if (!offsets[event.key]) return;
-        event.preventDefault();
-        const rect = player.getBoundingClientRect();
-        const step = event.shiftKey ? 40 : 10;
-        rememberPosition(rect.left + offsets[event.key][0] * step, rect.top + offsets[event.key][1] * step);
-        persistPosition();
-    });
+    function dock() {
+        if (!popout || !session) return;
+        const saved = {...snapshot(), owner: session.returnTo};
+        returning = true;
+        release();
+        hide();
+        write(STATE, saved);
+        if (window.opener && !window.opener.closed) {
+            window.opener.postMessage({type: "world-journal:player-dock"}, location.origin);
+            window.opener.focus();
+        } else window.open("/", "world-journal-main");
+        window.close();
+    }
+    function recoverPopup() {
+        if (popout || session || leaving || Date.now() - releasedAt < 1700) return;
+        const saved = read(STATE);
+        if (saved?.owner === "popup" && saved.returnTo === tab && !alive()) restore(saved);
+    }
     playback.addEventListener("click", () => {
-        if (!api || playback.disabled) return;
-        if (playback.dataset.playing === "true") api.pauseVideo();
-        else api.playVideo();
+        if (!ready) return;
+        if (api.getPlayerState() === 1 || api.getPlayerState() === 3) { session.paused = true; api.pauseVideo(); }
+        else { session.paused = false; api.playVideo(); }
+        persist();
     });
-    expand.addEventListener("click", () => setExpanded(!player.classList.contains("is-expanded")));
-    player.querySelector("[data-player-minimize]").addEventListener("click", () => setMinimized(!player.classList.contains("is-minimized")));
-    toggle.addEventListener("click", () => setMinimized(false));
-    player.querySelector("[data-player-close]").addEventListener("click", stop);
+    heart.addEventListener("click", () => { if (current()) void favoriteStatus(current(), !favorite); });
+    byId("prev").addEventListener("click", () => {
+        if (!session || session.index <= 0) return;
+        session.index--;
+        session.time = current().startSeconds;
+        session.paused = false;
+        void renderVideo();
+    });
+    byId("next").addEventListener("click", () => next());
+    byId("expand").addEventListener("click", () => { layout.medium = !layout.medium; layout.fullscreen = false; saveLayout(); });
+    byId("fullscreen").addEventListener("click", () => { layout.fullscreen = !layout.fullscreen; saveLayout(); });
+    byId("toggle-hist").addEventListener("click", () => { layout.history = !layout.history; saveLayout(); if (layout.history) renderHistory(); });
+    byId("popout").addEventListener("click", popOut);
+    byId("dock").addEventListener("click", dock);
+    byId("close").addEventListener("click", close);
     document.addEventListener("keydown", event => {
-        if (event.key === "Escape" && player.classList.contains("is-expanded")) {
-            event.preventDefault();
-            event.stopImmediatePropagation();
-            setExpanded(false);
-            expand.focus({preventScroll: true});
-        }
+        if (event.key === "Escape" && layout.fullscreen && session) { layout.fullscreen = false; saveLayout(); }
     });
-    document.addEventListener("world-journal:play-video", event => play(event.detail));
-    document.addEventListener("world-journal:page-ready", scheduleLayout);
-    window.addEventListener("resize", scheduleLayout);
-    window.visualViewport?.addEventListener("resize", scheduleLayout);
-    new ResizeObserver(scheduleLayout).observe(player);
+    for (const zone of root.querySelectorAll(".mp-drag-zone")) {
+        zone.addEventListener("pointerdown", event => {
+            if (event.button !== 0 || popout || layout.fullscreen) return;
+            event.preventDefault();
+            const rect = root.getBoundingClientRect();
+            drag = {id: event.pointerId, x: event.clientX, y: event.clientY, left: rect.left, top: rect.top, moving: false};
+            zone.setPointerCapture(event.pointerId);
+        });
+        zone.addEventListener("pointermove", event => {
+            if (!drag || event.pointerId !== drag.id) return;
+            const x = event.clientX - drag.x, y = event.clientY - drag.y;
+            if (!drag.moving && Math.hypot(x, y) < 3) return;
+            drag.moving = true;
+            zone.classList.add("is-dragging"); root.classList.add("mp-dragging");
+            layout.position = position(drag.left + x, drag.top + y);
+            updateOffsets();
+        });
+        const finish = () => {
+            if (!drag) return;
+            if (drag.moving) write(LAYOUT, layout);
+            drag = null;
+            zone.classList.remove("is-dragging"); root.classList.remove("mp-dragging");
+        };
+        for (const type of ["pointerup", "pointercancel", "lostpointercapture"]) zone.addEventListener(type, finish);
+    }
+    document.addEventListener("world-journal:play-video", event => start(event.detail));
+    document.addEventListener("world-journal:page-ready", scheduleSize);
+    window.addEventListener("resize", scheduleSize);
+    window.visualViewport?.addEventListener("resize", scheduleSize);
+    window.addEventListener("storage", event => {
+        if (event.key === LEASE) {
+            const owner = lease();
+            if (session && owner && owner.tab !== tab) hide();
+            if (!owner) {
+                releasedAt = Date.now();
+                clearTimeout(popupFallback);
+                popupFallback = setTimeout(recoverPopup, 1750);
+            }
+        } else if (event.key === STATE) {
+            const saved = read(STATE);
+            if (!saved) { waitingForPopup = false; hide(); release(); }
+            else if (!popout && !session && saved.owner === tab) restore(saved);
+        } else if (event.key === COMMAND && popout && session) {
+            const command = read(COMMAND);
+            if (command?.type === "play") start(command.detail, command.queue);
+        } else if (event.key === LAYOUT) { layout = read(LAYOUT, {}); size(); }
+    });
+    window.addEventListener("message", event => {
+        if (event.origin !== location.origin || event.data?.type !== "world-journal:player-dock" || popout || session) return;
+        const saved = read(STATE);
+        if (saved?.owner === tab) restore(saved);
+    });
+    window.addEventListener("pagehide", () => {
+        leaving = true;
+        if (!returning) persist();
+        release();
+        lockScroll(false);
+    });
+    window.addEventListener("pageshow", event => {
+        leaving = false;
+        if (!event.persisted) return;
+        const owner = lease();
+        if (alive(owner) && owner.tab !== tab) hide();
+        else if (session) { claim(); size(); }
+        else recoverPopup();
+    });
+    // Browser-local playback snapshots; no database polling or background server writes.
+    function tick() {
+        if (leaving) return;
+        if (session && ownsPlayer()) {
+            claim(); persist();
+            if (popout) {
+                const popup = {x: screenX, y: screenY, width: outerWidth, height: outerHeight};
+                if (JSON.stringify(layout.popup) !== JSON.stringify(popup)) { layout.popup = popup; write(LAYOUT, layout); }
+            }
+        } else recoverPopup();
+    }
+    const saved = read(STATE), owner = lease();
+    waitingForPopup = !popout && saved?.owner === "popup" && saved.returnTo === tab;
+    syncHeartbeat();
+    if (saved && (!alive(owner) || owner.tab === tab) && (!popout || saved.owner === "popup")) restore(saved);
+    else size();
 }

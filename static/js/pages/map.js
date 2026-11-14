@@ -917,7 +917,7 @@ function installCountryLayers(controller) {
         id: LAYERS.hitTarget,
         type: "circle",
         source: CENTROID_SOURCE_ID,
-        paint: { "circle-color": "#00bfff", "circle-radius": 11, "circle-opacity": 0.01 },
+        paint: { "circle-color": "#00bfff", "circle-radius": 11, "circle-opacity": 0 },
     });
     addLayer(controller, {
         id: LAYERS.countryNames,
