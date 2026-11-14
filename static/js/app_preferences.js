@@ -4,7 +4,6 @@ let confirmed = null;
 let pending = {};
 let inFlight = null;
 let pendingNotice = false;
-let refreshRequest = null;
 let initialized = false;
 
 export function readAppPreferences() {
@@ -82,24 +81,9 @@ export function writeAppPreferences(patch, {notifySaved = false} = {}) {
     return readAppPreferences();
 }
 
-async function refresh() {
-    if (refreshRequest || document.visibilityState === "hidden") return;
-    refreshRequest = fetch(document.body.dataset.preferencesUrl, {cache: "no-store", headers: {Accept: "application/json"}});
-    try {
-        const response = await refreshRequest;
-        if (response.ok) acceptAppPreferences(await response.json());
-    } catch {
-        // A background refresh must not discard usable saved or pending choices.
-    } finally {
-        refreshRequest = null;
-    }
-}
-
 export function initializeAppPreferences() {
     if (initialized) return;
     initialized = true;
     publish();
     document.addEventListener("world-journal:app-preferences-loaded", event => acceptAppPreferences(event.detail));
-    window.addEventListener("focus", refresh);
-    document.addEventListener("visibilitychange", refresh);
 }

@@ -1,7 +1,6 @@
 """Render country drawers from one cache read, without network calls or feed locks."""
 from datetime import UTC, datetime
 from hashlib import sha256
-import json
 
 from django.core.cache import cache
 from django.template.loader import render_to_string
@@ -45,16 +44,6 @@ class CachedDrawers:
         google_key, video_keys = self.keys[code]
         keys = video_keys if kind == "videos" else self.regional_keys + ([google_key] if google_key else [])
         return any(self._pending(key) for key in keys)
-
-    def version(self, code):
-        google_key, video_keys = self.keys[code]
-        keys = self.regional_keys + ([google_key] if google_key else []) + video_keys
-        stamp = ["article-text-v2", self.interval, int(self.now.timestamp()) // self.interval, self.google.enabled_by_default, self.archive_revisions.get(code, "")]
-        for key in keys:
-            snapshot = self.snapshots.get(key)
-            snapshot = snapshot if isinstance(snapshot, dict) else {}
-            stamp.append((key, snapshot.get("fetched_at"), snapshot.get("last_attempt_at"), snapshot.get("last_error")))
-        return sha256(json.dumps(stamp, separators=(",", ":")).encode()).hexdigest()[:20]
 
     def render(self, code, kind):
         options = {"registry": self.registry, "cache_backend": self, "cache_only": True, "fresh_seconds": self.interval, "now": self.now}

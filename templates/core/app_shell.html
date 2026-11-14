@@ -39,7 +39,7 @@
     <script src="{% static 'vendor/htmx/htmx-2.0.8.min.js' %}" defer></script>
     <script type="module" src="{% static 'js/app.js' %}"></script>
 </head>
-<body hx-ext="page-memory" data-preferences-url="{% url 'core:preferences' %}" data-news-cache-url="{% url 'news:cached_drawers' %}" data-journal-new-url="{% url 'journal:new' %}" data-journal-quick-save-url="{% url 'journal:quick_save' %}">
+<body hx-ext="page-memory" data-preferences-url="{% url 'core:preferences' %}" data-journal-new-url="{% url 'journal:new' %}" data-journal-quick-save-url="{% url 'journal:quick_save' %}">
     {{ app_preferences|json_script:"app-preferences" }}
     <header class="app-header">
         <a class="app-name" href="{% url 'core:map' %}" aria-label="{{ app_display_name }} map">{{ app_display_name }}</a>

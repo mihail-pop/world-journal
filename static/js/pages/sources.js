@@ -1,66 +1,10 @@
 // One-control writes are serialized; a second click replaces its queued value.
 // Saves continue across page navigation, without keeping a page listener alive.
-import { beginTask, dismissNotice, notify, updateNotice } from "../notifications.js";
+import { beginTask, dismissNotice, notify } from "../notifications.js";
 
 let registered = false;
 const pageStates = new WeakMap();
 let progressController = null;
-let manualRefresh = null;
-
-function reportRefresh(result) {
-    if (!manualRefresh) return;
-    manualRefresh.errors = 0;
-    if (result.busy) {
-        updateNotice("feed-refresh", `${result.completed} of ${result.total} feeds checked. You can keep browsing.`);
-        return;
-    }
-    manualRefresh.finish();
-    clearTimeout(manualRefresh.timer);
-    manualRefresh = null;
-    const incomplete = result.failed || result.missing;
-    let message = "Articles and videos are ready to browse.";
-    if (!result.enabled) message = "No sources are enabled.";
-    else if (incomplete) message = "Some feeds could not be refreshed or still have no cached results.";
-    notify({
-        id: "feed-refresh",
-        kind: incomplete ? "warning" : "success",
-        title: incomplete ? "Refresh finished with source notices" : "Feed refresh complete",
-        message,
-        action: incomplete ? {label: "Review sources", href: "/settings/news/"} : undefined,
-        duration: 12000,
-    });
-}
-
-function watchRefresh(url) {
-    manualRefresh?.finish();
-    clearTimeout(manualRefresh?.timer);
-    const state = manualRefresh = {finish: beginTask("Refreshing news feeds…", {id: "feed-refresh", message: "You can keep browsing while feeds refresh."}), timer: null, errors: 0, started: Date.now()};
-    async function poll() {
-        if (manualRefresh !== state) return;
-        try {
-            if (Date.now() - state.started > 45 * 60000) throw new Error("Refresh is taking longer than expected.");
-            // The existing Sources poll reports progress while that page is open.
-            if (!document.hidden && (!progressController || progressController.unavailable)) {
-                const abort = new AbortController();
-                const timeout = setTimeout(() => abort.abort(), 10000);
-                try {
-                    const response = await fetch(url, {signal: abort.signal});
-                    if (!response.ok) throw new Error("Refresh status unavailable.");
-                    const result = await response.json();
-                    if (manualRefresh === state) reportRefresh(result);
-                } finally { clearTimeout(timeout); }
-            }
-        } catch (_) {
-            if (++state.errors >= 3) {
-                state.finish();
-                manualRefresh = null;
-                notify({id: "feed-refresh", kind: "warning", title: "Refresh status is unavailable", message: "Feeds may still be refreshing. Check the Feed cache panel for the latest status.", action: {label: "View sources", href: "/settings/news/"}});
-            }
-        }
-        if (manualRefresh === state) state.timer = setTimeout(poll, 5000);
-    }
-    state.timer = setTimeout(poll, 1500);
-}
 
 function cleanupProgress() {
     if (!progressController) return;
@@ -100,28 +44,26 @@ function renderProgress(page, result) {
 
 async function pollProgress(controller) {
     if (progressController !== controller) return;
-    let delay = 60000;
+    let delay = null;
     try {
         if (!document.hidden) {
             const response = await fetch(controller.page.dataset.refreshStatusUrl, { signal: controller.abort.signal });
             if (!response.ok) throw new Error("Could not read background activity.");
             const result = await response.json();
             if (progressController !== controller) return;
-            controller.unavailable = false;
             renderProgress(controller.page, result);
-            reportRefresh(result);
             if (result.busy) delay = 2000;
-            else if (result.missing && !result.failed) delay = 5000;
+            else if (result.next_update_at) {
+                delay = Math.max(2000, Date.parse(result.next_update_at) - Date.now() + 1000);
+            }
         }
     } catch (error) {
         if (progressController !== controller || error.name === "AbortError") return;
-        // Let the independent watcher retry sooner while this card also recovers.
-        controller.unavailable = true;
         controller.page.querySelector("[data-refresh-summary]").textContent = "Background status is temporarily unavailable.";
         controller.page.querySelector("[data-refresh-all]").disabled = false;
         delay = 15000;
     }
-    if (progressController === controller) controller.timer = setTimeout(() => pollProgress(controller), delay);
+    if (progressController === controller && delay !== null) controller.timer = setTimeout(() => pollProgress(controller), delay);
 }
 
 function startProgress(page) {
@@ -138,8 +80,7 @@ async function refreshAll(form, page) {
     try {
         const response = await fetch(form.action, { method: "POST", body: new FormData(form), headers: { "X-Requested-With": "XMLHttpRequest" } });
         if (!response.ok) throw new Error("Could not start refresh. Check that the server is running.");
-        dismissNotice("feed-refresh");
-        watchRefresh(page.dataset.refreshStatusUrl);
+        notify({id: "feed-refresh", kind: "success", title: "Feed refresh started", message: "You can keep browsing while feeds refresh.", duration: 4000});
         // The page may have changed while the server accepted the request.
         if (progressController?.page === page) startProgress(page);
     } catch (error) {
@@ -235,7 +176,10 @@ export function registerSourceSettings() {
     document.addEventListener("world-journal:page-ready", initialize);
     document.addEventListener("world-journal:page-cleanup", cleanupProgress);
     document.addEventListener("visibilitychange", () => {
-        if (!document.hidden && progressController) startProgress(progressController.page);
+        const page = document.querySelector("[data-source-settings]");
+        if (!page) return;
+        if (document.hidden) cleanupProgress();
+        else startProgress(page);
     });
     document.addEventListener("change", event => {
         const input = event.target;

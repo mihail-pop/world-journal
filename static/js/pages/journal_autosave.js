@@ -134,9 +134,9 @@ export function registerJournalAutosave() {
         }
         if (form) trackEditor(form);
     });
-    // Retained editors keep saving even while Map or Settings is visible.
+    // The timer only saves the visible editor. Leaving Journal flushes its draft.
     setInterval(() => {
-        for (const state of editors.values()) if (!state.pending && !state.submitting && state.version !== state.savedVersion) void save(state);
+        for (const state of editors.values()) if (state.form.isConnected && !state.pending && !state.submitting && state.version !== state.savedVersion) void save(state);
     }, 60000);
     document.addEventListener("click", async event => {
         const link = event.target.closest("a[href]");
@@ -197,11 +197,18 @@ export function registerJournalAutosave() {
         if (form && event.detail.verb === "post") event.detail.path = form.getAttribute("action");
     });
     document.addEventListener("world-journal:page-cleanup", event => {
-        if (event.detail?.page !== "journal" || event.detail.preserveJournal) return;
+        if (event.detail?.page !== "journal") return;
         const form = document.querySelector("[data-journal-editor]");
-        if (form) clearTimeout(editors.get(form)?.statusTimer);
-        if (form) editors.delete(form);
-        if (form) dismissNotice(`autosave-${form.dataset.autosaveUrl}`);
+        const state = editors.get(form);
+        const forget = () => {
+            if (!form || event.detail.preserveJournal) return;
+            clearTimeout(state?.statusTimer);
+            editors.delete(form);
+            dismissNotice(`autosave-${form.dataset.autosaveUrl}`);
+        };
+        if (state && (state.pending || state.version !== state.savedVersion)) {
+            void save(state).then(saved => { if (saved) forget(); });
+        } else forget();
     });
     window.addEventListener("beforeunload", event => {
         if (![...editors.values()].some(state => state.pending || state.version !== state.savedVersion)) return;

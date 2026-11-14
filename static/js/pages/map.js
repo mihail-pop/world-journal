@@ -3,7 +3,7 @@ import { localMapStyle, mapFontStack, updateMapFonts } from "./map_fonts.js";
 import { terrainCountrySize, updateMapLabels } from "./map_labels.js";
 import { ensurePlaceLabels } from "./place_labels.js";
 import { adventurePalette, prepareAdventure, updateAdventure } from "./adventure_map.js";
-import { getCountryFeed, prioritizeCountryFeed, rememberCountryFeed } from "../news_cache.js";
+import { getCountryFeed, rememberCountryFeed } from "../news_cache.js";
 import { replaceCountryMarkup } from "../news_archive.js";
 import { notify } from "../notifications.js";
 import { basemapFeaturePreferences, isBasemapCapitalLabel, isBasemapCountryLabel, splitBasemapRegionLabels } from "./basemap_features.js";
@@ -355,6 +355,7 @@ function cancelCountryNews(controller, { abort = false } = {}) {
     if (abort) {
         controller.newsAbortController?.abort();
         controller.newsAbortController = null;
+        controller.newsLoadingCode = null;
     }
 }
 
@@ -391,7 +392,6 @@ function applyNewsFilter(controller, filter) {
 
 function loadCountryNews(controller, code, countryName, { retryFailed = false } = {}) {
     cancelCountryNews(controller);
-    prioritizeCountryFeed(code);
     const cached = getCountryFeed(code, "articles");
     if (cached) {
         renderCachedNews(controller, code, cached);
@@ -417,7 +417,7 @@ function renderCachedNews(controller, code, entry) {
         : "all";
     replaceCountryMarkup(controller.newsContent, entry.markup);
     controller.newsContent.dataset.loadedCountry = code;
-    controller.newsContent.setAttribute("aria-busy", String(entry.pending));
+    controller.newsContent.setAttribute("aria-busy", "false");
     window.htmx?.process(controller.newsContent);
     if (![...controller.newsContent.querySelectorAll("[data-news-filter]")].some(button => button.dataset.newsFilter === filter)) {
         filter = "all";
@@ -429,7 +429,7 @@ function renderCachedVideos(controller, code, entry) {
     if (!entry) return;
     replaceCountryMarkup(controller.videoContent, entry.markup);
     controller.videoContent.dataset.loadedCountry = code;
-    controller.videoContent.setAttribute("aria-busy", String(entry.pending));
+    controller.videoContent.setAttribute("aria-busy", "false");
     window.htmx?.process(controller.videoContent);
 }
 
@@ -454,6 +454,7 @@ async function fetchCountryNews(controller, { code, countryName, retryFailed, re
     const requestedAt = Date.now();
     const abortController = new AbortController();
     controller.newsAbortController = abortController;
+    controller.newsLoadingCode = code;
     controller.newsContent.setAttribute("aria-busy", "true");
     if (!getCountryFeed(code, "articles")) showNewsMessage(controller, `Preparing headlines for ${countryName}…`);
     const url = new URL(
@@ -480,7 +481,7 @@ async function fetchCountryNews(controller, { code, countryName, retryFailed, re
         ) {
             return;
         }
-        const entry = rememberCountryFeed(code, "articles", markup, { requestedAt, version: response.headers.get("X-Feed-Version"), notify: false });
+        const entry = rememberCountryFeed(code, "articles", markup, { requestedAt, notify: false });
         renderCachedNews(controller, code, entry);
     } catch (error) {
         if (error.name === "AbortError" || activeController !== controller || controller.newsRequestId !== requestId) {
@@ -494,6 +495,7 @@ async function fetchCountryNews(controller, { code, countryName, retryFailed, re
     } finally {
         if (controller.newsAbortController === abortController) {
             controller.newsAbortController = null;
+            controller.newsLoadingCode = null;
         }
         startPendingCountryNews(controller);
     }
@@ -517,7 +519,6 @@ function showVideoMessage(controller, message, { retry = false } = {}) {
 
 async function loadCountryVideos(controller, code, countryName, { retryFailed = false } = {}) {
     cancelCountryVideos(controller);
-    prioritizeCountryFeed(code);
     const cached = getCountryFeed(code, "videos");
     if (cached) {
         renderCachedVideos(controller, code, cached);
@@ -553,7 +554,7 @@ async function loadCountryVideos(controller, code, countryName, { retryFailed = 
         ) {
             return;
         }
-        const entry = rememberCountryFeed(code, "videos", markup, { requestedAt, version: response.headers.get("X-Feed-Version"), notify: false });
+        const entry = rememberCountryFeed(code, "videos", markup, { requestedAt, notify: false });
         renderCachedVideos(controller, code, entry);
     } catch (error) {
         if (error.name === "AbortError" || activeController !== controller || controller.videoRequestId !== requestId) {
@@ -586,9 +587,20 @@ function selectCountrySection(controller, section, { focus = false } = {}) {
         panel.hidden = panel.dataset.countrySectionPanel !== section;
     }
     if (
+        section === "articles"
+        && controller.selectedCode
+        && (controller.newsContent.dataset.loadedCountry !== controller.selectedCode || !getCountryFeed(controller.selectedCode, "articles"))
+        && controller.newsLoadingCode !== controller.selectedCode
+        && controller.pendingNews?.code !== controller.selectedCode
+        && !controller.newsTimer
+    ) {
+        const country = controller.countriesByCode.get(controller.selectedCode);
+        loadCountryNews(controller, controller.selectedCode, country.name);
+    }
+    if (
         section === "videos"
         && controller.selectedCode
-        && controller.videoContent.dataset.loadedCountry !== controller.selectedCode
+        && (controller.videoContent.dataset.loadedCountry !== controller.selectedCode || !getCountryFeed(controller.selectedCode, "videos"))
         && !controller.videoAbortController
     ) {
         const country = controller.countriesByCode.get(controller.selectedCode);
@@ -652,7 +664,10 @@ function renderSelection(controller, code, { fit = true, focusDrawer = false } =
     controller.page.querySelector("[data-country-subregion]").textContent = country.subregion;
     drawer.hidden = false;
     controller.page.classList.add("has-country-drawer");
-    loadCountryNews(controller, code, country.name);
+    cancelCountryNews(controller);
+    controller.newsContent.replaceChildren();
+    delete controller.newsContent.dataset.loadedCountry;
+    controller.newsContent.setAttribute("aria-busy", "false");
     const requestedSection = new URL(window.location.href).searchParams.get("section");
     selectCountrySection(controller, COUNTRY_SECTIONS.includes(requestedSection) ? requestedSection : selectedSection);
     drawer.scrollTop = 0;
@@ -1549,14 +1564,21 @@ function resumeMapPage(controller) {
     }
     if (controller.feedsDirty && controller.selectedCode) {
         controller.feedsDirty = false;
-        const country = controller.countriesByCode.get(controller.selectedCode);
-        loadCountryNews(controller, country.iso_a2, country.name);
+        cancelCountryNews(controller);
+        controller.newsContent.replaceChildren();
+        controller.newsContent.setAttribute("aria-busy", "false");
+        delete controller.newsContent.dataset.loadedCountry;
         cancelCountryVideos(controller);
         controller.videoContent.replaceChildren();
         controller.videoContent.setAttribute("aria-busy", "false");
         delete controller.videoContent.dataset.loadedCountry;
-        if (controller.page.querySelector('[data-country-section="videos"]').getAttribute("aria-selected") === "true") {
-            selectCountrySection(controller, "videos");
+        const section = controller.page.querySelector('[data-country-section][aria-selected="true"]')?.dataset.countrySection;
+        if (section) selectCountrySection(controller, section);
+    }
+    if (controller.selectedCode) {
+        const section = controller.page.querySelector('[data-country-section][aria-selected="true"]')?.dataset.countrySection;
+        if (["articles", "videos"].includes(section) && !getCountryFeed(controller.selectedCode, section)) {
+            selectCountrySection(controller, section);
         }
     }
     // Resize only after the retained page is visible, including after a device

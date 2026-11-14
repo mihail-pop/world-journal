@@ -1,5 +1,5 @@
 <div class="country-news-result" data-country-news-result data-news-country="{{ news_page.country_code }}" data-feed-pending="{{ feed_pending|yesno:'true,false' }}">
-    {% if feed_pending %}<p class="country-news-message" role="status">Preparing remaining feeds… Articles appear here as they become available.</p>{% endif %}
+    {% if feed_pending %}<p class="country-news-message" role="status">Some feeds are still refreshing. Reopen Articles to see their latest results.</p>{% endif %}
     {% if news_page.google.items or news_page.regional_items or news_page.google.warning or news_page.google.error or news_page.regional_warning %}<div class="news-filter" role="group" aria-label="Article source filter">
         <button type="button" data-news-filter="all" aria-pressed="true">All articles</button>
         {% if news_page.google.items or news_page.google.warning or news_page.google.error %}<button type="button" data-news-filter="google" aria-pressed="false">Google News</button>{% endif %}

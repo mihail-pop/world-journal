@@ -17,16 +17,15 @@ from countries.models import Country
 
 from .cache_backend import CacheWriteError
 from .forms import AdditionalFeedForm, CustomSourceForm, NewsPreferencesForm
-from .models import CustomSource, NewsPreferences, SourcePreference
+from .models import CustomSource, FeedState, NewsPreferences, SourcePreference
 from .preferences import effective_registry, freshness_seconds, source_choices
 from .registry import get_source_registry
-from .services.cache import fixed_feed_cache_key, google_cache_key, google_pause_until, parse_datetime, youtube_cache_key
+from .services.cache import fixed_feed_cache_key, google_cache_key, parse_datetime, youtube_cache_key
 from .services.country_news import get_country_news
 from .services.regional_news import get_fixed_feed
 from .services.youtube_news import get_youtube_feed
 from .services.custom_sources import check_custom_source, format_label, registry_items, with_custom_sources
-from .services.background import feed_jobs, feed_warmer
-from .services.country_news import _countries_by_code
+from .services.background import feed_warmer
 from .types import SourceKind
 
 
@@ -208,57 +207,7 @@ def save_preference(request):
 @require_http_methods(["GET"])
 def refresh_status(request):
     feed_warmer.start()
-    registry = effective_registry()
-    jobs = tuple(feed_jobs(registry))
-    snapshots = cache.get_many([key for _job, key in jobs])
-    providers = {provider.id: provider for provider in registry.providers}
-    feeds = {feed.id: feed for feed in registry.feeds}
-    sources = {source.id: source for source in registry.sources}
-
-    def label(job):
-        kind, identity = job
-        if kind == "google":
-            return "Google News · World headlines" if identity == "WORLD" else f"Google News · {_countries_by_code()[identity]['name']}"
-        if kind == "rss" and identity in feeds:
-            feed = feeds[identity]
-            return f"{providers[feed.provider_id].display_name} · {feed.section_label}"
-        if identity in sources:
-            return sources[identity].display_name
-        return "Updating sources"
-
-    progress = feed_warmer.progress()
-    progress["current"] = [label(job) for job in progress.pop("running")]
-    errors = []
-    paused_until = google_pause_until(cache, datetime.now(UTC))
-    if paused_until and registry.get("google_news_country").enabled_by_default:
-        errors.append({"name": "Google News", "error": f"Automatic refresh is paused after a rate-limit response. It resumes after {paused_until:%H:%M UTC on %b %d}. Cached headlines remain available."})
-    errored_jobs = set()
-    missing = 0
-    for job, key in jobs:
-        snapshot = snapshots.get(key, {})
-        if not isinstance(snapshot, dict):
-            snapshot = {}
-        if not isinstance(snapshot.get("items"), list) or not parse_datetime(snapshot.get("last_success_at")):
-            missing += 1
-        if snapshot.get("last_error"):
-            errors.append({"name": label(job), "error": snapshot.get("last_error_detail") or snapshot["last_error"]})
-            errored_jobs.add(job)
-    # Also expose unexpected worker failures, but drop them after a later
-    # successful check or when the source is disabled/removed.
-    keys = dict(jobs)
-    started = parse_datetime(progress.pop("started_at"))
-    for job in map(tuple, progress.pop("failed_jobs")):
-        if job not in keys or job in errored_jobs:
-            continue
-        snapshot = snapshots.get(keys[job])
-        attempted = parse_datetime(snapshot.get("last_attempt_at")) if isinstance(snapshot, dict) else None
-        if not attempted or not started or attempted < started:
-            errors.append({"name": label(job), "error": "The last check could not be completed; cached results are retained where available."})
-    progress["errors"] = errors
-    progress["failed"] = len(errors)
-    progress["enabled"] = len(jobs)
-    progress["missing"] = missing
-    return JsonResponse(progress)
+    return JsonResponse(feed_warmer.status())
 
 
 @never_cache
@@ -337,6 +286,8 @@ def custom_source_action(request, source_id, action):
         SourcePreference.objects.filter(source_id__in=identities).delete()
         record.delete()
         cache.delete_many(keys)
+        with database_write():
+            FeedState.objects.filter(cache_key__in=keys).delete()
         from .services.archive import remove_origins
         remove_origins(identities)
         messages.success(request, "Custom source removed. Saved journal entries are kept.")
@@ -383,6 +334,15 @@ def refresh_source(request, source_id):
     except CacheWriteError:
         messages.warning(request, "The feed cache could not be saved. Try refreshing again in a moment.")
         return _navigate(request, country)
+    if source_id in feeds:
+        job, key = ("rss", source_id), fixed_feed_cache_key(item)
+    elif item.kind is SourceKind.YOUTUBE:
+        job, key = ("youtube", source_id), youtube_cache_key(item)
+    else:
+        job, key = ("google", country.pk), google_cache_key(item, country.pk)
+    from .services.archive import capture_snapshot
+    capture_snapshot(job, cache.get(key), registry)
+    feed_warmer.rescan()
     error = result.error or getattr(result, "warning", "")
     if error or getattr(result, "refresh_failed", False):
         messages.warning(request, f"{name}: refresh failed. Previously cached results are kept where available.")

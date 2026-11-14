@@ -5,6 +5,21 @@ from django.db import models
 from django.utils import timezone
 
 
+class FeedState(models.Model):
+    """Small scheduling/status index; feed contents stay in the response cache."""
+
+    cache_key = models.CharField(max_length=255, primary_key=True)
+    metadata = models.JSONField(default=dict)
+    expires_at = models.DateTimeField()
+    archive_stamp = models.CharField(max_length=64, blank=True)
+
+
+class FeedSchedule(models.Model):
+    id = models.PositiveSmallIntegerField(primary_key=True, default=1, editable=False)
+    cycle_started_at = models.DateTimeField()
+    next_refresh_at = models.DateTimeField()
+
+
 class ArchivedNews(models.Model):
     """Bounded feed history, independent of permanent Journal bookmarks."""
 

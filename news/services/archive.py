@@ -16,10 +16,10 @@ from django.db.models import Q, Sum
 from django.utils import timezone
 
 from core.database import database_write, write_transaction
-from news.models import ArchivedNews, ArchivedNewsCountry, ArchivedNewsSource
+from news.models import ArchivedNews, ArchivedNewsCountry, ArchivedNewsSource, FeedState
 from news.preferences import effective_registry
 from news.types import SourceKind
-from .cache import deserialize_items, deserialize_video_items
+from .cache import deserialize_items, deserialize_video_items, fixed_feed_cache_key, google_cache_key, youtube_cache_key
 from .country_matcher import match_country_text, match_title
 
 logger = logging.getLogger(__name__)
@@ -80,7 +80,7 @@ def _cleanup_locked(now, force=False):
     global _next_cleanup
     if not force and time.monotonic() < _next_cleanup:
         return False, set()
-    _next_cleanup = time.monotonic() + 3600
+    _next_cleanup = time.monotonic() + settings.NEWS_REFRESH_SECONDS
     changed = False
     touched = set()
     while True:
@@ -129,10 +129,10 @@ def _oldest_sizes():
         cursor = (batch[-1][2], batch[-1][0])
 
 
-def maintain_archive():
+def maintain_archive(*, force=False):
     with _write_lock:
         try:
-            changed, codes = _cleanup_locked(timezone.now())
+            changed, codes = _cleanup_locked(timezone.now(), force=force)
             if changed:
                 _changed(codes)
         except DatabaseError as error:
@@ -149,47 +149,55 @@ def _log_failure(error):
 def capture_snapshot(job, snapshot, registry, now=None):
     """Idempotently collect an already-successful cache snapshot, without fetching."""
     if not isinstance(snapshot, dict) or not snapshot.get("last_success_at"):
-        return
+        return False
     stamp = snapshot.get("last_success_at")
+    category, identifier = job
+    if category == "rss":
+        feed = next((feed for feed in registry.feeds if feed.id == identifier), None)
+        if feed is None:
+            return False
+        key = fixed_feed_cache_key(feed)
+    elif category == "youtube":
+        key = youtube_cache_key(registry.get(identifier))
+    else:
+        key = google_cache_key(registry.get("google_news_country"), identifier)
     with _write_lock:
         if _seen.get(job) == stamp:
-            return
+            return True
         try:
-            _collect(job, snapshot, registry, now or timezone.now())
+            if FeedState.objects.filter(pk=key, archive_stamp=stamp).exists():
+                _seen[job] = stamp
+                return True
+            if not _collect(job, snapshot, registry, now or timezone.now(), key, stamp):
+                return False
             _seen[job] = stamp
+            return True
         except DatabaseError as error:
             _log_failure(error)
+            return False
 
 
-def forget_removed_jobs(jobs):
-    with _write_lock:
-        active = set(jobs)
-        for job in list(_seen):
-            if job not in active:
-                del _seen[job]
-
-
-def _collect(job, snapshot, registry, now):
+def _collect(job, snapshot, registry, now, cache_key, stamp):
     category, identifier = job
     kind = "videos" if category == "youtube" else "articles"
     if category == "rss":
         feed = next((feed for feed in registry.feeds if feed.id == identifier), None)
         if not feed or not feed.enabled_by_default:
-            return
+            return False
         source_id, feed_id = feed.provider_id, feed.id
         items = deserialize_items(snapshot) or ()
         category = "regional"
     elif category == "youtube":
         source = next((source for source in registry.sources if source.id == identifier), None)
         if not source or not source.enabled_by_default:
-            return
+            return False
         source_id = feed_id = source.id
         items = deserialize_video_items(snapshot, source) or ()
         category = "videos"
     else:
         source = registry.get("google_news_country")
         if not source.enabled_by_default:
-            return
+            return False
         source_id, feed_id = source.id, f"{source.id}:{identifier}"
         items = deserialize_items(snapshot) or ()
     cutoff = now - timedelta(days=settings.NEWS_ARCHIVE_DAYS)
@@ -208,48 +216,68 @@ def _collect(job, snapshot, registry, now):
         else:
             evidence = match_title(item.title) if kind == "videos" else match_country_text(item.title, item.summary)
             codes = {match.country_code for match in evidence} & valid_countries
-        prepared.append((item, link, codes))
-    if not prepared:
-        return
+        prepared.append((item, link, codes, *identities(item, kind)))
 
-    changed = False
-    touched = set()
+    # Separate indexed lookups avoid SQLite choosing a scan of every article
+    # for an identity OR fingerprint query. Finish reads before reserving a writer.
+    by_id = ArchivedNews.objects.in_bulk({row[3] for row in prepared})
+    by_fingerprint = {}
+    fingerprints = {row[4] for row in prepared}
+    for row in ArchivedNews.objects.filter(fingerprint__in=fingerprints).order_by("first_seen_at"):
+        if row.kind == kind:
+            by_fingerprint.setdefault(row.fingerprint, row)
+    new_rows, updates, selected, touched = {}, {}, {}, set()
+    for item, link, codes, identity, fingerprint in prepared:
+        candidates = [row for row in (by_id.get(identity), by_fingerprint.get(fingerprint)) if row is not None]
+        row = min(candidates, key=lambda row: row.first_seen_at) if candidates else None
+        created = row is None
+        sort_date = item.published_at if item.published_at and item.published_at <= now else now
+        if created:
+            row = ArchivedNews(identity=identity, fingerprint=fingerprint, kind=kind, first_seen_at=now,
+                               sort_date=sort_date, expires_at=sort_date+timedelta(days=settings.NEWS_ARCHIVE_DAYS))
+            new_rows[row.pk] = row
+            by_id[identity] = row
+            by_fingerprint.setdefault(fingerprint, row)
+        if row.expires_at <= now:
+            continue
+        direct = kind == "articles" and category == "regional" and urlsplit(row.link).hostname == "news.google.com"
+        if created or direct:
+            values = {"title":item.title[:300], "link":link[:2048],
+                      "publisher":(item.channel_name if kind == "videos" else item.publisher)[:200],
+                      "summary":item.summary[:2000] if kind == "articles" else "",
+                      "video_id":item.video_id if kind == "videos" else ""}
+            for name, value in values.items():
+                setattr(row, name, value)
+            row.published_at = item.published_at
+            row.metadata_bytes = len(json.dumps(values, ensure_ascii=False).encode("utf-8")) + 1024
+            if not created:
+                updates[row.pk] = row
+        selected.setdefault(row.pk, set()).update(codes)
+
+    row_ids = set(selected)
+    origins = set(ArchivedNewsSource.objects.filter(feed_id=feed_id, item_id__in=row_ids).values_list("item_id", flat=True))
+    tags = set(ArchivedNewsCountry.objects.filter(item_id__in=row_ids).values_list("item_id", "country_code"))
+    missing_origins = row_ids - origins
+    missing_tags = {(identity, code) for identity, codes in selected.items() for code in codes} - tags
+    for identity, code in tags | missing_tags:
+        if identity in missing_origins or identity in updates or (identity, code) in missing_tags:
+            touched.add(code)
+    changed = bool(new_rows or updates or missing_origins or missing_tags)
     with write_transaction():
-        for item, link, codes in prepared:
-            published = item.published_at
-            # A future publisher date must not make retention unlimited.
-            sort_date = published if published and published <= now else now
-            identity, fingerprint = identities(item, kind)
-            existing = ArchivedNews.objects.filter(Q(pk=identity) | Q(fingerprint=fingerprint), kind=kind).order_by("first_seen_at").first()
-            row = existing or ArchivedNews(identity=identity, fingerprint=fingerprint, kind=kind,
-                                           first_seen_at=now, sort_date=sort_date, expires_at=sort_date+timedelta(days=settings.NEWS_ARCHIVE_DAYS))
-            if row.expires_at <= now:
-                continue
-            publisher = item.channel_name if kind == "videos" else item.publisher
-            # Prefer the direct publisher link when joining a Google wrapper.
-            direct = kind == "articles" and category == "regional" and urlsplit(row.link).hostname == "news.google.com"
-            values = {"title":item.title[:300], "link":link[:2048], "publisher":publisher[:200],
-                      "summary":item.summary[:2000] if kind == "articles" else "", "video_id":item.video_id if kind == "videos" else ""}
-            if not existing or direct:
-                for key, value in values.items():
-                    setattr(row, key, value)
-                row.published_at = published
-                row.metadata_bytes = len(json.dumps(values, ensure_ascii=False).encode("utf-8")) + 1024
-                row.save()
-                changed = True
-            origin, created = ArchivedNewsSource.objects.get_or_create(item=row, feed_id=feed_id,
-                defaults={"source_id":source_id, "category":category})
-            if existing and (direct or created):
-                touched.update(row.country_tags.values_list("country_code", flat=True))
-            changed = changed or created
-            for code in codes:
-                _tag, created = ArchivedNewsCountry.objects.get_or_create(item=row, country_code=code)
-                changed = changed or created
-            touched.update(codes)
-    if changed:
-        # Enforce all limits after every changed snapshot, not just daily cleanup.
-        _pruned, removed_codes = _cleanup_locked(now, force=True)
-        _changed(touched | removed_codes)
+        if new_rows:
+            ArchivedNews.objects.bulk_create(new_rows.values(), ignore_conflicts=True)
+        if updates:
+            ArchivedNews.objects.bulk_update(updates.values(), ["title", "link", "publisher", "summary", "video_id", "published_at", "metadata_bytes"])
+        if missing_origins:
+            ArchivedNewsSource.objects.bulk_create([ArchivedNewsSource(item_id=identity, feed_id=feed_id,
+                source_id=source_id, category=category) for identity in missing_origins], ignore_conflicts=True)
+        if missing_tags:
+            ArchivedNewsCountry.objects.bulk_create([ArchivedNewsCountry(item_id=identity, country_code=code)
+                for identity, code in missing_tags], ignore_conflicts=True)
+        FeedState.objects.filter(pk=cache_key).update(archive_stamp=stamp)
+        if changed:
+            _changed(touched)
+    return True
 
 
 def enabled_feed_ids(registry, kind, country_code=None, category="all"):

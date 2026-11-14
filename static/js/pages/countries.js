@@ -1,4 +1,4 @@
-import { getCountryFeed, prioritizeCountryFeed, rememberCountryFeed } from "../news_cache.js";
+import { getCountryFeed, rememberCountryFeed } from "../news_cache.js";
 import { replaceCountryMarkup } from "../news_archive.js";
 import { notify } from "../notifications.js";
 
@@ -95,7 +95,7 @@ function cancelLoad(state) {
 function renderContent(state, entry) {
     const key = `${state.code}:${state.tab}`;
     if (state.renderedKey === key && state.renderedMarkup === entry.markup) {
-        state.content.setAttribute("aria-busy",String(Boolean(entry.pending)));
+        state.content.setAttribute("aria-busy","false");
         return;
     }
     const scroll = state.content.scrollTop;
@@ -103,7 +103,7 @@ function renderContent(state, entry) {
     replaceCountryMarkup(state.content,entry.markup);
     state.renderedKey = key;
     state.renderedMarkup = entry.markup;
-    state.content.setAttribute("aria-busy",String(Boolean(entry.pending)));
+    state.content.setAttribute("aria-busy","false");
     state.content.scrollTop = scroll;
     applyArticleFilter(state,filter);
     window.htmx?.process(state.content);
@@ -138,7 +138,6 @@ function loadContent(state, retry = false) {
     if (!state.code || !alive(state)) return;
     const {code,tab,requestId} = state;
     const feed = tab === "articles" || tab === "videos";
-    if (feed) prioritizeCountryFeed(code);
     const cached = feed ? getCountryFeed(code,tab) : state.cache.get(`${code}:${tab}`);
     if (cached) { renderContent(state,cached); if (!retry) return; }
     else {
@@ -161,7 +160,7 @@ function loadContent(state, retry = false) {
             const markup = await response.text();
             if (!correct()) return;
             let entry;
-            if (feed) entry = rememberCountryFeed(code,tab,markup,{requestedAt,version:response.headers.get("X-Feed-Version"),notify:false});
+            if (feed) entry = rememberCountryFeed(code,tab,markup,{requestedAt,notify:false});
             else {
                 const template = document.createElement("template");
                 template.innerHTML = markup;

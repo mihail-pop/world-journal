@@ -2,8 +2,6 @@
 from collections import defaultdict, deque
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
-from hashlib import sha256
-import json
 from urllib.parse import urlencode
 
 from django.core.cache import cache
@@ -102,15 +100,6 @@ class CachedNews:
     def get(self, key, default=None):
         return self.snapshots.get(key, default)
 
-    def version(self):
-        # Include time so rolling date filters age out even without a feed change.
-        stamp = ["article-text-v2", self.options, self.interval, int(self.now.timestamp()) // 60]
-        for key in self.keys:
-            snapshot = self.get(key)
-            snapshot = snapshot if isinstance(snapshot, dict) else {}
-            stamp.append((key, snapshot.get("fetched_at"), snapshot.get("last_attempt_at"), snapshot.get("last_error")))
-        return sha256(json.dumps(stamp, separators=(",", ":")).encode()).hexdigest()[:20]
-
     def context(self):
         google_items, regional_items, video_items, errors = [], [], [], []
         options = {"cache_backend": self, "cache_only": True, "fresh_seconds": self.interval, "now": self.now}
@@ -165,7 +154,7 @@ class CachedNews:
         pending = sum(not isinstance(snapshot := self.get(key), dict) or not isinstance(snapshot.get("items"), list)
                       or not (snapshot.get("last_success_at") or snapshot.get("last_attempt_at")) for key in self.keys)
         return {
-            "cards": cards, "tab": self.options["tab"], "version": self.version(), "pending": pending,
+            "cards": cards, "tab": self.options["tab"], "pending": pending,
             "errors": errors, "enabled_count": len(self.keys), "total": len(items), "result_page": page,
             "previous_url": news_url(self.options, page=page.previous_page_number()) if page.has_previous() else "",
             "next_url": news_url(self.options, page=page.next_page_number()) if page.has_next() else "",

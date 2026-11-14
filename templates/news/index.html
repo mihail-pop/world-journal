@@ -1,4 +1,4 @@
-<section class="page page-standard news-page" data-page="news" data-news-board data-results-url="{% url 'news:results' %}" data-results-query="{{ results_query }}" aria-labelledby="news-title">
+<section class="page page-standard news-page" data-page="news" data-news-board aria-labelledby="news-title">
     <div class="news-page-heading"><h1 id="news-title">News</h1></div>
     <nav class="news-board-tabs" aria-label="News type" hx-boost="true" hx-target="#app-content" hx-push-url="true" hx-swap="innerHTML show:top">
         <a href="{{ articles_url }}" {% if tab == 'articles' %}aria-current="page"{% endif %}>Articles</a>

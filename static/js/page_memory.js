@@ -113,7 +113,17 @@ export function registerPageMemory() {
                     const current = incoming.querySelector(selector);
                     if (current) saved.page.querySelector(selector)?.replaceWith(current);
                 }
-                saved.page.dataset.resultsQuery = incoming.dataset.resultsQuery;
+                const results = incoming.querySelector("[data-news-board-results]");
+                const previousResults = saved.page.querySelector("[data-news-board-results]");
+                if (results && previousResults) {
+                    const openItems = new Set([...previousResults.querySelectorAll("[data-news-item] details[open]")]
+                        .map(details => details.closest("[data-news-item]").dataset.newsItem));
+                    for (const card of results.querySelectorAll("[data-news-item]")) {
+                        if (openItems.has(card.dataset.newsItem)) card.querySelector("details")?.setAttribute("open", "");
+                    }
+                    if (previousResults.querySelector(".news-board-status[open]")) results.querySelector(".news-board-status")?.setAttribute("open", "");
+                    previousResults.replaceWith(results);
+                }
                 const currentArchive = incoming.querySelector("[data-news-archive]");
                 const oldArchive = saved.page.querySelector("[data-news-archive]");
                 if (currentArchive && oldArchive) {
