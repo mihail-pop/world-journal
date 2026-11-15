@@ -22,6 +22,7 @@ from .fetch import FeedFetchError, fetch_feed
 
 logger = logging.getLogger(__name__)
 YOUTUBE_HOSTS = {"youtube.com", "www.youtube.com", "m.youtube.com"}
+YOUTUBE_CHANNEL_PAGE_MAX_BYTES = 4 * 1024 * 1024
 FORMAT_LABELS = {"rss20": "RSS 2.0", "rss10": "RSS 1.0 / RDF", "atom10": "Atom 1.0", "atom03": "Atom 0.3"}
 
 
@@ -76,9 +77,12 @@ def _channel_id(location):
     elif parsed.path.startswith("/channel/"):
         candidate = parsed.path.split("/")[2]
     elif parsed.path.startswith("/@"):
-        # Read only public channel metadata, then verify the resulting Atom identity.
-        channel_url = f"https://www.youtube.com/{parsed.path.split('/')[1]}"
-        response = fetch_feed(channel_url, allowed_hosts=YOUTUBE_HOSTS)
+        # This public-page option avoids the regional consent interstitial.
+        # Channel HTML is larger than an RSS feed; expand only this lookup's cap.
+        # The resolved channel is still verified against its Atom feed below.
+        channel_url = f"https://www.youtube.com/{parsed.path.split('/')[1]}?ucbcb=1"
+        response = fetch_feed(channel_url, allowed_hosts=YOUTUBE_HOSTS,
+                              max_bytes=YOUTUBE_CHANNEL_PAGE_MAX_BYTES, accept="text/html,application/xhtml+xml")
         page = _ChannelPage()
         page.feed(response.body.decode("utf-8", errors="replace"))
         candidates = set(page.channel_ids)

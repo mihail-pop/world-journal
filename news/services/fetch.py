@@ -86,10 +86,13 @@ def fetch_feed(
     client: httpx.Client | None = None,
     resolver: AddressResolver = _resolve_addresses,
     allow_public_redirects: bool = False,
+    max_bytes: int | None = None,
+    accept: str | None = None,
 ) -> FeedResponse:
     normalized_hosts = frozenset(host.lower() for host in allowed_hosts)
+    byte_limit = settings.NEWS_HTTP_MAX_BYTES if max_bytes is None else max_bytes
     headers = {
-        "Accept": "application/atom+xml, application/rss+xml, application/xml, text/xml;q=0.9",
+        "Accept": accept or "application/atom+xml, application/rss+xml, application/xml, text/xml;q=0.9",
         # These integrations request English feeds. Some publishers reject an
         # otherwise valid feed request when its language preference is absent.
         "Accept-Language": "en-US,en;q=0.9",
@@ -134,13 +137,13 @@ def fetch_feed(
                         )
                     response.raise_for_status()
                     content_length = response.headers.get("Content-Length")
-                    if content_length and int(content_length) > settings.NEWS_HTTP_MAX_BYTES:
+                    if content_length and int(content_length) > byte_limit:
                         raise FeedFetchError("The feed response exceeded the size limit")
                     chunks = []
                     byte_count = 0
                     for chunk in response.iter_bytes():
                         byte_count += len(chunk)
-                        if byte_count > settings.NEWS_HTTP_MAX_BYTES:
+                        if byte_count > byte_limit:
                             raise FeedFetchError("The feed response exceeded the size limit")
                         if time.monotonic() - started_at > settings.NEWS_HTTP_TOTAL_TIMEOUT_SECONDS:
                             raise FeedFetchError("The feed request exceeded the total time limit")
