@@ -15,14 +15,16 @@ def single_feed_providers(registry):
 class NewsPreferencesForm(forms.Form):
     freshness_minutes = forms.TypedChoiceField(
         label="Background refresh interval", coerce=int,
-        choices=[(360, "Every 6 hours"), (480, "Every 8 hours"), (600, "Every 10 hours"), (720, "Every 12 hours")],
+        choices=[(120, "Every 2 hours"), (240, "Every 4 hours"), (360, "Every 6 hours"), (480, "Every 8 hours"), (600, "Every 10 hours"), (720, "Every 12 hours")],
         help_text="Refresh enabled feeds automatically while the Django server runs. Cached articles and videos remain available during refreshes.",
     )
+    archive_storage_mb = forms.TypedChoiceField(label="Archive storage", coerce=int, choices=NewsPreferences.STORAGE_CHOICES)
 
     def __init__(self, *args, registry, choices, freshness, **kwargs):
         super().__init__(*args, **kwargs)
         minutes = freshness // 60
-        self.fields["freshness_minutes"].initial = minutes if minutes in (360, 480, 600, 720) else 720
+        self.fields["freshness_minutes"].initial = minutes if minutes in dict(self.fields["freshness_minutes"].choices) else 360
+        self.fields["archive_storage_mb"].initial = NewsPreferences.objects.filter(pk=1).values_list("archive_storage_mb", flat=True).first() or 2000
         self.items = (*registry.sources, *registry.providers, *registry.feeds)
         for item in self.items:
             self.fields[f"enabled_{item.id}"] = forms.BooleanField(
@@ -41,7 +43,7 @@ class NewsPreferencesForm(forms.Form):
     def save(self):
         feed_providers = {feed_id: provider_id for provider_id, feed_id in self.single_feed_providers.items()}
         with write_transaction():
-            NewsPreferences.objects.update_or_create(pk=1, defaults={"freshness_minutes": self.cleaned_data["freshness_minutes"]})
+            NewsPreferences.objects.update_or_create(pk=1, defaults={name: self.cleaned_data[name] for name in ("freshness_minutes", "archive_storage_mb")})
             for item in self.items:
                 if item.enabled_by_default:
                     SourcePreference.objects.update_or_create(

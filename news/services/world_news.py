@@ -5,18 +5,18 @@ from datetime import UTC, datetime, timedelta
 from urllib.parse import urlencode
 
 from django.core.cache import cache
-from django.db.models import F, Prefetch, Q
+from django.db.models import Exists, OuterRef, Prefetch, Q
 from django.urls import reverse
 
 from news.adapters.rss import clean_article_text, is_google_news_link
 from news.adapters.youtube import build_embed_url, build_thumbnail_url, build_watch_url
 from news.models import ArchivedNews, ArchivedNewsSource
 from news.preferences import freshness_seconds
-from news.paging import paging_time, result_version, search_archive, search_query, search_terms
+from news.paging import archive_page, cursor_date, decode_cursor, encode_cursor, NewsCursorError, paging_time, result_version, search_archive, search_query, search_terms
 from news.types import NewsItem, SourceKind, VideoItem
 from journal.bookmarks import bookmark_states
 
-from .archive import identities, revision
+from .archive import identities, restrict_origins, revision
 from .cache import fixed_feed_cache_key, google_cache_key, google_pause_until, youtube_cache_key
 from .country_news import _countries_by_code, get_country_news, get_world_news
 from .regional_news import get_fixed_feed
@@ -52,13 +52,9 @@ def page_options(query, registry):
         sort = {"newest": "views", "oldest": "least_views"}.get(sort, sort)
     if sort not in dict(sorts):
         sort = sorts[0][0]
-    try:
-        page = max(1, min(10000, int(query.get("page", "1"))))
-    except (ValueError, TypeError):
-        page = 1
     return {"tab": tab, "source": source, "country": country, "period": period, "sort": sort,
             "q": search_query(query), "at": paging_time(query),
-            "page": page, "sources": sources, "sort_label": dict(sorts)[sort],
+            "cursor": query.get("cursor", ""), "sources": sources, "sort_label": dict(sorts)[sort],
             "sort_next": sorts[1][0] if sort == sorts[0][0] else sorts[0][0],
             "sort_order": "desc" if sort == sorts[0][0] else "asc"}
 
@@ -151,12 +147,12 @@ class CachedNews:
             video_items = [replace(item, view_count=retained_counts.get(item.video_id)) if item.view_count is None else item
                            for item in video_items]
         current_items = google_items + regional_items + video_items
-        days = {"day": 1, "week": 7, "month": 30, "all": 90}[self.options["period"]]
-        cutoff = self.now - timedelta(days=days)
+        days = {"day": 1, "week": 7, "month": 30}.get(self.options["period"])
+        cutoff = self.now - timedelta(days=days) if days else None
         terms = search_terms(self.options["q"])
         def in_period(item):
-            return (self.options["period"] == "all" and item.published_at is None
-                    or bool(item.published_at and cutoff <= item.published_at <= self.now))
+            return (item.published_at is None and cutoff is None
+                    or bool(item.published_at and item.published_at <= self.now and (cutoff is None or item.published_at >= cutoff)))
         def matches(item):
             fields = [item.title, getattr(item, "publisher", ""), getattr(item, "provider_name", ""),
                       getattr(item, "channel_name", ""), getattr(item, "summary", "")]
@@ -171,10 +167,11 @@ class CachedNews:
                 items.sort(key=_newest, reverse=True)
         else:
             items = list({item.video_id: item for item in video_items}.values())
-        items, has_next = self._page(items, current_items, cutoff)
         query_signature = result_version([
             {key: self.options[key] for key in ("tab", "source", "country", "period", "sort", "q")}, self.keys,
         ])
+        cursor = decode_cursor(self.options["cursor"], query_signature)
+        items, next_position = self._page(items, current_items, cutoff, cursor)
         version = result_version([query_signature, revision(), [
             (item.video_id if self.options["tab"] == "videos" else item.link, item.published_at, getattr(item, "view_count", None))
             for item in google_items + regional_items + video_items
@@ -205,54 +202,81 @@ class CachedNews:
             "query": self.options["q"], "paging_version": version, "query_signature": query_signature,
             "refresh_url": news_url(self.options),
             "errors": errors, "enabled_count": len(self.keys),
-            "next_url": news_url(self.options, page=self.options["page"] + 1, v=version, at=self.now.isoformat()) if has_next else "",
+            "next_url": news_url(self.options, cursor=encode_cursor(next_position, query_signature), v=version, at=self.now.isoformat()) if next_position else "",
         }
 
-    def _page(self, current, excluded, cutoff):
-        """Rank lightweight archive IDs, then read metadata for just this batch."""
-        kind = self.options["tab"]
+    def _page(self, current, excluded, cutoff, cursor):
+        """Merge one bounded archive page with the small current-feed batch."""
+        kind, sort = self.options["tab"], self.options["sort"]
         origins = ArchivedNewsSource.objects.filter(feed_id__in=self.origin_ids)
-        rows = ArchivedNews.objects.filter(kind=kind, expires_at__gt=datetime.now(UTC),
-            first_seen_at__lte=self.now, pk__in=origins.values("item_id"))
-        if self.options["period"] == "all":
-            rows = rows.filter(Q(published_at__isnull=True) | Q(published_at__gte=cutoff, published_at__lte=self.now))
+        rows = ArchivedNews.objects.filter(kind=kind, first_seen_at__lte=self.now).exclude(published_at__gt=self.now)
+        if 0 < len(self.options["source"]) < len(self.options["sources"]):
+            rows = restrict_origins(rows, origins)
         else:
-            rows = rows.filter(published_at__gte=cutoff, published_at__lte=self.now)
-        rows = search_archive(rows, self.options["q"])
+            rows = rows.filter(Exists(origins.filter(item_id=OuterRef("pk"))))
+        if cutoff is not None:
+            rows = rows.filter(published_at__gte=cutoff)
         if excluded:
             keys, fingerprints = zip(*(identities(item, kind) for item in excluded))
             rows = rows.exclude(Q(pk__in=set(keys)) | Q(fingerprint__in=set(fingerprints)))
-        start, end = (self.options["page"] - 1) * 30, self.options["page"] * 30
-        videos = kind == "videos"
-        ascending = self.options["sort"] == "least_views"
-        ordering = [F("view_count").asc(nulls_last=True) if ascending else F("view_count").desc(nulls_last=True)] if videos else []
-        archived = rows.order_by(*ordering, F("published_at").desc(nulls_last=True), "identity").values_list("identity", "published_at", "view_count")
-        if kind == "articles" and self.options["sort"] == "top":
-            selected = [(None, item) for item in current[start:end + 1]]
-            needed = end + 1 - max(start, len(current))
-            if needed > 0:
-                offset = max(0, start - len(current))
-                selected.extend((identity, None) for identity, _date, _views in archived[offset:offset + needed])
+        rows = search_archive(rows, self.options["q"])
+
+        def position(identity, published, views, stage="ranked"):
+            return {"stage": stage, "identity": identity,
+                    "published": published.isoformat() if published else None, "views": views}
+
+        selected = []
+        if kind == "articles" and sort == "top":
+            stage = cursor.get("stage") if cursor else "live"
+            if stage not in {"live", "archive"}:
+                raise NewsCursorError("Invalid news cursor.")
+            offset = cursor.get("offset", 0) if cursor else 0
+            if type(offset) is not int or not 0 <= offset <= len(current):
+                raise NewsCursorError("Invalid news cursor.")
+            if stage == "live":
+                for index, item in enumerate(current[offset:offset + 31], offset):
+                    selected.append((item, None, {"stage": "live", "offset": index + 1}))
+            for identity, published, views in archive_page(rows, cursor if stage == "archive" else None, 31-len(selected)):
+                selected.append((None, identity, position(identity, published, views, "archive")))
         else:
-            # Only IDs/dates are needed to interleave archive results with feeds.
-            pool = [(identities(item, kind)[0], item.published_at, getattr(item, "view_count", None), item) for item in current]
-            pool.extend((identity, date, views, None) for identity, date, views in archived[:end + 1])
-            def key(row):
-                date = row[1] or datetime.min.replace(tzinfo=UTC)
-                chronological = (row[1] is None, datetime.max.replace(tzinfo=UTC) - date, row[0])
-                if videos:
-                    return (row[2] is None, (row[2] or 0) * (1 if ascending else -1), *chronological)
-                return chronological
-            pool.sort(key=key)
-            selected = [(identity, item) for identity, _date, _views, item in pool[start:end + 1]]
-        has_next = len(selected) > 30
+            videos = kind == "videos"
+            ascending = sort == "least_views"
+
+            def rank(identity, published, views):
+                date = published or datetime.min.replace(tzinfo=UTC)
+                key = (published is None, datetime.max.replace(tzinfo=UTC)-date, identity)
+                return (views is None, (views or 0)*(1 if ascending else -1), *key) if videos else key
+
+            boundary = None
+            if cursor:
+                if cursor.get("stage") != "ranked":
+                    raise NewsCursorError("Invalid news cursor.")
+                published = cursor_date(cursor.get("published"), cursor.get("identity"))
+                views = cursor.get("views")
+                if views is not None and (type(views) is not int or not 0 <= views <= 9223372036854775807):
+                    raise NewsCursorError("Invalid news cursor.")
+                boundary = rank(cursor["identity"], published, views)
+            pool = []
+            for item in current:
+                identity = identities(item, kind)[0]
+                views = getattr(item, "view_count", None)
+                key = rank(identity, item.published_at, views)
+                if boundary is None or key > boundary:
+                    pool.append((key, item, None, position(identity, item.published_at, views)))
+            pool.sort(key=lambda row: row[0])
+            pool = pool[:31]
+            for identity, published, views in archive_page(rows, cursor, 31, sort=sort):
+                pool.append((rank(identity, published, views), None, identity, position(identity, published, views)))
+            pool.sort(key=lambda row: row[0])
+            selected = [(item, identity, after) for key, item, identity, after in pool[:31]]
+        next_position = selected[29][2] if len(selected) > 30 else None
         selected = selected[:30]
-        saved = {item.pk: item for item in rows.filter(pk__in=[identity for identity, item in selected if item is None])
+        retained = {item.pk: item for item in ArchivedNews.objects.filter(pk__in=[identity for item, identity, after in selected if item is None])
             .prefetch_related(Prefetch("origins", queryset=origins.order_by("category", "feed_id"), to_attr="board_origins"))}
         result = []
-        for identity, item in selected:
+        for item, identity, after in selected:
             if item is None:
-                record = saved.get(identity)
+                record = retained.get(identity)
                 if not record or not record.board_origins:
                     continue
                 origin = record.board_origins[0]
@@ -268,4 +292,4 @@ class CachedNews:
                     item = NewsItem(title=title, summary=summary, publisher=record.publisher, link=record.link,
                         published_at=record.published_at, provider_id=origin.source_id, provider_name=name, feed_id=origin.feed_id)
             result.append(item)
-        return result, has_next
+        return result, next_position

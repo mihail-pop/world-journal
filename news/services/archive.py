@@ -1,5 +1,4 @@
 """Rolling metadata history. All collection is from existing cached feed items."""
-from datetime import timedelta
 from hashlib import sha256
 import json
 import logging
@@ -12,12 +11,12 @@ from uuid import uuid4
 from django.conf import settings
 from django.core.cache import cache
 from django.db import DatabaseError
-from django.db.models import Q, Sum
+from django.db.models import Exists, OuterRef, Q
 from django.utils import timezone
 
-from core.database import database_write, write_transaction
-from news.models import ArchivedNews, ArchivedNewsCountry, ArchivedNewsSource, FeedState
-from news.preferences import effective_registry
+from core.database import write_transaction
+from news.models import ArchiveUsage, ArchivedNews, ArchivedNewsCountry, ArchivedNewsSource, FeedState
+from news.preferences import archive_storage_bytes, effective_registry
 from news.types import SourceKind
 from .cache import deserialize_items, deserialize_video_items, fixed_feed_cache_key, google_cache_key, youtube_cache_key
 from .country_matcher import match_country_text, match_title
@@ -76,63 +75,35 @@ def identities(item, kind):
     return identity, fingerprint
 
 
-def _cleanup_locked(now, force=False):
+def _cleanup_locked(force=False):
     global _next_cleanup
     if not force and time.monotonic() < _next_cleanup:
         return False, set()
     _next_cleanup = time.monotonic() + settings.NEWS_REFRESH_SECONDS
-    changed = False
-    touched = set()
-    while True:
-        expired = list(ArchivedNews.objects.filter(expires_at__lte=now).values_list("pk", flat=True)[:500])
-        if not expired:
+    budget = archive_storage_bytes()
+    count, total = ArchiveUsage.objects.values_list("item_count", "estimated_bytes").get(pk=1)
+    if count <= settings.NEWS_ARCHIVE_MAX_ITEMS and total <= budget:
+        return False, set()
+    target = max(0, budget - settings.NEWS_ARCHIVE_PRUNE_BYTES) if total > budget else budget
+    changed, touched = False, set()
+    while count > settings.NEWS_ARCHIVE_MAX_ITEMS or total > target:
+        ids = list(ArchivedNews.objects.order_by("sort_date", "identity").values_list("pk", flat=True)[:500])
+        if not ids:
             break
-        touched.update(ArchivedNewsCountry.objects.filter(item_id__in=expired).values_list("country_code", flat=True))
-        with database_write():
-            ArchivedNews.objects.filter(pk__in=expired).delete()
+        touched.update(ArchivedNewsCountry.objects.filter(item_id__in=ids).values_list("country_code", flat=True))
+        # Release the writer queue between batches so journal/settings saves
+        # can proceed even when the user substantially lowers the budget.
+        with write_transaction():
+            ArchivedNews.objects.filter(pk__in=ids).delete()
         changed = True
-    count = ArchivedNews.objects.count()
-    total = ArchivedNews.objects.aggregate(total=Sum("metadata_bytes"))["total"] or 0
-    # Fixed overhead includes a conservative allowance for indexes/row storage.
-    total += ArchivedNewsSource.objects.count() * 512 + ArchivedNewsCountry.objects.count() * 256
-    remove = []
-    if count > settings.NEWS_ARCHIVE_MAX_ITEMS or total > settings.NEWS_ARCHIVE_MAX_BYTES:
-        for identity, size, origin_count, tag_count in _oldest_sizes():
-            if count <= settings.NEWS_ARCHIVE_MAX_ITEMS and total <= settings.NEWS_ARCHIVE_MAX_BYTES:
-                break
-            remove.append(identity)
-            count -= 1
-            total -= size + origin_count * 512 + tag_count * 256
-        for start in range(0, len(remove), 500):
-            touched.update(ArchivedNewsCountry.objects.filter(item_id__in=remove[start:start+500]).values_list("country_code", flat=True))
-            with database_write():
-                ArchivedNews.objects.filter(pk__in=remove[start:start+500]).delete()
-        changed = changed or bool(remove)
+        count, total = ArchiveUsage.objects.values_list("item_count", "estimated_bytes").get(pk=1)
     return changed, touched
-
-
-def _oldest_sizes():
-    from django.db.models import Count
-    cursor = None
-    while True:
-        rows = ArchivedNews.objects.order_by("sort_date", "identity")
-        if cursor:
-            rows = rows.filter(Q(sort_date__gt=cursor[0]) | Q(sort_date=cursor[0], identity__gt=cursor[1]))
-        batch = list(rows.values_list("identity", "metadata_bytes", "sort_date")[:500])
-        if not batch:
-            return
-        ids = [row[0] for row in batch]
-        origins = dict(ArchivedNewsSource.objects.filter(item_id__in=ids).values("item_id").annotate(n=Count("id")).values_list("item_id", "n"))
-        tags = dict(ArchivedNewsCountry.objects.filter(item_id__in=ids).values("item_id").annotate(n=Count("id")).values_list("item_id", "n"))
-        for identity, size, date in batch:
-            yield identity, size, origins.get(identity, 0), tags.get(identity, 0)
-        cursor = (batch[-1][2], batch[-1][0])
 
 
 def maintain_archive(*, force=False):
     with _write_lock:
         try:
-            changed, codes = _cleanup_locked(timezone.now(), force=force)
+            changed, codes = _cleanup_locked(force=force)
             if changed:
                 _changed(codes)
         except DatabaseError as error:
@@ -200,7 +171,6 @@ def _collect(job, snapshot, registry, now, cache_key, stamp):
             return False
         source_id, feed_id = source.id, f"{source.id}:{identifier}"
         items = deserialize_items(snapshot) or ()
-    cutoff = now - timedelta(days=settings.NEWS_ARCHIVE_DAYS)
     from .country_news import _countries_by_code
     valid_countries = set(_countries_by_code())
     prepared = []
@@ -208,8 +178,7 @@ def _collect(job, snapshot, registry, now, cache_key, stamp):
     # SQLite for the writer lock so a user save can run during preparation.
     for item in items:
         link = item.watch_url if kind == "videos" else item.link
-        published = item.published_at
-        if len(link) > 2048 or (published and published < cutoff):
+        if len(link) > 2048:
             continue
         if category == "google":
             codes = {identifier} if identifier in valid_countries else set()
@@ -233,13 +202,10 @@ def _collect(job, snapshot, registry, now, cache_key, stamp):
         created = row is None
         sort_date = item.published_at if item.published_at and item.published_at <= now else now
         if created:
-            row = ArchivedNews(identity=identity, fingerprint=fingerprint, kind=kind, first_seen_at=now,
-                               sort_date=sort_date, expires_at=sort_date+timedelta(days=settings.NEWS_ARCHIVE_DAYS))
+            row = ArchivedNews(identity=identity, fingerprint=fingerprint, kind=kind, first_seen_at=now, sort_date=sort_date)
             new_rows[row.pk] = row
             by_id[identity] = row
             by_fingerprint.setdefault(fingerprint, row)
-        if row.expires_at <= now:
-            continue
         direct = kind == "articles" and category == "regional" and urlsplit(row.link).hostname == "news.google.com"
         if created or direct:
             values = {"title":item.title[:300], "link":link[:2048],
@@ -303,10 +269,21 @@ def enabled_feed_ids(registry, kind, country_code=None, category="all"):
     return ids
 
 
+def restrict_origins(rows, origins):
+    # Materialize only small source selections. SQLite otherwise sometimes
+    # scans the whole date index even for a feed with just a few saved items.
+    small = list(origins.order_by().values_list("item_id", flat=True)[:257])
+    return rows.filter(pk__in=small if len(small) <= 256 else origins.values("item_id"))
+
+
 def archived_items(kind, country_code=None, *, category="all", exclude=(), registry=None):
     registry = registry or effective_registry()
     origins = ArchivedNewsSource.objects.filter(feed_id__in=enabled_feed_ids(registry, kind, country_code, category))
-    rows = ArchivedNews.objects.filter(kind=kind, expires_at__gt=timezone.now(), pk__in=origins.values("item_id"))
+    rows = ArchivedNews.objects.filter(kind=kind)
+    if category != "all" and not country_code:
+        rows = restrict_origins(rows, origins)
+    else:
+        rows = rows.filter(Exists(origins.filter(item_id=OuterRef("pk"))))
     if country_code:
         rows = rows.filter(pk__in=ArchivedNewsCountry.objects.filter(country_code=country_code).values("item_id"))
     keys, fingerprints = zip(*(identities(item, kind) for item in exclude)) if exclude else ((), ())

@@ -157,6 +157,7 @@ def source_settings(request):
         from .services.background import feed_warmer
 
         feed_warmer.rescan()
+        feed_warmer.trim_archive()
         messages.success(request, "News-source preferences saved. Background refresh and cached results now use these choices.")
         return _navigate(request, country)
     return render_page(request, "settings", page_template="news/settings.html", context=_context(registry, choices, form, country))
@@ -167,13 +168,15 @@ def source_settings(request):
 def save_preference(request):
     """Persist one control, so quick changes never overwrite unrelated choices."""
     registry = with_custom_sources(get_source_registry())
-    if request.POST.get("field") == "freshness_minutes":
+    preference = request.POST.get("field")
+    if preference in {"freshness_minutes", "archive_storage_mb"}:
         try:
-            value = NewsPreferencesForm.base_fields["freshness_minutes"].clean(request.POST.get("value"))
+            value = NewsPreferencesForm.base_fields[preference].clean(request.POST.get("value"))
         except ValidationError:
-            return JsonResponse({"error": "Choose a refresh interval of 6, 8, 10 or 12 hours."}, status=400)
+            message = "Choose 500 MB, 1 GB or 2 GB." if preference == "archive_storage_mb" else "Choose a refresh interval of 2, 4, 6, 8, 10 or 12 hours."
+            return JsonResponse({"error": message}, status=400)
         with database_write():
-            NewsPreferences.objects.update_or_create(pk=1, defaults={"freshness_minutes": value})
+            NewsPreferences.objects.update_or_create(pk=1, defaults={preference: value})
     else:
         identity = request.POST.get("source_id")
         item = next((item for item in (*registry.sources, *registry.providers, *registry.feeds) if item.id == identity), None)
@@ -191,7 +194,10 @@ def save_preference(request):
                 SourcePreference.objects.update_or_create(source_id=related_feed_id, defaults={"enabled": value == "true"})
     from .services.background import feed_warmer
 
-    feed_warmer.rescan()
+    if preference == "archive_storage_mb":
+        feed_warmer.trim_archive()
+    else:
+        feed_warmer.rescan()
     choices, interval = source_choices(), freshness_seconds()
     form = NewsPreferencesForm(registry=registry, choices=choices, freshness=interval)
     context = _context(registry, choices, form, _country(request))

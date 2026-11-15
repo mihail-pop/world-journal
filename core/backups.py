@@ -27,7 +27,7 @@ from .models import AppSettings
 
 
 FORMAT = "world-journal-backup"
-VERSION = 7
+VERSION = 8
 MANIFEST_LIMIT = 32 * 1024 * 1024
 RECORD_LIMIT = 100_000
 IMAGE_TYPES = {"image/jpeg": (".jpg", "JPEG"), "image/png": (".png", "PNG"), "image/webp": (".webp", "WEBP"), "image/gif": (".gif", "GIF")}
@@ -61,6 +61,7 @@ LABELS = {
 # Version 5 adds user-edited custom territory details.
 # Version 6 consolidates all Preferences, including the active preset, in AppSettings.
 # Version 7 adds rich-text JSON bodies; searchable text is rebuilt on import.
+# Version 8 adds the news archive storage allocation.
 # New backup versions must retain a reader for older archive versions.
 CONTENT_FIELDS = "title body body_format entry_type source_url source_name source_published_at youtube_video_id youtube_start_seconds"
 SCHEMA_FIELDS = {
@@ -75,7 +76,7 @@ SCHEMA_FIELDS = {
     CountryProfile: "country_id entry_id updated_at",
     TerritoryDetails: "country_id name population area capital languages currency government notes updated_at",
     SourcePreference: "source_id enabled updated_at",
-    NewsPreferences: "id freshness_minutes updated_at",
+    NewsPreferences: "id freshness_minutes archive_storage_mb updated_at",
     AppSettings: "id theme font map_type home_country_id active_preset_id country_names capital_names city_names region_names small_country_markers protected_areas vegetation relief water transport buildings land_use administrative_borders points_of_interest all_other_text",
     CustomSource: "id parent_id kind name url feed_format channel_id verified_at last_checked_at last_error created_at updated_at",
 }
@@ -160,8 +161,8 @@ def _read_archive(archive):
     if total > settings.BACKUP_MAX_BYTES:
         raise BackupError("The expanded backup exceeds the configured size limit.")
     manifest = json.loads(archive.read("manifest.json"))
-    if not isinstance(manifest, dict) or manifest.get("format") != FORMAT or type(manifest.get("version")) is not int or manifest["version"] not in {1, 2, 3, 4, 5, 6, VERSION}:
-        raise BackupError("Unsupported backup format or version. Use a World Journal version 1–7 archive.")
+    if not isinstance(manifest, dict) or manifest.get("format") != FORMAT or type(manifest.get("version")) is not int or manifest["version"] not in range(1, VERSION + 1):
+        raise BackupError("Unsupported backup format or version. Use a World Journal version 1–8 archive.")
     records, media = manifest.get("records"), manifest.get("media")
     expected_datasets = set(DATASETS) - ({"preset_groups"} if manifest["version"] == 1 else set()) - ({"custom_sources"} if manifest["version"] < 3 else set()) - ({"territory_details"} if manifest["version"] < 5 else set())
     if manifest["version"] < 6:
@@ -188,6 +189,11 @@ def _read_archive(archive):
             if not isinstance(record, dict) or "parent_id" in record:
                 raise BackupError("The custom source fields do not match version 3.")
             record["parent_id"] = None
+    if manifest["version"] < 8:
+        for record in records["news_preferences"]:
+            if not isinstance(record, dict) or "archive_storage_mb" in record:
+                raise BackupError("The news preference fields do not match the backup version.")
+            record["archive_storage_mb"] = 2000
     return records, media
 
 
@@ -217,9 +223,9 @@ def _decode_records(records):
                     raise BackupError("Backup timestamps must include a timezone.")
             if model in (Entry, EntrySection) and values.get("entry_type") == "mixed":
                 values["entry_type"] = "note"
-            if model is NewsPreferences and type(values.get("freshness_minutes")) is int and 5 <= values["freshness_minutes"] <= 120:
+            if model is NewsPreferences and type(values.get("freshness_minutes")) is int and 5 <= values["freshness_minutes"] < 120:
                 # Older backups retain their source choices with the new cadence.
-                values["freshness_minutes"] = 720
+                values["freshness_minutes"] = 360
             obj = model(**values)
             foreign_keys = [field.name for field in fields if isinstance(field, models.ForeignKey)]
             obj.clean_fields(exclude=foreign_keys)
@@ -408,6 +414,11 @@ def import_archive(source):
                         type(obj).objects.filter(pk=obj.pk).update(**dates)
                     if isinstance(obj, Entry):
                         obj.countries.set(tags[obj.pk])
+            if any(action == "add" for obj, action in plan["news_preferences"]):
+                from news.services.background import feed_warmer
+
+                transaction.on_commit(feed_warmer.rescan, robust=True)
+                transaction.on_commit(feed_warmer.trim_archive, robust=True)
             return plan_summary(plan)
     except Exception:
         for storage, name in saved_files:

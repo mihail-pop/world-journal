@@ -35,25 +35,39 @@ class ArchivedNews(models.Model):
     published_at = models.DateTimeField(null=True, blank=True)
     first_seen_at = models.DateTimeField(default=timezone.now)
     sort_date = models.DateTimeField()
-    expires_at = models.DateTimeField(db_index=True)
     metadata_bytes = models.PositiveIntegerField(default=0)
+    search_id = models.PositiveBigIntegerField(null=True, unique=True, editable=False)
 
     class Meta:
         ordering = ("-sort_date", "identity")
         indexes = [
             models.Index(fields=["kind", "-sort_date", "identity"], name="news_archive_order_idx"),
             models.Index(fields=["sort_date", "identity"], name="news_archive_trim_idx"),
+            models.Index(fields=["kind", "-published_at", "identity"], name="news_archive_published_idx"),
+            models.Index(fields=["kind", "-view_count", "-published_at", "identity"], name="news_archive_views_desc_idx"),
+            models.Index(fields=["kind", "view_count", "-published_at", "identity"], name="news_archive_views_asc_idx"),
         ]
+
+
+class ArchiveUsage(models.Model):
+    id = models.PositiveSmallIntegerField(primary_key=True, default=1, editable=False)
+    item_count = models.PositiveBigIntegerField(default=0)
+    estimated_bytes = models.PositiveBigIntegerField(default=0)
+    next_search_id = models.PositiveBigIntegerField(default=0)
+
+    class Meta:
+        constraints = [models.CheckConstraint(condition=models.Q(id=1), name="news_archive_usage_singleton")]
 
 
 class ArchivedNewsSource(models.Model):
     item = models.ForeignKey(ArchivedNews, on_delete=models.CASCADE, related_name="origins")
-    feed_id = models.CharField(max_length=96, db_index=True)
+    feed_id = models.CharField(max_length=96)
     source_id = models.CharField(max_length=80)
     category = models.CharField(max_length=8)
 
     class Meta:
         constraints = [models.UniqueConstraint(fields=["item", "feed_id"], name="news_archive_unique_feed")]
+        indexes = [models.Index(fields=["feed_id", "item"], name="news_archive_source_idx")]
 
 
 class ArchivedNewsCountry(models.Model):
@@ -76,16 +90,19 @@ class SourcePreference(models.Model):
 
 
 class NewsPreferences(models.Model):
+    STORAGE_CHOICES = ((500, "500 MB"), (1000, "1 GB"), (2000, "2 GB"))
     id = models.PositiveSmallIntegerField(primary_key=True, default=1, editable=False)
     freshness_minutes = models.PositiveSmallIntegerField(
-        default=720, validators=[MinValueValidator(360), MaxValueValidator(720)],
+        default=360, validators=[MinValueValidator(120), MaxValueValidator(720)],
     )
+    archive_storage_mb = models.PositiveSmallIntegerField(default=2000, choices=STORAGE_CHOICES)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         constraints = [
             models.CheckConstraint(condition=models.Q(id=1), name="news_preferences_singleton"),
-            models.CheckConstraint(condition=models.Q(freshness_minutes__gte=360, freshness_minutes__lte=720), name="news_freshness_bounds"),
+            models.CheckConstraint(condition=models.Q(freshness_minutes__gte=120, freshness_minutes__lte=720), name="news_freshness_bounds"),
+            models.CheckConstraint(condition=models.Q(archive_storage_mb__in=(500, 1000, 2000)), name="news_archive_storage_choices"),
         ]
 
 

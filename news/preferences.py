@@ -15,6 +15,11 @@ def freshness_seconds():
     return minutes * 60 if minutes is not None else settings.NEWS_REFRESH_SECONDS
 
 
+def archive_storage_bytes():
+    megabytes = NewsPreferences.objects.filter(pk=1).values_list("archive_storage_mb", flat=True).first()
+    return megabytes * 1_000_000 if megabytes is not None else settings.NEWS_ARCHIVE_DEFAULT_BYTES
+
+
 def effective_registry(registry=None, choices=None):
     if registry is None:
         from .services.custom_sources import with_custom_sources

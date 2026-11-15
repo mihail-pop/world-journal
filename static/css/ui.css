@@ -245,6 +245,8 @@ body:has(.settings-page) .select-menu .select-search:focus { outline: none; box-
 .source-overview-grid > .settings-card { min-height: 15rem; }
 .source-preferences-form > h2 { align-self: stretch; }
 .source-preferences-form .settings-field { flex: 0 0 auto; width: 100%; min-width: 0; margin: 0; }
+.source-preferences-form .settings-field + .settings-field { margin-top: 1rem; }
+.source-preferences-form .settings-field > label { text-align: center; font-size: .9rem; }
 .source-overview-grid .source-preferences-form { position: relative; display: flex; flex-direction: column; flex-wrap: nowrap; align-items: center; justify-content: flex-start; gap: 0; margin: 0; }
 .source-warning { color: var(--ui-warning); }
 .source-add-card, .source-refresh-card { display: flex; flex-direction: column; }

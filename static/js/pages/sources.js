@@ -121,7 +121,7 @@ function valueOf(input) { return input.type === "checkbox" ? String(input.checke
 
 function stateFor(page) {
     if (!pageStates.has(page)) {
-        for (const input of page.querySelectorAll('[data-source-choice], [name="freshness_minutes"]')) {
+        for (const input of page.querySelectorAll('[data-source-choice], [name="freshness_minutes"], [name="archive_storage_mb"]')) {
             input.dataset.savedValue = valueOf(input);
         }
         pageStates.set(page, { pending: new Map(), running: false });
@@ -141,9 +141,10 @@ async function savePending(page, state) {
         body.set(change.input.type === "checkbox" ? "source_id" : "field", key);
         body.set("value", change.value);
         const interval = key === "freshness_minutes";
+        const storage = key === "archive_storage_mb";
         const label = change.input.closest("label");
         const name = (label?.querySelector(".source-card-title") || label)?.textContent.trim() || "Source";
-        const finish = beginTask(interval ? "Saving refresh interval…" : "Saving source choice…");
+        const finish = beginTask(storage ? "Saving archive storage…" : interval ? "Saving refresh interval…" : "Saving source choice…");
         let failureKind = "error";
         try {
             const response = await fetch(page.dataset.saveUrl, { method: "POST", body, headers: { "X-Requested-With": "XMLHttpRequest" } });
@@ -161,14 +162,14 @@ async function savePending(page, state) {
             }
             document.dispatchEvent(new CustomEvent("world-journal:data-changed", { detail: { path: "/settings/news/preference/" } }));
             if (progressController?.page === page) startProgress(page);
-            if (!state.pending.has(key)) notify({id: "source-choice", kind: "success", title: interval ? "Refresh interval saved" : `${name} ${change.value === "true" ? "enabled" : "disabled"}`});
+            if (!state.pending.has(key)) notify({id: "source-choice", kind: "success", title: storage ? "Archive storage saved" : interval ? "Refresh interval saved" : `${name} ${change.value === "true" ? "enabled" : "disabled"}`});
         } catch (error) {
             if (!state.pending.has(key) && valueOf(change.input) === change.value) {
                 if (change.input.type === "checkbox") change.input.checked = change.input.dataset.savedValue === "true";
                 else change.input.value = change.input.dataset.savedValue;
                 change.input.dispatchEvent(new Event("change"));
             }
-            notify({id: "source-choice", kind: failureKind, title: interval ? "Refresh interval could not be saved" : "Source choice could not be saved", message: `${error.message} Your last confirmed choice is shown.`});
+            notify({id: "source-choice", kind: failureKind, title: storage ? "Archive storage could not be saved" : interval ? "Refresh interval could not be saved" : "Source choice could not be saved", message: `${error.message} Your last confirmed choice is shown.`});
         } finally {
             finish();
         }
@@ -232,9 +233,9 @@ export function registerSourceSettings() {
         const page = input.closest?.("[data-source-settings]");
         if (!page) return;
         if (input.name === "kind") { updateHelp(page, input.value); return; }
-        if (!input.matches('[data-source-choice], [name="freshness_minutes"]')) return;
+        if (!input.matches('[data-source-choice], [name="freshness_minutes"], [name="archive_storage_mb"]')) return;
         if (input.name === "freshness_minutes" && !input.checkValidity()) {
-            notify({id: "source-choice", kind: "warning", title: "Choose a refresh interval", message: "Choose 6, 8, 10 or 12 hours."});
+            notify({id: "source-choice", kind: "warning", title: "Choose a refresh interval", message: "Choose 2, 4, 6, 8, 10 or 12 hours."});
             return;
         }
         const state = stateFor(page);
@@ -252,6 +253,7 @@ export function registerSourceSettings() {
         // Enter in the interval field must not submit all checkboxes as a batch.
         event.preventDefault();
         event.stopImmediatePropagation();
-        event.target.querySelector('[name="freshness_minutes"]').dispatchEvent(new Event("change", { bubbles: true }));
+        const preference = document.activeElement?.closest(".settings-field")?.querySelector("select") || event.target.querySelector('[name="freshness_minutes"]');
+        preference.dispatchEvent(new Event("change", { bubbles: true }));
     }, true);
 }

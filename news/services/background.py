@@ -158,6 +158,12 @@ class FeedWarmer:
             self.ready = False
         self.scan_requested.set()
 
+    def trim_archive(self):
+        self.start()
+        with self.condition:
+            self.maintenance_requested = self.full_cleanup = True
+        self.scan_requested.set()
+
     def refresh_all(self):
         self.start()
         with self.condition:
