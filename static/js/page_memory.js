@@ -22,9 +22,12 @@ function updateHeaderLinks() {
         const name = link.dataset.navPage;
         if (["map", "journal", "news", "countries"].includes(name)) {
             const root = name === "map" ? "/" : `/${name}/`;
+            if (name === "journal") {
+                link.href = root;
+                continue;
+            }
             const saved = remembered.get(name);
-            const canResume = name !== "journal" || (saved?.page.querySelector("[data-journal-editor]") && !saved.journalDirty);
-            link.href = activePage?.dataset.page === name || !canResume ? root : saved?.url ?? root;
+            link.href = activePage?.dataset.page === name ? root : saved?.url ?? root;
         }
     }
 }
@@ -159,7 +162,7 @@ export function registerPageMemory() {
     });
 
     document.body.addEventListener("htmx:configRequest", event => {
-        const link = event.detail.elt?.closest("[data-nav-page], .news-board-tabs a");
+        const link = event.detail.elt?.closest("[data-nav-page], .news-board-tabs a, [data-journal-new]");
         // Boosted anchors capture href when first processed. Read the current
         // remembered href here too, so the sent request and history agree.
         if (link && event.detail.verb === "get") event.detail.path = link.getAttribute("href");
@@ -169,7 +172,7 @@ export function registerPageMemory() {
         outgoingUrl = currentUrl();
         const source = event.detail.requestConfig?.elt;
         const navPage = source?.closest("[data-nav-page]")?.dataset.navPage;
-        resetPage = navPage === activePage?.dataset.page ? navPage : null;
+        resetPage = navPage && (navPage === "journal" || navPage === activePage?.dataset.page) ? navPage : null;
         resumeJournal = navPage === "journal" && !resetPage;
         resumeNews = navPage === "news" && !resetPage;
         resumeCountries = navPage === "countries" && !resetPage;

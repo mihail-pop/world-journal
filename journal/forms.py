@@ -5,7 +5,7 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.forms import inlineformset_factory
 
-from .models import Attachment, Collection, Entry, EntrySection, EntryType
+from .models import Attachment, BUILTIN_COLLECTION_NAMES, Collection, Entry, EntrySection, EntryType
 from .validators import MAX_TIMESTAMP, parse_youtube_reference
 
 
@@ -19,6 +19,7 @@ class ContentForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         self.fields["title"].widget.attrs["placeholder"] = "Title"
         self.fields["entry_type"].label = "Type"
+        self.fields["entry_type"].required = False
         self.fields["body"].widget.attrs.update(rows=12, placeholder="Start writing…", **{"data-journal-body": ""})
         self.fields["source_published_at"].widget = forms.DateTimeInput(attrs={"type": "datetime-local"}, format="%Y-%m-%dT%H:%M")
         self.fields["source_published_at"].input_formats = ["%Y-%m-%dT%H:%M", "%Y-%m-%dT%H:%M:%S"]
@@ -28,6 +29,9 @@ class ContentForm(forms.ModelForm):
         self.fields["source_published_at"].label = "Source publication time (UTC)"
         if self.instance.youtube_video_id:
             self.initial["youtube_reference"] = self.instance.youtube_video_id
+
+    def clean_entry_type(self):
+        return self.cleaned_data.get("entry_type") or EntryType.NOTE
 
     def clean(self):
         cleaned = super().clean()
@@ -102,6 +106,14 @@ SectionFormSet = inlineformset_factory(Entry, EntrySection, form=SectionForm, ex
 
 
 class CollectionForm(forms.ModelForm):
+    def clean_name(self):
+        name = self.cleaned_data["name"]
+        if self.instance.pk and self.instance.is_builtin:
+            raise ValidationError("This collection has a fixed name.")
+        if name.casefold() in {value.casefold() for value in BUILTIN_COLLECTION_NAMES}:
+            raise ValidationError("Choose a different name. This name belongs to a built-in collection.")
+        return name
+
     class Meta:
         model = Collection
         fields = ("name", "description", "position")

@@ -1,8 +1,8 @@
 from datetime import date
 from uuid import UUID
 
-from django.db.models import Q
-from django.db.models.functions import Substr
+from django.db.models import Case, DateTimeField, F, Q, When
+from django.db.models.functions import Coalesce, Lower, Substr
 
 from .models import Entry, EntryType
 
@@ -38,7 +38,18 @@ def filtered_entries(params, *, for_display=True):
         entries = entries.filter(countries__isnull=True)
     if params.get("undated") == "1":
         entries = entries.filter(event_date__isnull=True)
-    date_field = "created_at__date" if params.get("date_basis") == "created" else "event_date"
+    sort = params.get("sort", "activity")
+    if sort not in {"activity", "release", "title"}:
+        sort = "activity"
+    if sort == "release":
+        entries = entries.annotate(journal_release_date=Case(
+            When(entry_type=EntryType.NOTE, then=F("created_at")),
+            default=Coalesce("source_published_at", "created_at"), output_field=DateTimeField(),
+        ))
+    if params.get("date_basis") in {"event", "created"}:
+        date_field = "created_at__date" if params["date_basis"] == "created" else "event_date"
+    else:
+        date_field = "journal_release_date__date" if sort == "release" else "created_at__date"
     day = params.get("date", "")
     if day:
         try:
@@ -63,5 +74,6 @@ def filtered_entries(params, *, for_display=True):
                 entries = entries.filter(**{f"{date_field}__month": number})
             except ValueError:
                 entries = entries.none()
-    ordering = ("-is_pinned", "-created_at", "-id") if date_field.startswith("created") else ("-is_pinned", "-event_date", "-created_at", "-id")
-    return entries.order_by(*ordering) if for_display else entries.order_by()
+    field = Lower("title") if sort == "title" else F("journal_release_date" if sort == "release" else "created_at")
+    ordering = field.asc(nulls_last=True) if params.get("order") == "asc" else field.desc(nulls_last=True)
+    return entries.order_by(ordering, "id") if for_display else entries.order_by()

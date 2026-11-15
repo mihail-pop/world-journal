@@ -1,4 +1,5 @@
 import { registerJournalAutosave } from "./journal_autosave.js";
+import { registerJournalList } from "./journal_list.js";
 import { notify } from "../notifications.js";
 import { registerInfiniteScroll } from "../infinite_scroll.js";
 
@@ -204,6 +205,7 @@ export function registerJournalPage() {
         reloadForm: ".journal-search-form",
     });
     registerJournalAutosave();
+    registerJournalList();
     function openCard(event) {
         const card = event.target.closest("[data-journal-entry-card]");
         if (!card || event.target.closest("a, button, input, textarea, select, summary, label")) return;
@@ -281,11 +283,6 @@ export function registerJournalPage() {
             updatePositions(editor);
             const invalid = editor.querySelector(".errorlist li")?.closest("[data-editor-page]");
             if (invalid) setActivePage(editor, invalid.dataset.editorPage);
-        }
-        const collections = document.querySelector(".journal-collections");
-        if (collections && !collections.dataset.initialized) {
-            collections.open = !window.matchMedia("(max-width: 46rem)").matches;
-            collections.dataset.initialized = "true";
         }
     });
     window.addEventListener("resize", () => {

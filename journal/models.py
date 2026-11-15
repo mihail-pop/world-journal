@@ -21,6 +21,9 @@ class BodyFormat(models.TextChoices):
     PLAIN = "plain", "Plain text"
 
 
+BUILTIN_COLLECTION_NAMES = ("Articles", "Notes", "Videos")
+
+
 class Collection(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=160, unique=True)
@@ -34,6 +37,10 @@ class Collection(models.Model):
 
     def __str__(self):
         return self.name
+
+    @property
+    def is_builtin(self):
+        return self.name in BUILTIN_COLLECTION_NAMES
 
 
 class ResearchContent(models.Model):

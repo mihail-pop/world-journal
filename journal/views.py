@@ -1,4 +1,5 @@
 import json
+from calendar import month_abbr
 from datetime import UTC
 from hashlib import sha256
 
@@ -11,6 +12,7 @@ from django.http import HttpResponse, JsonResponse, QueryDict
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils.dateparse import parse_datetime
+from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.cache import never_cache
 
@@ -19,8 +21,8 @@ from core.views import render_page
 from countries.models import Country
 
 from .formatting import referenced_countries, render_body
-from .forms import AttachmentForm, CollectionForm, EntryForm, SectionFormSet
-from .models import Attachment, Collection, Entry, EntryType
+from .forms import AttachmentForm, CollectionForm, EntryForm, SectionFormSet, default_collection
+from .models import Attachment, BUILTIN_COLLECTION_NAMES, Collection, Entry, EntryType
 from .query import filtered_entries
 from .statistics import statistics_context
 from .validators import VIDEO_ID
@@ -40,6 +42,7 @@ def player_video(request, video_id):
             entry = Entry.objects.filter(youtube_video_id=video_id).first()
             if entry is None and favorite:
                 entry = Entry.objects.create(
+                    collection=default_collection(EntryType.YOUTUBE),
                     title=(request.POST.get("title", "").strip() or "YouTube video")[:300],
                     source_name=request.POST.get("channel", "YouTube")[:200],
                     entry_type=EntryType.YOUTUBE,
@@ -79,10 +82,7 @@ def page(request, template, context):
 
 @require_http_methods(["GET"])
 def index(request):
-    if request.GET:
-        return navigate(request, reverse("journal:list") + "?" + request.GET.urlencode())
-    latest = Entry.objects.order_by("-updated_at", "-id").values_list("pk", flat=True).first()
-    return navigate(request, reverse("journal:edit", args=[latest]) if latest else reverse("journal:new"))
+    return list_entries(request)
 
 
 @never_cache
@@ -113,16 +113,38 @@ def list_entries(request):
         "entries_page": entries_page, "paging_version": version, "query_signature": query_signature,
         "refresh_url": refresh_url, "next_url": next_url,
     }
-    if is_paging:
+    if is_paging or request.headers.get("X-Journal-Filtering") == "1":
         context["total_entries"] = summary["total"] or Entry.objects.exists()
         return render(request, "journal/partials/entry_results.html", context)
+    collections = list(Collection.objects.annotate(entry_count=Count("entries")).order_by("position", "name", "id"))
+    selected = next((item for item in collections if str(item.pk) == request.GET.get("collection")), None)
+    latest_year = timezone.localdate().year
+    years = list(range(latest_year, latest_year - 4, -1))
+    try:
+        selected_year = int(request.GET.get("year", ""))
+        if 1 <= selected_year <= 9999 and selected_year not in years:
+            years[-1] = selected_year
+    except ValueError:
+        pass
+    sort = request.GET.get("sort", "activity")
+    sort = sort if sort in {"activity", "release", "title"} else "activity"
+    order = "asc" if request.GET.get("order") == "asc" else "desc"
+    editor_data = {str(item.pk): {
+        "id": str(item.pk), "name": item.name, "description": item.description, "position": item.position,
+        "delete_url": reverse("journal:collection_delete", args=[item.pk]),
+    } for item in collections if not item.is_builtin}
+    selected_data = editor_data.get(str(selected.pk)) if selected else None
     context.update({
-        "collections": Collection.objects.annotate(entry_count=Count("entries")),
-        "unfiled_count": Entry.objects.filter(collection__isnull=True).count(),
-        "countries": Country.objects.all(),
+        "collections": collections, "selected_collection": selected,
+        "collection_editor_data": editor_data, "collection_form": CollectionForm(),
+        "collection_modal": "edit" if request.GET.get("edit_collection") and selected_data else "new" if request.GET.get("create_collection") else "",
+        "sort": sort, "order": order, "years": years,
+        "months": [(str(number), month_abbr[number]) for number in range(1, 13)],
         "entry_types": EntryType.choices,
         "filters": request.GET,
         "selected_countries": [code.upper() for code in request.GET.getlist("country")],
+        "extra_filters": [(key, value) for key in ("country", "date_basis", "date", "favorite", "pinned", "undated", "untagged")
+                          for value in request.GET.getlist(key) if value],
         "total_entries": Entry.objects.count(),
     })
     return page(request, "core/partials/journal.html", context)
@@ -338,26 +360,52 @@ def delete_entry(request, pk):
 
 @require_http_methods(["GET", "POST"])
 def collection_edit(request, pk=None):
-    collection = get_object_or_404(Collection, pk=pk) if pk else Collection()
+    identity = pk
+    if not identity and request.method == "POST":
+        identity = request.POST.get("collection_id")
+    if identity:
+        try:
+            identity = Collection._meta.pk.to_python(identity)
+        except ValidationError:
+            return HttpResponse("Choose an existing collection.", status=400)
+    collection = get_object_or_404(Collection.objects.exclude(name__in=BUILTIN_COLLECTION_NAMES), pk=identity) if identity else Collection()
+    if request.method == "GET":
+        url = reverse("journal:list")
+        return navigate(request, url + (f"?collection={collection.pk}&edit_collection=1" if pk else "?create_collection=1"))
     form = CollectionForm(request.POST if request.method == "POST" else None, instance=collection)
-    if request.method == "POST" and form.is_valid():
-        with database_write():
+    if form.is_valid():
+        with write_transaction():
             collection = form.save()
         messages.success(request, "Collection saved.")
-        return navigate(request, reverse("journal:list") + f"?collection={collection.pk}")
-    return page(request, "journal/collection_edit.html", {"form": form, "collection": collection, "is_new": pk is None})
+        params = QueryDict(request.POST.get("return_query", ""), mutable=True)
+        for key in list(params):
+            if key not in {"q", "collection", "type", "sort", "order", "year", "month", "country", "date_basis", "date", "favorite", "pinned", "undated", "untagged"}:
+                params.pop(key)
+        params["collection"] = str(collection.pk)
+        return navigate(request, reverse("journal:list") + "?" + params.urlencode())
+    response = render(request, "journal/partials/collection_form.html", {
+        "collection_form": form, "collection": collection, "collection_id": str(collection.pk) if identity else "",
+        "return_query": request.POST.get("return_query", ""),
+    })
+    response.headers["HX-Trigger"] = json.dumps({"world-journal:server-notices": {"notices": [
+        {"kind": "warning", "message": "Check the collection details."},
+    ]}})
+    return response
 
 
 @require_http_methods(["GET", "POST"])
 def collection_delete(request, pk):
-    collection = get_object_or_404(Collection, pk=pk)
+    collection = get_object_or_404(Collection.objects.exclude(name__in=BUILTIN_COLLECTION_NAMES), pk=pk)
     form = ConfirmationForm(request.POST if request.method == "POST" else None)
     if request.method == "POST" and form.is_valid():
-        with database_write():
+        with write_transaction():
+            for types in ((EntryType.YOUTUBE,), (EntryType.ARTICLE, EntryType.BOOKMARK), (EntryType.NOTE,)):
+                target = default_collection(types[0])
+                Entry.objects.filter(collection=collection, entry_type__in=types).update(collection=target)
             collection.delete()
-        messages.success(request, "Collection deleted. Its entries are kept in the journal.")
+        messages.success(request, "Collection deleted.")
         return navigate(request, reverse("journal:list"))
-    return page(request, "journal/confirm_delete.html", {"form": form, "title": f"Delete collection {collection.name}?", "description": "Entries are kept and moved to Unfiled. Only the collection is removed.", "cancel_url": reverse("journal:list") + f"?collection={collection.pk}"})
+    return navigate(request, reverse("journal:list") + f"?collection={collection.pk}&edit_collection=1")
 
 
 @require_http_methods(["POST"])
