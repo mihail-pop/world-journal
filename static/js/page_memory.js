@@ -234,6 +234,10 @@ export function registerPageMemory() {
     });
     document.addEventListener("world-journal:data-changed", event => {
         if (event.detail?.path?.startsWith("/journal/") && journalList) journalList.journalDirty = true;
+        const removed = event.detail?.deletedEntryId;
+        const journal = remembered.get("journal");
+        if (removed && journal && (journal.page.querySelector('[name="entry_id"]')?.value === removed
+            || new URL(journal.url, location.origin).pathname.startsWith(`/journal/${removed}/`))) remembered.delete("journal");
         if (event.detail?.path !== document.body.dataset.journalQuickSaveUrl) return;
         const saved = remembered.get("journal");
         if (saved) saved.journalDirty = true;

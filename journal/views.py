@@ -26,6 +26,7 @@ from .models import Attachment, BUILTIN_COLLECTION_NAMES, Collection, Entry, Ent
 from .query import filtered_entries
 from .statistics import statistics_context
 from .validators import VIDEO_ID, parse_youtube_reference
+from .bookmarks import bookmark_details, bookmark_states
 
 
 @never_cache
@@ -228,7 +229,16 @@ def quick_save(request):
             entry = form.save()
         else:
             entry.countries.add(*form.cleaned_data["countries"])
-    return JsonResponse({"edit_url": reverse("journal:edit", args=[entry.pk]), "created": created})
+    return JsonResponse({**bookmark_details(entry), "created": created})
+
+
+@never_cache
+@require_http_methods(["POST"])
+def bookmark_status(request):
+    videos, urls = request.POST.getlist("video"), request.POST.getlist("url")
+    if len(videos) + len(urls) > 200 or any(not VIDEO_ID.fullmatch(value) for value in videos) or any(len(value) > 2048 for value in urls):
+        return JsonResponse({"message": "Choose valid articles or videos."}, status=400)
+    return JsonResponse({"bookmarks": bookmark_states(videos, urls)})
 
 
 def section_submission(data, entry):
@@ -367,10 +377,17 @@ def delete_entry(request, pk):
     entry = get_object_or_404(Entry, pk=pk)
     form = ConfirmationForm(request.POST if request.method == "POST" else None)
     if request.method == "POST" and form.is_valid():
+        videos = [entry.youtube_video_id] if entry.youtube_video_id else []
+        urls = [entry.source_url] if entry.source_url else []
         with write_transaction():
             entry.delete()
+            remaining = bookmark_states(videos, urls) if request.headers.get("Accept") == "application/json" else None
+        if remaining is not None:
+            return JsonResponse({"deleted": True, "bookmarks": remaining})
         messages.success(request, "Entry deleted, including its sections and local images.")
         return navigate(request, reverse("core:journal"))
+    if request.method == "POST" and request.headers.get("Accept") == "application/json":
+        return JsonResponse({"message": "Confirm removal from Journal."}, status=422)
     return page(request, "journal/confirm_delete.html", {"form": form, "title": f"Delete {entry.title}?", "description": "This deletes the entry, its subsections and its local images.", "cancel_url": entry.get_absolute_url()})
 
 

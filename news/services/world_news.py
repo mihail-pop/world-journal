@@ -14,6 +14,7 @@ from news.models import ArchivedNews, ArchivedNewsSource
 from news.preferences import freshness_seconds
 from news.paging import paging_time, result_version, search_archive, search_query, search_terms
 from news.types import NewsItem, SourceKind, VideoItem
+from journal.bookmarks import bookmark_states
 
 from .archive import identities, revision
 from .cache import fixed_feed_cache_key, google_cache_key, google_pause_until, youtube_cache_key
@@ -179,6 +180,10 @@ class CachedNews:
             for item in google_items + regional_items + video_items
         ]])
         cards = []
+        bookmarks = bookmark_states(
+            videos=[item.video_id for item in items] if self.options["tab"] == "videos" else (),
+            urls=[item.link for item in items] if self.options["tab"] == "articles" else (),
+        )
         for item in items:
             video = self.options["tab"] == "videos"
             initial = {"type": "youtube" if video else "article", "title": item.title,
@@ -191,6 +196,7 @@ class CachedNews:
             elif item.matched_country_codes:
                 initial["country"] = item.matched_country_codes
             cards.append({"item": item, "google": not video and item.provider_id == self.google.id,
+                          "bookmark": bookmarks.get(f"video:{item.video_id}" if video else f"article:{item.link}"),
                           "save_url": reverse("journal:new") + "?" + urlencode(initial, doseq=True)})
         pending = sum(not isinstance(snapshot := self.get(key), dict) or not isinstance(snapshot.get("items"), list)
                       or not (snapshot.get("last_success_at") or snapshot.get("last_attempt_at")) for key in self.keys)

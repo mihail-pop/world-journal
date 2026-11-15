@@ -36,6 +36,7 @@ function trackEditor(form) {
 }
 
 async function save(state, explicit = false, skipUploads = false) {
+    if (state.form.dataset.journalDeleted) return false;
     try {
         await state.form.journalReady;
         if (!skipUploads) await Promise.all(state.form.journalPendingUploads || []);
@@ -43,6 +44,7 @@ async function save(state, explicit = false, skipUploads = false) {
         showStatus(state, "The editor could not be opened. Reload this page before saving.", "error");
         return false;
     }
+    if (state.form.dataset.journalDeleted) return false;
     if (state.pending) {
         if (!await state.pending) return false;
         if (state.savedVersion === state.version) return true;
@@ -127,6 +129,17 @@ export function saveJournalEditor(form, {skipUploads = false} = {}) {
 export function registerJournalAutosave() {
     if (registered) return;
     registered = true;
+    document.addEventListener("world-journal:data-changed", event => {
+        const removed = event.detail?.deletedEntryId;
+        if (!removed) return;
+        for (const [form, state] of editors) {
+            if (form.elements.namedItem("entry_id")?.value !== removed) continue;
+            form.dataset.journalDeleted = "true";
+            clearTimeout(state.statusTimer);
+            dismissNotice(`autosave-${form.dataset.autosaveUrl}`);
+            editors.delete(form);
+        }
+    });
     document.addEventListener("world-journal:page-ready", () => {
         const form = document.querySelector("[data-journal-editor]");
         if (document.querySelector('#app-content > [data-page="journal"]')) {
