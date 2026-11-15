@@ -43,13 +43,13 @@ def filtered_entries(params, *, for_display=True):
         sort = "activity"
     if sort == "release":
         entries = entries.annotate(journal_release_date=Case(
-            When(entry_type=EntryType.NOTE, then=F("created_at")),
-            default=Coalesce("source_published_at", "created_at"), output_field=DateTimeField(),
+            When(entry_type=EntryType.NOTE, then=F("updated_at")),
+            default=Coalesce("source_published_at", "updated_at"), output_field=DateTimeField(),
         ))
     if params.get("date_basis") in {"event", "created"}:
         date_field = "created_at__date" if params["date_basis"] == "created" else "event_date"
     else:
-        date_field = "journal_release_date__date" if sort == "release" else "created_at__date"
+        date_field = "journal_release_date__date" if sort == "release" else "updated_at__date"
     day = params.get("date", "")
     if day:
         try:
@@ -74,6 +74,6 @@ def filtered_entries(params, *, for_display=True):
                 entries = entries.filter(**{f"{date_field}__month": number})
             except ValueError:
                 entries = entries.none()
-    field = Lower("title") if sort == "title" else F("journal_release_date" if sort == "release" else "created_at")
+    field = Lower("title") if sort == "title" else F("journal_release_date" if sort == "release" else "updated_at")
     ordering = field.asc(nulls_last=True) if params.get("order") == "asc" else field.desc(nulls_last=True)
     return entries.order_by(ordering, "id") if for_display else entries.order_by()
