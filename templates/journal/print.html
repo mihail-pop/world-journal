@@ -1,0 +1,20 @@
+{% load static journal_tags %}
+<!doctype html>
+<html lang="en" data-font="{{ app_font }}">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ entry.title }}</title>
+    <link rel="stylesheet" href="{% static 'css/ui.css' %}">
+    <link rel="stylesheet" href="{% static 'css/journal_document.css' %}">
+    <script type="module" src="{% static 'js/pages/journal_print.js' %}"></script>
+</head>
+<body class="journal-print">
+    <nav class="journal-print-controls"><button type="button" data-print-document>Print / Save as PDF</button></nav>
+    <main class="journal-print-paper journal-prose">
+        <h1>{{ entry.title }}</h1>
+        {% include 'journal/_content.html' with content=entry %}
+        {% for section in entry.sections.all %}<section><h2>{{ section.title }}</h2>{% include 'journal/_content.html' with content=section %}</section>{% endfor %}
+    </main>
+</body>
+</html>

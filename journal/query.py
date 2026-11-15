@@ -10,10 +10,10 @@ from .models import Entry, EntryType
 def filtered_entries(params, *, for_display=True):
     entries = Entry.objects.all()
     if for_display:
-        entries = entries.select_related("collection").prefetch_related("countries").annotate(excerpt=Substr("body", 1, 1600)).defer("body")
+        entries = entries.select_related("collection").prefetch_related("countries").annotate(excerpt=Substr("body_text", 1, 1600)).defer("body", "body_text")
     query = params.get("q", "").strip()[:300]
     if query:
-        entries = entries.filter(Q(title__icontains=query) | Q(body__icontains=query) | Q(source_name__icontains=query) | Q(source_url__icontains=query) | Q(sections__title__icontains=query) | Q(sections__body__icontains=query) | Q(sections__source_url__icontains=query)).distinct()
+        entries = entries.filter(Q(title__icontains=query) | Q(body_text__icontains=query) | Q(source_name__icontains=query) | Q(source_url__icontains=query) | Q(sections__title__icontains=query) | Q(sections__body_text__icontains=query) | Q(sections__source_url__icontains=query)).distinct()
     country_codes = [code.upper() for code in params.getlist("country") if len(code) == 2]
     if country_codes:
         entries = entries.filter(countries__code__in=country_codes).distinct()

@@ -3,9 +3,10 @@ from pathlib import Path
 from django import forms
 from django.conf import settings
 from django.core.exceptions import ValidationError
-from django.forms import inlineformset_factory
+from django.forms import BaseInlineFormSet, inlineformset_factory
 
-from .models import Attachment, BUILTIN_COLLECTION_NAMES, Collection, Entry, EntrySection, EntryType
+from .models import Attachment, BodyFormat, BUILTIN_COLLECTION_NAMES, Collection, Entry, EntrySection, EntryType
+from .documents import image_ids, serialize_document, validate_document
 from .validators import MAX_TIMESTAMP, parse_youtube_reference
 
 
@@ -20,7 +21,11 @@ class ContentForm(forms.ModelForm):
         self.fields["title"].widget.attrs["placeholder"] = "Title"
         self.fields["entry_type"].label = "Type"
         self.fields["entry_type"].required = False
-        self.fields["body"].widget.attrs.update(rows=12, placeholder="Start writing…", **{"data-journal-body": ""})
+        self.fields["body"].widget.attrs.update(hidden=True, **{"data-journal-body": ""})
+        self.editor_html = ""
+        if not self.is_bound and self.instance.body and self.instance.body_format != BodyFormat.RICHTEXT:
+            from .formatting import render_body
+            self.editor_html = str(render_body(self.instance.body, self.instance.body_format))
         self.fields["source_published_at"].widget = forms.DateTimeInput(attrs={"type": "datetime-local"}, format="%Y-%m-%dT%H:%M")
         self.fields["source_published_at"].input_formats = ["%Y-%m-%dT%H:%M", "%Y-%m-%dT%H:%M:%S"]
         self.fields["youtube_start_seconds"].label = "Start time in seconds"
@@ -33,10 +38,22 @@ class ContentForm(forms.ModelForm):
     def clean_entry_type(self):
         return self.cleaned_data.get("entry_type") or EntryType.NOTE
 
+    def clean_body(self):
+        value = self.cleaned_data.get("body", "")
+        if not value:
+            return ""
+        document = validate_document(value)
+        ids = image_ids(document)
+        if ids:
+            owner_id = self.instance.entry_id if isinstance(self.instance, EntrySection) else self.instance.pk
+            existing = set(Attachment.objects.filter(entry_id=owner_id, pk__in=ids).values_list("pk", flat=True))
+            if ids != existing:
+                raise ValidationError("An image does not belong to this document or has been deleted.")
+        return serialize_document(document)
+
     def clean(self):
         cleaned = super().clean()
-        # Keep the legacy database/export field, but every editor uses Markdown.
-        self.instance.body_format = "markdown"
+        self.instance.body_format = BodyFormat.RICHTEXT
         reference = cleaned.get("youtube_reference", "").strip()
         video_id = ""
         if reference:
@@ -102,7 +119,16 @@ class SectionForm(ContentForm):
         self.fields["position"].widget = forms.HiddenInput()
 
 
-SectionFormSet = inlineformset_factory(Entry, EntrySection, form=SectionForm, extra=0, can_delete=True, max_num=200, validate_max=True)
+class SectionInlineFormSet(BaseInlineFormSet):
+    def add_fields(self, form, index):
+        # The editor allocates a stable UUID before its first autosave. Django's
+        # inline formset otherwise clears a new parent's default primary key.
+        entry_id = self.instance.pk
+        super().add_fields(form, index)
+        self.instance.pk = entry_id
+
+
+SectionFormSet = inlineformset_factory(Entry, EntrySection, form=SectionForm, formset=SectionInlineFormSet, extra=0, can_delete=True, max_num=200, validate_max=True)
 
 
 class CollectionForm(forms.ModelForm):

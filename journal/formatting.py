@@ -158,12 +158,29 @@ def markdown_renderer():
     return renderer
 
 
-def render_body(body, body_format="markdown"):
+def render_body(body, body_format="markdown", *, limit=None):
+    if body_format == "richtext":
+        from .documents import render_document, validate_document
+        return render_document(validate_document(body), limit=limit)
     # Raw HTML and remote images are disabled; only parser-generated HTML is trusted.
-    return mark_safe(markdown_renderer().render(body))
+    return mark_safe(markdown_renderer().render(body if limit is None else body[:limit]))
 
 
 def referenced_countries(body, body_format):
+    if body_format == "richtext":
+        from .documents import nodes, validate_document
+        codes = set()
+        aliases = country_aliases()
+        for node in nodes(validate_document(body)):
+            if node["type"] != "text":
+                continue
+            for match in re.finditer(r"\[\[([^\]]+)\]\]", node["text"]):
+                if code := aliases.get(normalize_name(match[1])):
+                    codes.add(code)
+            for mark in node.get("marks", []):
+                if mark["type"] == "link" and (match := re.fullmatch(r"/\?country=([A-Z]{2})", mark["attrs"]["href"])):
+                    codes.add(match[1])
+        return codes
     env = {}
     markdown_renderer().parse(body, env)
     return env.get("country_codes", set())

@@ -1,7 +1,6 @@
 <div class="journal-content-fields journal-editor-content" data-content-fields>
     <div class="journal-writing-paper journal-document-paper">
-        <div data-journal-body-field>{% include 'journal/_field.html' with field=content_form.body %}</div>
-        <div class="journal-rendered journal-document-preview" data-journal-preview-output tabindex="0" aria-label="Preview" hidden></div>
+        <div data-journal-body-field>{{ content_form.body }}{{ content_form.body.errors }}<div class="journal-prose" data-rich-editor data-legacy-html="{{ content_form.editor_html|force_escape }}"></div></div>
     </div>
     <aside class="journal-document-details" aria-label="Writing details">
         {% include 'journal/_field.html' with field=content_form.title %}

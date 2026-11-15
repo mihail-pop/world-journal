@@ -1105,8 +1105,8 @@ body:has(.persistent-player[data-player-state="playing"]) #app-content:not(:has(
     padding: 0.75rem 1rem; margin: 0.5rem 0; border-left: 3px solid var(--special-color);
     background: var(--bg-tertiary); color: var(--text-secondary); list-style: none;
 }
-.journal-markdown-toolbar, .journal-section-actions { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 1rem; }
-.journal-markdown-toolbar button, .journal-section-actions button {
+.journal-section-actions { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 1rem; }
+.journal-section-actions button {
     min-height: 2.25rem; padding: 0.35rem 0.65rem; border: 1px solid var(--overview-border);
     border-radius: 4px; background: var(--button-bg); color: var(--text-secondary); cursor: pointer; font: inherit; font-size: 0.8rem;
 }
@@ -1137,7 +1137,6 @@ body:has(.persistent-player[data-player-state="playing"]) #app-content:not(:has(
 .journal-rendered table { display: block; max-width: 100%; overflow-x: auto; border-collapse: collapse; }
 .journal-rendered th, .journal-rendered td { border: 1px solid var(--overview-border); padding: 0.5rem 0.75rem; }
 .journal-plain-text { white-space: pre-wrap; }
-.journal-preview { border: 1px solid var(--overview-border); padding: 1rem; margin-block: 1rem; border-radius: 4px; }
 .journal-source-reference { display: flex; flex-wrap: wrap; gap: 0.6rem 1rem; margin-top: 1rem; font-size: 0.85rem; }
 .journal-video-reference { margin-top: 1rem; }
 .journal-images { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr)); gap: 1rem; }

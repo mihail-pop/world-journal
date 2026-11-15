@@ -1,0 +1,21 @@
+{
+  "name": "world-journal-editor",
+  "private": true,
+  "scripts": {
+    "build:editor": "node tools/build-editor.mjs"
+  },
+  "dependencies": {
+    "@tiptap/core": "3.34.0",
+    "@tiptap/extension-image": "3.34.0",
+    "@tiptap/extension-list": "3.34.0",
+    "@tiptap/extension-table": "3.34.0",
+    "@tiptap/extension-text-align": "3.34.0",
+    "@tiptap/extension-text-style": "3.34.0",
+    "@tiptap/extensions": "3.34.0",
+    "@tiptap/pm": "3.34.0",
+    "@tiptap/starter-kit": "3.34.0"
+  },
+  "devDependencies": {
+    "esbuild": "0.27.4"
+  }
+}

@@ -236,11 +236,16 @@ def country_notes(request, iso2):
 def country_notes_context(country):
     profile = CountryProfile.objects.select_related("entry").filter(country=country).first()
     entry = profile.entry if profile else None
-    images = list(entry.attachments.filter(section__isnull=True)[:3]) if entry else []
+    images = list(entry.attachments.filter(section__isnull=True)[:3]) if entry and entry.body_format != "richtext" else []
+    if entry and entry.body_format == "richtext":
+        from journal.documents import nodes, validate_document
+        image_ids = [node["attrs"]["attachmentId"] for node in nodes(validate_document(entry.body)) if node["type"] == "image"][:3]
+        by_id = {str(image.pk): image for image in entry.attachments.filter(pk__in=image_ids)}
+        images = [by_id[pk] for pk in image_ids if pk in by_id]
     return {
         "country": country, "overview": entry, "overview_images": images,
-        "overview_preview": render_body(entry.body[:1600], entry.body_format) if entry else "",
-        "overview_truncated": bool(entry and len(entry.body) > 1600),
+        "overview_preview": render_body(entry.body, entry.body_format, limit=1600) if entry else "",
+        "overview_truncated": bool(entry and len(entry.body_text) > 1600),
         "recent_entries": Entry.objects.filter(countries=country).only("id", "title", "entry_type", "created_at")[:6],
     }
 

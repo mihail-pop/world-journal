@@ -1,6 +1,6 @@
 <section class="page page-standard journal-page journal-writer" data-page="journal" aria-labelledby="journal-edit-title" hx-boost="true" hx-target="#app-content" hx-push-url="true">
     <h1 id="journal-edit-title" class="visually-hidden">Journal</h1>
-    <form method="post" action="{% if is_new %}{% url 'journal:new' %}{% else %}{% url 'journal:edit' entry.pk %}{% endif %}" class="journal-editor journal-editor-workspace" data-journal-editor data-preview-url="{% url 'journal:preview' %}" data-autosave-url="{% url 'journal:autosave' entry.pk %}" data-edit-url="{% url 'journal:edit' entry.pk %}" novalidate>
+    <form method="post" action="{% if is_new %}{% url 'journal:new' %}{% else %}{% url 'journal:edit' entry.pk %}{% endif %}" class="journal-editor journal-editor-workspace" data-journal-editor data-autosave-url="{% url 'journal:autosave' entry.pk %}" data-edit-url="{% url 'journal:edit' entry.pk %}" data-upload-url="{% url 'journal:upload_attachment' entry.pk %}" data-export-url="{% url 'journal:export' entry.pk 'docx' %}" novalidate>
         {% csrf_token %}
         <input type="hidden" name="entry_id" value="{{ entry.pk }}">
         {% if form.is_bound %}<input type="hidden" data-autosave-retry value="true">{% endif %}
@@ -8,29 +8,14 @@
             <nav class="journal-workspace-actions" aria-label="Journal views">
                 <a class="journal-icon-button" href="{% url 'journal:list' %}" aria-label="Browse journal" title="Browse journal">{% include 'core/partials/icon.html' with name='layers' %}</a>
                 <a class="journal-icon-button" href="{% url 'journal:new' %}" aria-label="New" title="New">{% include 'core/partials/icon.html' with name='plus' %}</a>
-                <a class="journal-icon-button" href="{{ entry.get_absolute_url }}" data-journal-reader aria-label="Reading view and images" title="Reading view and images" {% if is_new %}hidden{% endif %}>{% include 'core/partials/icon.html' with name='book' %}</a>
+                <a class="journal-icon-button" href="{{ entry.get_absolute_url }}" data-journal-reader aria-label="Reading view" title="Reading view" {% if is_new %}hidden{% endif %}>{% include 'core/partials/icon.html' with name='book' %}</a>
                 <a class="journal-icon-button" href="{% url 'journal:statistics' %}" aria-label="Statistics" title="Statistics">{% include 'core/partials/icon.html' with name='chart' %}</a>
             </nav>
             <h2>Sections</h2>
             <nav class="journal-sections-nav" data-journal-section-nav aria-label="Writing sections"><button type="button" data-journal-page="main" aria-current="page">Main text</button></nav>
             <button class="journal-add-section" type="button" data-journal-add-section>{% include 'core/partials/icon.html' with name='plus' %} Add section</button>
-            <noscript><button class="journal-add-section" type="submit" name="action" value="add_section">Add section</button></noscript>
         </aside>
-        <div class="journal-markdown-toolbar journal-document-toolbar" role="toolbar" aria-label="Writing controls">
-            <div class="journal-format-actions">
-                <button type="button" data-journal-format="bold" aria-label="Bold" title="Bold">{% include 'core/partials/icon.html' with name='bold' %}</button>
-                <button type="button" data-journal-format="italic" aria-label="Italic" title="Italic">{% include 'core/partials/icon.html' with name='italic' %}</button>
-                <button type="button" data-journal-format="heading" aria-label="Heading" title="Heading">{% include 'core/partials/icon.html' with name='heading' %}</button>
-                <button type="button" data-journal-format="list" aria-label="List" title="List">{% include 'core/partials/icon.html' with name='list' %}</button>
-                <button type="button" data-journal-format="quote" aria-label="Quote" title="Quote">{% include 'core/partials/icon.html' with name='quote' %}</button>
-                <button type="button" data-journal-format="code" aria-label="Code" title="Code">{% include 'core/partials/icon.html' with name='code' %}</button>
-            </div>
-            <div class="journal-document-actions">
-                <button type="button" data-journal-preview aria-pressed="false">{% include 'core/partials/icon.html' with name='preview' %} Preview</button>
-                <button type="submit" data-journal-save>{% include 'core/partials/icon.html' with name='save' %} Save</button>
-                <span class="journal-save-status journal-autosave-status" data-autosave-status data-save-state="idle" role="status" aria-live="polite" aria-label="Autosave on" title="Autosave on">{% include 'core/partials/icon.html' with name='autosave' %}<span class="visually-hidden" data-autosave-message>Autosave on</span></span>
-            </div>
-        </div>
+        {% include 'journal/_toolbar.html' %}
         <div class="journal-document-pages" data-journal-sections>
             {{ form.non_field_errors }}
             {{ section_formset.management_form }}{{ section_formset.non_form_errors }}
@@ -38,6 +23,15 @@
             {% for section_form in section_formset %}{% include 'journal/_section_form.html' %}{% endfor %}
         </div>
         <template data-journal-section-template>{% include 'journal/_section_form.html' with section_form=section_formset.empty_form %}</template>
+        {{ journal_country_aliases|json_script:'journal-country-aliases' }}
+        <input type="file" data-rich-image-input accept="image/jpeg,image/png,image/webp,image/gif" multiple hidden>
+        <dialog class="journal-link-dialog" data-rich-link-dialog data-journal-ui aria-labelledby="journal-link-title">
+            <h2 id="journal-link-title">Link</h2>
+            <label>Text<input type="text" data-rich-link-text autocomplete="off"></label>
+            <label>URL<input type="url" data-rich-link-url placeholder="https://" autocomplete="off"></label>
+            <p role="alert" data-rich-link-error hidden></p>
+            <div><button type="button" data-rich-link-remove>Remove link</button><button type="button" data-rich-link-cancel>Cancel</button><button type="button" data-rich-link-apply>Apply</button></div>
+        </dialog>
     </form>
-    <noscript><style>.journal-writer [data-editor-page][hidden] { display: block !important; } .journal-writer [data-journal-add-section] { display: none !important; }</style></noscript>
+    <noscript><p>Enable JavaScript to use the journal editor.</p></noscript>
 </section>

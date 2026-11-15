@@ -27,7 +27,7 @@ from .models import AppSettings
 
 
 FORMAT = "world-journal-backup"
-VERSION = 6
+VERSION = 7
 MANIFEST_LIMIT = 32 * 1024 * 1024
 RECORD_LIMIT = 100_000
 IMAGE_TYPES = {"image/jpeg": (".jpg", "JPEG"), "image/png": (".png", "PNG"), "image/webp": (".webp", "WEBP"), "image/gif": (".gif", "GIF")}
@@ -60,6 +60,7 @@ LABELS = {
 # Version 4 adds parent_id for grouped custom article feeds.
 # Version 5 adds user-edited custom territory details.
 # Version 6 consolidates all Preferences, including the active preset, in AppSettings.
+# Version 7 adds rich-text JSON bodies; searchable text is rebuilt on import.
 # New backup versions must retain a reader for older archive versions.
 CONTENT_FIELDS = "title body body_format entry_type source_url source_name source_published_at youtube_video_id youtube_start_seconds"
 SCHEMA_FIELDS = {
@@ -159,8 +160,8 @@ def _read_archive(archive):
     if total > settings.BACKUP_MAX_BYTES:
         raise BackupError("The expanded backup exceeds the configured size limit.")
     manifest = json.loads(archive.read("manifest.json"))
-    if not isinstance(manifest, dict) or manifest.get("format") != FORMAT or type(manifest.get("version")) is not int or manifest["version"] not in {1, 2, 3, 4, 5, VERSION}:
-        raise BackupError("Unsupported backup format or version. Use a World Journal version 1–6 archive.")
+    if not isinstance(manifest, dict) or manifest.get("format") != FORMAT or type(manifest.get("version")) is not int or manifest["version"] not in {1, 2, 3, 4, 5, 6, VERSION}:
+        raise BackupError("Unsupported backup format or version. Use a World Journal version 1–7 archive.")
     records, media = manifest.get("records"), manifest.get("media")
     expected_datasets = set(DATASETS) - ({"preset_groups"} if manifest["version"] == 1 else set()) - ({"custom_sources"} if manifest["version"] < 3 else set()) - ({"territory_details"} if manifest["version"] < 5 else set())
     if manifest["version"] < 6:
@@ -250,11 +251,17 @@ def _decode_records(records):
 
 
 def _validate_relationships(data, tags):
+    from journal.documents import image_ids, validate_document
     countries = set(Country.objects.values_list("pk", flat=True))
     tables = {model: {obj.pk for obj in data[name]} for name, model in DATASETS.items()}
     sections = {obj.pk: obj for obj in data["sections"]}
+    images = {obj.pk: obj.entry_id for obj in data["attachments"]}
     for name, objects in data.items():
         for obj in objects:
+            if isinstance(obj, (Entry, EntrySection)) and obj.body_format == "richtext":
+                owner = obj.pk if isinstance(obj, Entry) else obj.entry_id
+                if any(images.get(pk) != owner for pk in image_ids(validate_document(obj.body))):
+                    raise BackupError("A document references a missing image or an image belonging to another entry.")
             for field in _fields(type(obj)):
                 if not isinstance(field, models.ForeignKey):
                     continue

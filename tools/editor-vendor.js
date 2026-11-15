@@ -1,0 +1,8 @@
+export { Editor, Extension, InputRule } from "@tiptap/core";
+export { StarterKit } from "@tiptap/starter-kit";
+export { Image } from "@tiptap/extension-image";
+export { TaskList, TaskItem } from "@tiptap/extension-list";
+export { TableKit } from "@tiptap/extension-table";
+export { TextAlign } from "@tiptap/extension-text-align";
+export { TextStyleKit } from "@tiptap/extension-text-style";
+export { Placeholder } from "@tiptap/extensions";

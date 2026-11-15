@@ -1,28 +1,13 @@
 import { registerJournalAutosave } from "./journal_autosave.js";
 import { registerJournalList } from "./journal_list.js";
-import { notify } from "../notifications.js";
 import { registerInfiniteScroll } from "../infinite_scroll.js";
+import { registerJournalRichtext, refreshRichEditors, focusRichEditor } from "./journal_richtext.js";
 
 let registered = false;
-const pendingPreviews = new Set();
-const previewRequests = new WeakMap();
 
 function activeContent(editor) {
     const page = editor.querySelector(`[data-editor-page="${CSS.escape(editor.dataset.activePage || "main")}"]`);
     return page?.querySelector("[data-content-fields]");
-}
-
-function resizeBody(body) {
-    if (!body || !body.offsetParent) return;
-    body.style.height = "auto";
-    body.style.height = `${body.scrollHeight}px`;
-}
-
-function syncToolbar(editor) {
-    const scope = activeContent(editor);
-    const previewing = scope?.dataset.preview === "true";
-    editor.querySelector("[data-journal-preview]").setAttribute("aria-pressed", String(previewing));
-    for (const button of editor.querySelectorAll("[data-journal-format]")) button.disabled = previewing;
 }
 
 function setActivePage(editor, key, focus = false) {
@@ -33,10 +18,8 @@ function setActivePage(editor, key, focus = false) {
         if (button.dataset.journalPage === key) button.setAttribute("aria-current", "page");
         else button.removeAttribute("aria-current");
     }
-    syncToolbar(editor);
-    const body = activeContent(editor)?.querySelector("[data-journal-body]");
-    resizeBody(body);
-    if (focus) body?.focus({preventScroll: true});
+    refreshRichEditors(editor);
+    if (focus) focusRichEditor(activeContent(editor)?.querySelector("[data-journal-body]"));
 }
 
 function syncSectionNav(editor) {
@@ -96,70 +79,10 @@ function addSection(editor) {
     editor.elements.namedItem(`sections-${index}-title`)?.focus({preventScroll: true});
 }
 
-function setPreview(editor, scope, show) {
-    scope.dataset.preview = String(show);
-    const body = scope.querySelector("[data-journal-body]");
-    const output = scope.querySelector("[data-journal-preview-output]");
-    if (show) output.style.minHeight = `${body.offsetHeight}px`;
-    scope.querySelector("[data-journal-body-field]").hidden = show;
-    output.hidden = !show;
-    if (activeContent(editor) === scope) syncToolbar(editor);
-    if (!show) resizeBody(body);
-}
-
-function formatBody(button) {
-    const editor = button.closest("[data-journal-editor]");
-    const scope = activeContent(editor);
-    const body = scope.querySelector("[data-journal-body]");
-    const start = body.selectionStart, end = body.selectionEnd;
-    const selected = body.value.slice(start, end) || "text";
-    const formats = {bold: ["**", "**"], italic: ["*", "*"], heading: ["\n## ", "\n"], list: ["\n- ", "\n"], quote: ["\n> ", "\n"], code: ["`", "`"]};
-    const [prefix, suffix] = formats[button.dataset.journalFormat];
-    body.setRangeText(prefix + selected + suffix, start, end, "select");
-    body.focus({preventScroll: true});
-    body.dispatchEvent(new Event("input", {bubbles: true}));
-}
-
-async function previewBody(button) {
-    const editor = button.closest("[data-journal-editor]");
-    const scope = activeContent(editor);
-    const pending = previewRequests.get(scope);
-    if (scope.dataset.preview === "true" || pending) {
-        pending?.abort();
-        previewRequests.delete(scope);
-        button.removeAttribute("aria-busy");
-        setPreview(editor, scope, false);
-        scope.querySelector("[data-journal-body]").focus({preventScroll: true});
-        return;
-    }
-    const output = scope.querySelector("[data-journal-preview-output]");
-    const text = scope.querySelector("[data-journal-body]").value;
-    const abort = new AbortController();
-    pendingPreviews.add(abort);
-    previewRequests.set(scope, abort);
-    button.setAttribute("aria-busy", "true");
-    try {
-        const response = await fetch(editor.dataset.previewUrl, {method: "POST", headers: {"X-CSRFToken": editor.querySelector('[name="csrfmiddlewaretoken"]').value},
-            body: new URLSearchParams({body: text, body_format: "markdown"}), signal: abort.signal});
-        if (!response.ok) throw new Error("Preview unavailable");
-        const html = await response.text();
-        if (previewRequests.get(scope) !== abort || !scope.isConnected || scope.querySelector("[data-journal-body]").value !== text) return;
-        output.innerHTML = html;
-        setPreview(editor, scope, true);
-    } catch (error) {
-        if (error.name !== "AbortError" && scope.isConnected) notify({id: "journal-preview", kind: "error", title: "Preview unavailable", message: "Your text is still in the editor. Try Preview again."});
-    } finally {
-        pendingPreviews.delete(abort);
-        if (previewRequests.get(scope) === abort) previewRequests.delete(scope);
-        button.removeAttribute("aria-busy");
-    }
-}
-
 function revealField(editor, field) {
     const page = field.closest("[data-editor-page]");
     if (page) setActivePage(editor, page.dataset.editorPage);
-    const scope = field.closest("[data-content-fields]");
-    if (scope && field.matches("[data-journal-body]")) setPreview(editor, scope, false);
+    if (field.matches("[data-journal-body]")) focusRichEditor(field);
     for (let parent = field.parentElement; parent; parent = parent.parentElement) if (parent.matches("details")) parent.open = true;
 }
 
@@ -204,6 +127,7 @@ export function registerJournalPage() {
         reloadRoot: "[data-journal-list]",
         reloadForm: ".journal-search-form",
     });
+    registerJournalRichtext();
     registerJournalAutosave();
     registerJournalList();
     function openCard(event) {
@@ -255,8 +179,7 @@ export function registerJournalPage() {
                 updatePositions(editor);
                 editor.dispatchEvent(new Event("world-journal:editor-changed"));
             }
-        } else if (event.target.closest("[data-journal-format]")) formatBody(event.target.closest("[data-journal-format]"));
-        else if (event.target.closest("[data-journal-preview]")) void previewBody(event.target.closest("[data-journal-preview]"));
+        }
     });
     document.addEventListener("invalid", event => {
         const editor = event.target.closest("[data-journal-editor]");
@@ -265,7 +188,6 @@ export function registerJournalPage() {
     document.addEventListener("input", event => {
         const editor = event.target.closest("[data-journal-editor]");
         if (!editor) return;
-        if (event.target.matches("[data-journal-body]")) resizeBody(event.target);
         if (event.target.matches('input[name$="-title"]')) syncSectionNav(editor);
     });
     document.addEventListener("change", event => {
@@ -284,13 +206,5 @@ export function registerJournalPage() {
             const invalid = editor.querySelector(".errorlist li")?.closest("[data-editor-page]");
             if (invalid) setActivePage(editor, invalid.dataset.editorPage);
         }
-    });
-    window.addEventListener("resize", () => {
-        const editor = document.querySelector("[data-journal-editor]");
-        if (editor) resizeBody(activeContent(editor)?.querySelector("[data-journal-body]"));
-    });
-    document.addEventListener("world-journal:page-cleanup", () => {
-        for (const abort of pendingPreviews) abort.abort();
-        pendingPreviews.clear();
     });
 }

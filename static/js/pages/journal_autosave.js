@@ -25,7 +25,8 @@ function trackEditor(form) {
     editors.set(form, state);
     if (state.version) showStatus(state, "Unsaved changes", "dirty");
     for (const name of ["input", "change", "world-journal:editor-changed"]) {
-        form.addEventListener(name, () => {
+        form.addEventListener(name, event => {
+            if (event.target.closest?.("[data-journal-ui]")) return;
             if (state.applying) return;
             state.version += 1;
             showStatus(state, "Unsaved changes", "dirty");
@@ -34,11 +35,18 @@ function trackEditor(form) {
     return state;
 }
 
-async function save(state, explicit = false) {
+async function save(state, explicit = false, skipUploads = false) {
+    try {
+        await state.form.journalReady;
+        if (!skipUploads) await Promise.all(state.form.journalPendingUploads || []);
+    } catch {
+        showStatus(state, "The editor could not be opened. Reload this page before saving.", "error");
+        return false;
+    }
     if (state.pending) {
         if (!await state.pending) return false;
         if (state.savedVersion === state.version) return true;
-        return save(state, explicit);
+        return save(state, explicit, skipUploads);
     }
     if (state.savedVersion === state.version && !explicit) return true;
     const {form} = state;
@@ -110,6 +118,10 @@ async function save(state, explicit = false) {
         }
     })();
     return state.pending;
+}
+
+export function saveJournalEditor(form, {skipUploads = false} = {}) {
+    return save(trackEditor(form), new URL(form.action, location.href).pathname === "/journal/new/", skipUploads);
 }
 
 export function registerJournalAutosave() {

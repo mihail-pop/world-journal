@@ -1,0 +1,38 @@
+<div class="journal-rich-toolbar journal-document-toolbar" data-rich-toolbar role="toolbar" aria-label="Writing controls" inert>
+    <div class="journal-format-actions">
+        <button type="button" data-rich-command="undo" aria-label="Undo" title="Undo (Ctrl+Z)">{% include 'core/partials/icon.html' with name='undo' %}</button>
+        <button type="button" data-rich-command="redo" aria-label="Redo" title="Redo (Ctrl+Y)">{% include 'core/partials/icon.html' with name='redo' %}</button>
+        <select data-rich-style data-native-select aria-label="Paragraph style" title="Paragraph style"><option value="paragraph">Text</option><option value="1">Heading 1</option><option value="2">Heading 2</option><option value="3">Heading 3</option></select>
+        <select data-rich-font data-native-select aria-label="Text font" title="Text font"><option value="">App font</option><option>Inter</option><option>Overpass</option><option>Roboto</option><option>Segoe UI</option><option>Georgia</option><option>Arial</option><option value="monospace">Monospace</option></select>
+        <select data-rich-size data-native-select aria-label="Text size" title="Text size"><option value="">Size</option><option value="12px">12</option><option value="14px">14</option><option value="16px">16</option><option value="18px">18</option><option value="20px">20</option><option value="24px">24</option><option value="28px">28</option><option value="32px">32</option><option value="40px">40</option><option value="48px">48</option></select>
+    </div>
+    <div class="journal-document-actions">
+        <details class="journal-editor-menu" data-rich-menu><summary title="Export">{% include 'core/partials/icon.html' with name='download' %}<span class="visually-hidden">Export</span></summary><div class="journal-editor-menu-panel"><button type="button" data-journal-export="pdf">PDF / Print</button><button type="button" data-journal-export="docx">Word (.docx)</button></div></details>
+        <button type="submit" data-journal-save>{% include 'core/partials/icon.html' with name='save' %} Save</button>
+        <span class="journal-save-status journal-autosave-status" data-autosave-status data-save-state="idle" role="status" aria-live="polite" aria-label="Autosave on" title="Autosave on">{% include 'core/partials/icon.html' with name='autosave' %}<span class="visually-hidden" data-autosave-message>Autosave on</span></span>
+    </div>
+    <div class="journal-format-actions journal-format-secondary">
+        <button type="button" data-rich-command="bold" aria-label="Bold" title="Bold (Ctrl+B)" aria-pressed="false">{% include 'core/partials/icon.html' with name='bold' %}</button>
+        <button type="button" data-rich-command="italic" aria-label="Italic" title="Italic (Ctrl+I)" aria-pressed="false">{% include 'core/partials/icon.html' with name='italic' %}</button>
+        <button type="button" data-rich-command="underline" aria-label="Underline" title="Underline (Ctrl+U)" aria-pressed="false">{% include 'core/partials/icon.html' with name='underline' %}</button>
+        <button type="button" data-rich-command="strike" aria-label="Strikethrough" title="Strikethrough" aria-pressed="false"><s>S</s></button>
+        <label class="journal-color-control" title="Text colour"><span aria-hidden="true">A</span><input type="color" value="#000000" data-rich-color aria-label="Text colour"></label>
+        <label class="journal-color-control journal-highlight-control" title="Highlight colour"><span aria-hidden="true">A</span><input type="color" value="#ffe08a" data-rich-highlight aria-label="Highlight colour"></label>
+        <button type="button" data-rich-command="bulletList" aria-label="Bullet list" title="Bullet list" aria-pressed="false">{% include 'core/partials/icon.html' with name='list' %}</button>
+        <button type="button" data-rich-command="orderedList" aria-label="Numbered list" title="Numbered list" aria-pressed="false">{% include 'core/partials/icon.html' with name='numbered-list' %}</button>
+        <button type="button" data-rich-command="taskList" aria-label="Checklist" title="Checklist" aria-pressed="false">{% include 'core/partials/icon.html' with name='check' %}</button>
+        <button type="button" data-rich-link aria-label="Insert link" title="Link">{% include 'core/partials/icon.html' with name='link' %}</button>
+        <button type="button" data-rich-image aria-label="Insert local image" title="Image">{% include 'core/partials/icon.html' with name='image' %}</button>
+        <details class="journal-editor-menu" data-rich-menu><summary title="Table">{% include 'core/partials/icon.html' with name='table' %}<span class="visually-hidden">Table</span></summary><div class="journal-editor-menu-panel journal-table-menu">
+            <button type="button" data-rich-command="insertTable">Insert table</button>
+            <button type="button" data-rich-command="addRowBefore" data-table-action>Add row above</button><button type="button" data-rich-command="addRowAfter" data-table-action>Add row below</button>
+            <button type="button" data-rich-command="addColumnBefore" data-table-action>Add column left</button><button type="button" data-rich-command="addColumnAfter" data-table-action>Add column right</button>
+            <button type="button" data-rich-command="toggleHeaderRow" data-table-action>Toggle header row</button><button type="button" data-rich-command="mergeCells" data-table-action>Merge cells</button><button type="button" data-rich-command="splitCell" data-table-action>Split cell</button>
+            <button type="button" data-rich-command="deleteRow" data-table-action>Delete row</button><button type="button" data-rich-command="deleteColumn" data-table-action>Delete column</button><button type="button" data-rich-command="deleteTable" data-table-action>Delete table</button>
+        </div></details>
+        <details class="journal-editor-menu" data-rich-menu><summary title="More formatting">···<span class="visually-hidden">More formatting</span></summary><div class="journal-editor-menu-panel">
+            <button type="button" data-rich-command="left">Align left</button><button type="button" data-rich-command="center">Align centre</button><button type="button" data-rich-command="right">Align right</button><button type="button" data-rich-command="justify">Justify</button>
+            <button type="button" data-rich-command="blockquote">Quote</button><button type="button" data-rich-command="codeBlock">Code block</button><button type="button" data-rich-command="horizontalRule">Divider</button><button type="button" data-rich-command="clear">Clear formatting</button>
+        </div></details>
+    </div>
+</div>

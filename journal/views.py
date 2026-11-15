@@ -8,7 +8,7 @@ from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.core.paginator import Paginator
 from django.db.models import Count, Max
-from django.http import HttpResponse, JsonResponse, QueryDict
+from django.http import FileResponse, Http404, HttpResponse, JsonResponse, QueryDict
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils.dateparse import parse_datetime
@@ -20,7 +20,7 @@ from core.database import database_write, write_transaction
 from core.views import render_page
 from countries.models import Country
 
-from .formatting import referenced_countries, render_body
+from .formatting import country_aliases, referenced_countries
 from .forms import AttachmentForm, CollectionForm, EntryForm, SectionFormSet, default_collection
 from .models import Attachment, BUILTIN_COLLECTION_NAMES, Collection, Entry, EntryType
 from .query import filtered_entries
@@ -337,13 +337,13 @@ def edit(request, pk=None):
             entry = save_entry(form, sections)
             messages.success(request, "Saved.")
             return navigate(request, reverse("journal:edit", args=[entry.pk]))
-    return page(request, "journal/edit.html", {"entry": entry, "form": form, "section_formset": sections, "is_new": entry._state.adding})
+    return page(request, "journal/edit.html", {"entry": entry, "form": form, "section_formset": sections, "is_new": entry._state.adding, "journal_country_aliases": country_aliases()})
 
 
 @require_http_methods(["GET"])
 def detail(request, pk):
     entry = get_object_or_404(Entry.objects.select_related("collection").prefetch_related("countries", "sections__attachments", "attachments__section"), pk=pk)
-    return page(request, "journal/detail.html", {"entry": entry, "main_attachments": [image for image in entry.attachments.all() if not image.section_id], "attachment_form": AttachmentForm(entry=entry)})
+    return page(request, "journal/detail.html", {"entry": entry, "main_attachments": [image for image in entry.attachments.all() if not image.section_id]})
 
 
 @require_http_methods(["GET", "POST"])
@@ -413,10 +413,23 @@ def upload_attachment(request, pk):
     entry = get_object_or_404(Entry, pk=pk)
     form = AttachmentForm(request.POST, request.FILES, entry=entry)
     if form.is_valid():
-        form.save()
-        messages.success(request, "Image added to the entry.")
-        return navigate(request, entry.get_absolute_url())
-    return page(request, "journal/detail.html", {"entry": entry, "main_attachments": entry.attachments.filter(section__isnull=True), "attachment_form": form})
+        from .documents import image_url
+        with write_transaction():
+            image = form.save()
+        return JsonResponse({"id": str(image.pk), "src": image_url(image.pk), "alt": image.original_name, "width": image.width, "height": image.height})
+    return JsonResponse({"message": str(next(iter(form.errors.values()))[0])}, status=422)
+
+
+@require_http_methods(["GET"])
+def image(request, attachment_pk):
+    attachment = get_object_or_404(Attachment, pk=attachment_pk)
+    try:
+        response = FileResponse(attachment.file.open("rb"), content_type=attachment.content_type)
+    except OSError as error:
+        raise Http404("This image is unavailable.") from error
+    response["Cache-Control"] = "private, max-age=3600"
+    response["X-Content-Type-Options"] = "nosniff"
+    return response
 
 
 @require_http_methods(["GET", "POST"])
@@ -430,9 +443,3 @@ def delete_attachment(request, pk, attachment_pk):
         messages.success(request, "Image deleted.")
         return navigate(request, url)
     return page(request, "journal/confirm_delete.html", {"form": form, "title": "Delete this image?", "description": "The uploaded image will be removed from local storage.", "cancel_url": url})
-
-
-@require_http_methods(["POST"])
-def preview(request):
-    body_format = request.POST.get("body_format", "markdown")
-    return HttpResponse(render_body(request.POST.get("body", ""), body_format), content_type="text/html")

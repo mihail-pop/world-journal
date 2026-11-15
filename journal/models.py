@@ -17,6 +17,7 @@ class EntryType(models.TextChoices):
 
 
 class BodyFormat(models.TextChoices):
+    RICHTEXT = "richtext", "Rich text"
     MARKDOWN = "markdown", "Markdown"
     PLAIN = "plain", "Plain text"
 
@@ -48,7 +49,8 @@ class ResearchContent(models.Model):
 
     title = models.CharField(max_length=300)
     body = models.TextField(blank=True)
-    body_format = models.CharField(max_length=16, choices=BodyFormat.choices, default=BodyFormat.MARKDOWN)
+    body_format = models.CharField(max_length=16, choices=BodyFormat.choices, default=BodyFormat.RICHTEXT)
+    body_text = models.TextField(blank=True, editable=False)
     entry_type = models.CharField(max_length=16, choices=EntryType.choices, default=EntryType.NOTE)
     source_url = models.URLField(max_length=2048, blank=True, validators=[validate_source_url])
     source_name = models.CharField(max_length=200, blank=True)
@@ -62,10 +64,30 @@ class ResearchContent(models.Model):
     def clean(self):
         super().clean()
         errors = {}
+        try:
+            self.prepare_body()
+        except ValidationError as error:
+            errors["body"] = error.messages
         if self.youtube_start_seconds is not None and not self.youtube_video_id:
             errors["youtube_start_seconds"] = "A start time requires a YouTube video."
         if errors:
             raise ValidationError(errors)
+
+    def prepare_body(self):
+        if self.body_format == BodyFormat.RICHTEXT and self.body:
+            from .documents import document_text, serialize_document, validate_document
+            document = validate_document(self.body)
+            self.body = serialize_document(document)
+            self.body_text = document_text(document)
+        else:
+            self.body_text = self.body
+
+    def save(self, *args, **kwargs):
+        if kwargs.get("update_fields") is None or {"body", "body_format"}.intersection(kwargs["update_fields"]):
+            self.prepare_body()
+            if kwargs.get("update_fields") is not None:
+                kwargs["update_fields"] = {*kwargs["update_fields"], "body_text"}
+        return super().save(*args, **kwargs)
 
     @property
     def watch_url(self):

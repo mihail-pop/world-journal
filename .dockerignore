@@ -12,6 +12,7 @@ __pycache__/
 staticfiles/
 site/
 .git/
+node_modules/
 .github/
 .venv/
 venv/
