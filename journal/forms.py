@@ -4,6 +4,7 @@ from django import forms
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.forms import BaseInlineFormSet, inlineformset_factory
+from django.utils import timezone
 
 from .models import Attachment, BodyFormat, BUILTIN_COLLECTION_NAMES, Collection, Entry, EntrySection, EntryType
 from .documents import image_ids, serialize_document, validate_document
@@ -14,8 +15,6 @@ CONTENT_FIELDS = ("title", "entry_type", "body", "source_url", "source_name", "s
 
 
 class ContentForm(forms.ModelForm):
-    youtube_reference = forms.CharField(required=False, label="YouTube URL or video ID", help_text="Watch, Shorts, youtu.be links, or the 11-character ID.")
-
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["title"].widget.attrs["placeholder"] = "Title"
@@ -26,14 +25,15 @@ class ContentForm(forms.ModelForm):
         if not self.is_bound and self.instance.body and self.instance.body_format != BodyFormat.RICHTEXT:
             from .formatting import render_body
             self.editor_html = str(render_body(self.instance.body, self.instance.body_format))
-        self.fields["source_published_at"].widget = forms.DateTimeInput(attrs={"type": "datetime-local"}, format="%Y-%m-%dT%H:%M")
-        self.fields["source_published_at"].input_formats = ["%Y-%m-%dT%H:%M", "%Y-%m-%dT%H:%M:%S"]
+        self.fields["source_published_at"].widget = forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d")
+        self.fields["source_published_at"].input_formats = ["%Y-%m-%d"]
         self.fields["youtube_start_seconds"].label = "Start time in seconds"
         self.fields["youtube_start_seconds"].max_value = MAX_TIMESTAMP
         self.fields["source_url"].label = "Source URL"
-        self.fields["source_published_at"].label = "Source publication time (UTC)"
-        if self.instance.youtube_video_id:
-            self.initial["youtube_reference"] = self.instance.youtube_video_id
+        self.fields["source_published_at"].label = "Release date"
+        self.fields["source_url"].widget.attrs["placeholder"] = "https://"
+        if self.instance.youtube_video_id and not self.instance.source_url:
+            self.initial["source_url"] = self.instance.watch_url
 
     def clean_entry_type(self):
         return self.cleaned_data.get("entry_type") or EntryType.NOTE
@@ -54,27 +54,18 @@ class ContentForm(forms.ModelForm):
     def clean(self):
         cleaned = super().clean()
         self.instance.body_format = BodyFormat.RICHTEXT
-        reference = cleaned.get("youtube_reference", "").strip()
         video_id = ""
-        if reference:
-            try:
-                video_id, seconds = parse_youtube_reference(reference)
-                if cleaned.get("youtube_start_seconds") is None and seconds is not None:
-                    cleaned["youtube_start_seconds"] = seconds
-            except ValidationError as error:
-                self.add_error("youtube_reference", error)
-        elif cleaned.get("source_url"):
+        if cleaned.get("source_url"):
             # A source may also be a video, regardless of its organizational
             # tag. Ordinary article/playlist URLs remain ordinary sources.
             try:
                 video_id, seconds = parse_youtube_reference(cleaned["source_url"])
                 if cleaned.get("youtube_start_seconds") is None and seconds is not None:
                     cleaned["youtube_start_seconds"] = seconds
-            except ValidationError:
-                pass
+            except ValidationError as error:
+                if cleaned.get("entry_type") == EntryType.YOUTUBE:
+                    self.add_error("source_url", error)
         self.instance.youtube_video_id = video_id
-        if video_id and not cleaned.get("source_url"):
-            cleaned["source_url"] = f"https://www.youtube.com/watch?v={video_id}"
         return cleaned
 
 
@@ -82,7 +73,16 @@ class EntryForm(ContentForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["collection"].empty_label = "Automatic collection"
-        self.fields["collection"].help_text = "Articles, Videos or Notes, unless you choose another collection."
+        for name in ("is_favorite", "is_pinned"):
+            self.fields[name].widget.attrs["hidden"] = True
+
+    def clean(self):
+        cleaned = super().clean()
+        # A publication is a useful starting point, not an event-date rule:
+        # existing entries can keep a different date or deliberately clear it.
+        if self.instance._state.adding and not cleaned.get("event_date") and (published := cleaned.get("source_published_at")):
+            cleaned["event_date"] = timezone.localtime(published).date() if timezone.is_aware(published) else published.date()
+        return cleaned
 
     class Meta:
         model = Entry

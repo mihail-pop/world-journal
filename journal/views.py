@@ -25,7 +25,7 @@ from .forms import AttachmentForm, CollectionForm, EntryForm, SectionFormSet, de
 from .models import Attachment, BUILTIN_COLLECTION_NAMES, Collection, Entry, EntryType
 from .query import filtered_entries
 from .statistics import statistics_context
-from .validators import VIDEO_ID
+from .validators import VIDEO_ID, parse_youtube_reference
 
 
 @never_cache
@@ -49,6 +49,7 @@ def player_video(request, video_id):
                     youtube_video_id=video_id,
                     source_url=f"https://www.youtube.com/watch?v={video_id}",
                     source_published_at=initial.get("source_published_at"),
+                    event_date=initial.get("event_date"),
                     is_favorite=True,
                 )
             elif entry is not None and entry.is_favorite != favorite:
@@ -162,11 +163,23 @@ def statistics(request):
 def initial_entry(request, parameters=None):
     parameters = request.GET if parameters is None else parameters
     initial = {"entry_type": parameters.get("type") if parameters.get("type") in EntryType.values else EntryType.NOTE}
-    for field, parameter in (("title", "title"), ("source_url", "url"), ("source_name", "source"), ("youtube_reference", "video")):
+    for field, parameter in (("title", "title"), ("source_url", "url"), ("source_name", "source")):
         if value := parameters.get(parameter):
             limit = {"title": 300, "source_name": 200}.get(field)
             initial[field] = value[:limit] if limit else value
-    initial["countries"] = list(Country.objects.filter(code__in=[c.upper() for c in parameters.getlist("country")]).values_list("pk", flat=True))
+    if video := parameters.get("video"):
+        try:
+            video_id, seconds = parse_youtube_reference(video)
+            initial.setdefault("source_url", f"https://www.youtube.com/watch?v={video_id}")
+            if seconds is not None:
+                initial["youtube_start_seconds"] = seconds
+        except ValidationError:
+            pass
+    codes = {c.upper() for c in parameters.getlist("country")}
+    if initial["entry_type"] in {EntryType.ARTICLE, EntryType.YOUTUBE}:
+        from news.services.country_matcher import matched_country_codes
+        codes.update(matched_country_codes(initial.get("title", "")))
+    initial["countries"] = list(Country.objects.filter(code__in=codes).values_list("pk", flat=True))
     collection = parameters.get("collection", "")
     if collection:
         try:
@@ -178,6 +191,7 @@ def initial_entry(request, parameters=None):
             moment = parse_datetime(published)
             if moment:
                 initial["source_published_at"] = moment.astimezone(UTC) if moment.tzinfo else moment
+                initial["event_date"] = timezone.localtime(moment).date() if timezone.is_aware(moment) else moment.date()
         except ValueError:
             pass
     return initial
@@ -189,10 +203,12 @@ def quick_save(request):
         return JsonResponse({"message": "Choose an article or video to save."}, status=422)
     initial = initial_entry(request, request.POST)
     data = QueryDict(mutable=True)
-    for field in ("title", "entry_type", "source_url", "source_name", "youtube_reference"):
+    for field in ("title", "entry_type", "source_url", "source_name"):
         data[field] = initial.get(field, "")
     if moment := initial.get("source_published_at"):
-        data["source_published_at"] = moment.strftime("%Y-%m-%dT%H:%M:%S")
+        data["source_published_at"] = moment.isoformat()
+    if seconds := initial.get("youtube_start_seconds"):
+        data["youtube_start_seconds"] = seconds
     data.setlist("countries", [str(pk) for pk in initial["countries"]])
     form = EntryForm(data)
     if not form.is_valid():
@@ -279,7 +295,7 @@ def autosave(request, pk):
         if section_data.get(prefix + "-DELETE"):
             continue
         if not section_data.get(prefix + "-title", "").strip():
-            if any(section_data.get(prefix + "-" + field, "").strip() for field in ("body", "source_url", "youtube_reference", "source_name", "source_published_at", "youtube_start_seconds")):
+            if any(section_data.get(prefix + "-" + field, "").strip() for field in ("body", "source_url", "source_name", "source_published_at", "youtube_start_seconds")):
                 section_data[prefix + "-title"] = "Untitled section"
             elif not section_data.get(prefix + "-id"):
                 section_data[prefix + "-DELETE"] = "on"

@@ -1,4 +1,20 @@
 .journal-writer [data-journal-body][hidden] { display: none !important; }
+.journal-entry-flags { display: flex; align-items: center; gap: .35rem; margin: -.25rem 0 1rem; }
+.journal-entry-flags input[hidden] { display: none !important; }
+.journal-entry-flags button { display: grid; place-items: center; width: 36px; height: 36px; padding: 6px; border: 1px solid transparent; border-radius: 5px; background: transparent; color: var(--ui-muted); }
+.journal-entry-flags button:hover { color: var(--ui-text); background: var(--ui-hover); }
+.journal-entry-flags button[aria-pressed="true"] { color: var(--ui-accent); }
+.journal-entry-flags [data-journal-flag-toggle="is_favorite"][aria-pressed="true"] { color: var(--ui-favorite); }
+.journal-entry-flags [data-journal-flag-toggle="is_favorite"][aria-pressed="true"] .icon { fill: currentColor; }
+.journal-entry-flags button:focus-visible { outline: 2px solid var(--ui-accent); outline-offset: 2px; }
+.journal-embedded-video { margin-bottom: 1.5rem; min-width: 0; }
+.journal-embedded-video[hidden] { display: none; }
+.journal-video-mount { aspect-ratio: 16 / 9; min-height: 200px; background: #000; border-radius: 4px; overflow: hidden; }
+.journal-video-mount iframe { display: block; width: 100%; height: 100%; border: 0; }
+.journal-embedded-video-actions { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: .5rem; padding-top: .6rem; font-size: .8rem; }
+.journal-embedded-video-actions .journal-button { padding: .4rem .6rem; font-size: .8rem; }
+.journal-embedded-video-actions a { display: inline-flex; align-items: center; gap: .25rem; color: var(--ui-accent); }
+.journal-embedded-video-actions .icon { width: 18px; height: 18px; }
 .journal-prose { color: var(--ui-text, #202124); font-family: var(--ui-font-family, Inter, sans-serif); font-size: 1.075rem; line-height: 1.8; overflow-wrap: anywhere; }
 .journal-prose :is(p, ul, ol, blockquote, pre, table) { margin-block: 0 1em; }
 .journal-prose :is(h1, h2, h3) { color: inherit; line-height: 1.3; margin: 1.35em 0 .6em; }
@@ -106,6 +122,7 @@
 .journal-print-paper > h1:first-child { margin-top: 0; }
 .journal-print .journal-source-reference { margin-block: 1em; font-size: .85em; }
 .journal-print .journal-video-reference button, .journal-print .journal-inline-video-actions button { display: none; }
+.journal-print .journal-video-mount, .journal-print .journal-embedded-video-actions button { display: none; }
 @page { size: A4; margin: 20mm; }
 @media print {
     .journal-print { background: white; }

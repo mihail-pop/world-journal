@@ -2,8 +2,29 @@ import { registerJournalAutosave } from "./journal_autosave.js";
 import { registerJournalList } from "./journal_list.js";
 import { registerInfiniteScroll } from "../infinite_scroll.js";
 import { registerJournalRichtext, refreshRichEditors, focusRichEditor } from "./journal_richtext.js";
+import { refreshJournalVideos, pauseJournalVideos, journalVideoDetails, clearJournalVideos } from "./journal_video.js";
 
 let registered = false;
+const eventDates = new WeakMap();
+
+function syncEventDate(editor, changed) {
+    const field = editor.elements.namedItem("event_date");
+    const release = editor.elements.namedItem("source_published_at");
+    if (!field || !release) return;
+    if (!eventDates.has(editor)) eventDates.set(editor, {
+        automatic: new URL(editor.action, location.href).pathname === "/journal/new/",
+        value: field.value,
+    });
+    const state = eventDates.get(editor);
+    if (changed === field) state.automatic = false;
+    if (state.automatic && (!field.value || field.value === state.value)) {
+        const date = release.value.slice(0, 10);
+        if (/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+            field.value = date;
+            state.value = date;
+        }
+    }
+}
 
 function activeContent(editor) {
     const page = editor.querySelector(`[data-editor-page="${CSS.escape(editor.dataset.activePage || "main")}"]`);
@@ -12,6 +33,7 @@ function activeContent(editor) {
 
 function setActivePage(editor, key, focus = false) {
     if (!editor.querySelector(`[data-editor-page="${CSS.escape(key)}"]`)) key = "main";
+    if (editor.dataset.activePage !== key) pauseJournalVideos();
     editor.dataset.activePage = key;
     for (const page of editor.querySelectorAll("[data-editor-page]")) page.hidden = page.dataset.editorPage !== key;
     for (const button of editor.querySelectorAll("[data-journal-page]")) {
@@ -19,6 +41,7 @@ function setActivePage(editor, key, focus = false) {
         else button.removeAttribute("aria-current");
     }
     refreshRichEditors(editor);
+    refreshJournalVideos(editor);
     if (focus) focusRichEditor(activeContent(editor)?.querySelector("[data-journal-body]"));
 }
 
@@ -130,6 +153,8 @@ export function registerJournalPage() {
     registerJournalRichtext();
     registerJournalAutosave();
     registerJournalList();
+    document.addEventListener("world-journal:play-video", () => pauseJournalVideos());
+    document.addEventListener("world-journal:page-cleanup", clearJournalVideos);
     function openCard(event) {
         const card = event.target.closest("[data-journal-entry-card]");
         if (!card || event.target.closest("a, button, input, textarea, select, summary, label")) return;
@@ -150,11 +175,21 @@ export function registerJournalPage() {
         const play = event.target.closest("[data-journal-play]");
         if (play) {
             const entryPath = location.pathname.match(/^\/journal\/([a-f0-9-]{36})\//);
-            document.dispatchEvent(new CustomEvent("world-journal:play-video", {detail: {videoId: play.dataset.videoId, title: play.dataset.videoTitle, channel: play.dataset.videoChannel, startSeconds: Number(play.dataset.videoStart || 0), saveUrl: entryPath ? `/journal/${entryPath[1]}/edit/` : undefined}}));
+            const details = journalVideoDetails(play);
+            pauseJournalVideos();
+            document.dispatchEvent(new CustomEvent("world-journal:play-video", {detail: {...details, saveUrl: entryPath ? `/journal/${entryPath[1]}/edit/` : undefined}}));
             return;
         }
         const editor = event.target.closest("[data-journal-editor]");
         if (!editor) return;
+        const flag = event.target.closest("[data-journal-flag-toggle]");
+        if (flag) {
+            const input = editor.elements.namedItem(flag.dataset.journalFlagToggle);
+            input.checked = !input.checked;
+            flag.setAttribute("aria-pressed", String(input.checked));
+            input.dispatchEvent(new Event("change", {bubbles: true}));
+            return;
+        }
         const pageButton = event.target.closest("[data-journal-page]");
         if (pageButton) setActivePage(editor, pageButton.dataset.journalPage);
         else if (event.target.closest("[data-journal-add-section]")) {
@@ -188,7 +223,9 @@ export function registerJournalPage() {
     document.addEventListener("input", event => {
         const editor = event.target.closest("[data-journal-editor]");
         if (!editor) return;
+        syncEventDate(editor, event.target);
         if (event.target.matches('input[name$="-title"]')) syncSectionNav(editor);
+        if (event.target.matches('[name$="source_url"], [name$="youtube_start_seconds"], [name$="title"], [name$="source_name"]')) refreshJournalVideos(editor);
     });
     document.addEventListener("change", event => {
         if (event.target.matches('[name$="-DELETE"]')) {
@@ -202,9 +239,11 @@ export function registerJournalPage() {
     document.addEventListener("world-journal:page-ready", () => {
         const editor = document.querySelector("[data-journal-editor]");
         if (editor) {
+            syncEventDate(editor);
             updatePositions(editor);
             const invalid = editor.querySelector(".errorlist li")?.closest("[data-editor-page]");
             if (invalid) setActivePage(editor, invalid.dataset.editorPage);
         }
+        refreshJournalVideos();
     });
 }

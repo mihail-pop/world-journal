@@ -1,0 +1,7 @@
+<div class="journal-embedded-video" data-journal-video {% if editable %}data-editable-video{% endif %} data-video-id="{{ content.youtube_video_id }}" data-video-title="{{ content.title }}" data-video-channel="{{ content.source_name }}" data-video-start="{{ content.youtube_start_seconds|default_if_none:0 }}" {% if editable or not content.youtube_video_id %}hidden{% endif %}>
+    <div class="journal-video-mount" data-journal-video-mount></div>
+    <div class="journal-embedded-video-actions">
+        <button class="journal-button" type="button" data-journal-play>{% include 'core/partials/icon.html' with name='play' %} Open in player</button>
+        <a href="{{ content.watch_url }}" data-journal-video-link target="_blank" rel="noopener noreferrer">YouTube {% include 'core/partials/icon.html' with name='external' %}</a>
+    </div>
+</div>

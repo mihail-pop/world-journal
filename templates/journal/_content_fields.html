@@ -1,22 +1,25 @@
 <div class="journal-content-fields journal-editor-content" data-content-fields>
     <div class="journal-writing-paper journal-document-paper">
+        {% include 'journal/_video.html' with content=content_form.instance editable=True %}
         <div data-journal-body-field>{{ content_form.body }}{{ content_form.body.errors }}<div class="journal-prose" data-rich-editor data-legacy-html="{{ content_form.editor_html|force_escape }}"></div></div>
     </div>
     <aside class="journal-document-details" aria-label="Writing details">
         {% include 'journal/_field.html' with field=content_form.title %}
         {% include 'journal/_field.html' with field=content_form.entry_type %}
-        <details class="journal-meta-group" {% if content_form.source_url.value or content_form.youtube_reference.value or content_form.source_name.value or content_form.source_published_at.value or content_form.youtube_start_seconds.value or content_form.source_url.errors or content_form.youtube_reference.errors or content_form.source_name.errors or content_form.source_published_at.errors or content_form.youtube_start_seconds.errors %}open{% endif %}>
-            <summary>{% include 'core/partials/icon.html' with name='bookmark' %} Source &amp; video reference</summary>
-            {% include 'journal/_field.html' with field=content_form.source_url %}{% include 'journal/_field.html' with field=content_form.source_name %}{% include 'journal/_field.html' with field=content_form.source_published_at %}{% include 'journal/_field.html' with field=content_form.youtube_reference %}{% include 'journal/_field.html' with field=content_form.youtube_start_seconds %}
-        </details>
         {% if is_main %}
-        <details class="journal-meta-group" {% if content_form.collection.errors or content_form.event_date.errors or content_form.countries.errors or content_form.is_favorite.errors or content_form.is_pinned.errors %}open{% endif %}>
-            <summary>{% include 'core/partials/icon.html' with name='folder' %} Organization &amp; date</summary>
-            {% include 'journal/_field.html' with field=content_form.collection %}{% include 'journal/_field.html' with field=content_form.event_date %}{% include 'journal/_field.html' with field=content_form.countries %}
-            <p class="field-note">Country references add tags on save. Event date is separate from the day you save.</p>
-            <div class="journal-checkboxes"><label>{{ content_form.is_favorite }} Favorite</label>{{ content_form.is_favorite.errors }}<label>{{ content_form.is_pinned }} Pinned</label>{{ content_form.is_pinned.errors }}</div>
+        {% include 'journal/_field.html' with field=content_form.countries %}
+        {% include 'journal/_field.html' with field=content_form.collection %}
+        <div class="journal-entry-flags">
+            {{ content_form.is_favorite }}<button type="button" data-journal-flag-toggle="is_favorite" aria-label="Favorite" title="Favorite" aria-pressed="{{ content_form.is_favorite.value|yesno:'true,false' }}">{% include 'core/partials/icon.html' with name='heart' %}</button>{{ content_form.is_favorite.errors }}
+            {{ content_form.is_pinned }}<button type="button" data-journal-flag-toggle="is_pinned" aria-label="Pin" title="Pin" aria-pressed="{{ content_form.is_pinned.value|yesno:'true,false' }}">{% include 'core/partials/icon.html' with name='pin' %}</button>{{ content_form.is_pinned.errors }}
+        </div>
+        {% include 'journal/_field.html' with field=content_form.event_date %}
+        {% endif %}
+        <details class="journal-meta-group" {% if content_form.source_url.errors or content_form.source_name.errors or content_form.source_published_at.errors or content_form.youtube_start_seconds.errors %}open{% endif %}>
+            <summary>{% include 'core/partials/icon.html' with name='bookmark' %} Source &amp; video reference</summary>
+            {% include 'journal/_field.html' with field=content_form.source_url %}{% include 'journal/_field.html' with field=content_form.source_name %}{% include 'journal/_field.html' with field=content_form.source_published_at %}{% include 'journal/_field.html' with field=content_form.youtube_start_seconds %}
         </details>
-        {% else %}
+        {% if not is_main %}
         <div class="journal-section-actions"><button type="button" data-section-move="up" aria-label="Move section up" title="Move up">{% include 'core/partials/icon.html' with name='up' %}</button><button type="button" data-section-move="down" aria-label="Move section down" title="Move down">{% include 'core/partials/icon.html' with name='down' %}</button><button type="button" data-section-remove aria-label="Remove section" title="Remove section">{% include 'core/partials/icon.html' with name='trash' %}</button></div>
         {% endif %}
     </aside>

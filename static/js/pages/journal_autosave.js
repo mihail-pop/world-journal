@@ -20,7 +20,7 @@ function showStatus(state, message, status) {
 
 function trackEditor(form) {
     if (editors.has(form)) return editors.get(form);
-    const hasPrefill = form.getAttribute("action") === "/journal/new/" && ["title", "body", "source_url", "youtube_reference"].some(name => form.elements.namedItem(name)?.value.trim());
+    const hasPrefill = form.getAttribute("action") === "/journal/new/" && ["title", "body", "source_url"].some(name => form.elements.namedItem(name)?.value.trim());
     const state = {form, version: hasPrefill || form.querySelector("[data-autosave-retry]") ? 1 : 0, savedVersion: 0, pending: null};
     editors.set(form, state);
     if (state.version) showStatus(state, "Unsaved changes", "dirty");

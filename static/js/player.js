@@ -28,7 +28,7 @@ function video(detail) {
         channel: String(detail.channel || "YouTube").slice(0, 200),
         startSeconds: Number.isFinite(start) ? Math.max(0, Math.min(2147483647, Math.floor(start))) : 0};
 }
-function loadPlayerApi() {
+export function loadPlayerApi() {
     if (window.YT?.Player) return Promise.resolve(window.YT);
     if (apiPromise) return apiPromise;
     apiPromise = new Promise((resolve, reject) => {

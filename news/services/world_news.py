@@ -187,9 +187,11 @@ class CachedNews:
             if item.published_at:
                 initial["published"] = item.published_at.isoformat()
             if not video and item.provider_id == self.google.id and self.options["country"] != "WORLD":
-                initial["country"] = self.options["country"]
+                initial["country"] = [self.options["country"]]
+            elif item.matched_country_codes:
+                initial["country"] = item.matched_country_codes
             cards.append({"item": item, "google": not video and item.provider_id == self.google.id,
-                          "save_url": reverse("journal:new") + "?" + urlencode(initial)})
+                          "save_url": reverse("journal:new") + "?" + urlencode(initial, doseq=True)})
         pending = sum(not isinstance(snapshot := self.get(key), dict) or not isinstance(snapshot.get("items"), list)
                       or not (snapshot.get("last_success_at") or snapshot.get("last_attempt_at")) for key in self.keys)
         return {
