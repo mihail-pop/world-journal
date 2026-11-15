@@ -6,6 +6,59 @@ let library;
 let registered = false;
 const normalize = value => value.normalize("NFC").trim().replace(/\s+/g, " ").toLocaleLowerCase();
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const alignments = ["left", "center", "right", "justify"];
+const imageSelected = editor => editor.state.selection.node?.type.name === "image";
+
+function colorValue(value) {
+    if (typeof value !== "string" || !value) return null;
+    if (/^#[a-f\d]{6}$/i.test(value)) return value.toLowerCase();
+    if (/^#[a-f\d]{3}$/i.test(value)) return "#" + [...value.slice(1)].map(char => char + char).join("").toLowerCase();
+    const match = value.match(/^rgb\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)$/);
+    return match ? "#" + match.slice(1).map(number => Number(number).toString(16).padStart(2, "0")).join("") : null;
+}
+
+function highlightInk(value) {
+    const color = colorValue(value);
+    if (!color) return null;
+    const [red, green, blue] = [1, 3, 5].map(start => parseInt(color.slice(start, start + 2), 16));
+    return red * .299 + green * .587 + blue * .114 >= 140 ? "dark" : "light";
+}
+
+function selectionFormatting(editor) {
+    const {selection, storedMarks, doc} = editor.state;
+    const samples = [], blocks = [];
+    const addMarks = marks => samples.push(marks.find(mark => mark.type.name === "textStyle")?.attrs || {});
+    if (selection.empty) {
+        // An empty stored-mark set deliberately clears formatting at the caret.
+        addMarks(storedMarks ?? selection.$from.marks());
+        if (["paragraph", "heading"].includes(selection.$from.parent.type.name)) blocks.push(selection.$from.parent);
+    } else doc.nodesBetween(selection.from, selection.to, node => {
+        if (node.isText) addMarks(node.marks);
+        if (["paragraph", "heading"].includes(node.type.name)) blocks.push(node);
+    });
+    const values = {}, mixed = new Set();
+    for (const property of ["color", "backgroundColor", "fontFamily", "fontSize"]) {
+        const options = new Set(samples.map(style => property.endsWith("Color") || property === "color" ? colorValue(style[property]) : style[property] || null));
+        values[property] = options.size === 1 ? [...options][0] : null;
+        if (options.size > 1) mixed.add(property);
+    }
+    const positions = new Set(blocks.map(node => node.attrs.textAlign || "left"));
+    const styles = new Set(blocks.map(node => node.type.name === "heading" ? String(node.attrs.level) : "paragraph"));
+    return {values, mixed, alignment: positions.size === 1 ? [...positions][0] : null, style: styles.size === 1 ? [...styles][0] : "paragraph", mixedStyle: styles.size > 1, alignable: blocks.length > 0};
+}
+
+function syncSelect(select, value, mixed = false) {
+    const wanted = mixed ? "__mixed" : value || "";
+    let extra = select.querySelector("[data-editor-custom]");
+    if (extra && extra.value !== wanted) { extra.remove(); extra = null; }
+    if (wanted && ![...select.options].some(option => option.value === wanted)) {
+        extra = new Option(mixed ? "Mixed" : wanted.replace(/px$/, ""), wanted);
+        extra.dataset.editorCustom = "true";
+        extra.disabled = true;
+        select.append(extra);
+    }
+    select.value = wanted;
+}
 
 class JournalEditor {
     constructor(form, modules) {
@@ -37,12 +90,63 @@ class JournalEditor {
                     default: null,
                     parseHTML: element => element.getAttribute("data-attachment-id"),
                     renderHTML: attrs => attrs.attachmentId ? {"data-attachment-id": attrs.attachmentId} : {},
-                }, uploadId: {default: null, rendered: false}};
+                }, uploadId: {default: null, rendered: false}, alignment: {
+                    default: "left",
+                    parseHTML: element => element.getAttribute("data-image-align") || "left",
+                    renderHTML: attrs => ({"data-image-align": attrs.alignment}),
+                }};
             },
             parseHTML() {
                 return [{tag: "img[data-attachment-id]", getAttrs: element => uuid.test(element.getAttribute("data-attachment-id")) ? null : false}];
             },
             addInputRules() { return []; },
+            addNodeView() {
+                const createView = this.parent?.();
+                if (!createView) return null;
+                return props => {
+                    const view = createView(props);
+                    const sync = node => {
+                        view.dom.dataset.imageAlign = node.attrs.alignment || "left";
+                        const image = view.dom.querySelector("img");
+                        image.style.width = node.attrs.width ? `${node.attrs.width}px` : "";
+                        image.style.height = "auto";
+                    };
+                    const update = view.update.bind(view);
+                    view.update = (node, ...rest) => {
+                        const result = update(node, ...rest);
+                        if (result) sync(node);
+                        return result;
+                    };
+                    sync(props.node);
+                    return view;
+                };
+            },
+        });
+        const ContentAlign = TextAlign.extend({
+            addCommands() {
+                const parent = this.parent();
+                return {...parent,
+                    setTextAlign: alignment => props => {
+                        if (props.state.selection.node?.type.name === "image") return ["left", "center", "right"].includes(alignment) && props.commands.updateAttributes("image", {alignment});
+                        return parent.setTextAlign(alignment)(props);
+                    },
+                    unsetTextAlign: () => props => props.state.selection.node?.type.name === "image"
+                        ? props.commands.resetAttributes("image", "alignment") : parent.unsetTextAlign()(props),
+                };
+            },
+        });
+        const HighlightContrast = Extension.create({
+            name: "highlightContrast",
+            addGlobalAttributes() {
+                return [{types: ["textStyle"], attributes: {autoInk: {
+                    default: null,
+                    parseHTML: () => null,
+                    renderHTML: attrs => {
+                        const ink = !attrs.color && highlightInk(attrs.backgroundColor);
+                        return ink ? {"data-highlight-ink": ink} : {};
+                    },
+                }}}];
+            },
         });
         const aliases = this.aliases;
         const CountryLinks = Extension.create({
@@ -68,8 +172,8 @@ class JournalEditor {
                 }}),
                 LocalImage.configure({resize: {enabled: true, alwaysPreserveAspectRatio: true, minWidth: 40, minHeight: 40}}),
                 TableKit.configure({table: {resizable: true, allowTableNodeSelection: true}}),
-                TaskList, TaskItem.configure({nested: true}), TextAlign.configure({types: ["heading", "paragraph"]}),
-                TextStyleKit, Placeholder.configure({placeholder: "Start writing…"}), CountryLinks,
+                TaskList, TaskItem.configure({nested: true, HTMLAttributes: {"data-type": "taskItem"}}), ContentAlign.configure({types: ["heading", "paragraph"]}),
+                TextStyleKit, HighlightContrast, Placeholder.configure({placeholder: "Start writing…"}), CountryLinks,
             ],
             editorProps: {
                 attributes: {class: "journal-rich-editor", role: "textbox", "aria-multiline": "true", "aria-label": "Document body", spellcheck: "true"},
@@ -100,6 +204,7 @@ class JournalEditor {
         });
         this.editors.set(field, editor);
         this.syncField(field, editor);
+        delete root.dataset.legacyHtml;
     }
 
     syncField(field, editor) {
@@ -118,19 +223,59 @@ class JournalEditor {
     syncToolbar() {
         const editor = this.active();
         if (!editor || editor.isDestroyed) return;
+        const isImage = imageSelected(editor);
+        const formatting = selectionFormatting(editor);
+        const alignment = isImage ? editor.getAttributes("image").alignment || "left" : formatting.alignment;
         for (const button of this.toolbar.querySelectorAll("[data-rich-command]")) {
             const command = button.dataset.richCommand;
-            if (button.hasAttribute("aria-pressed")) button.setAttribute("aria-pressed", String(editor.isActive(command)));
-            if (["undo", "redo"].includes(command)) button.disabled = !editor.can()[command]();
+            if (button.hasAttribute("aria-pressed")) button.setAttribute("aria-pressed", String(alignments.includes(command) ? alignment === command : editor.isActive(command)));
+            if (!editor.isEditable) button.disabled = true;
+            else if (["undo", "redo"].includes(command)) button.disabled = !editor.can()[command]();
             else if (button.hasAttribute("data-table-action")) button.disabled = !editor.isActive("table") || !editor.can()[command]();
-            else button.disabled = !editor.isEditable;
+            else if (alignments.includes(command)) button.disabled = isImage ? command === "justify" : !formatting.alignable;
+            else if (button.hasAttribute("data-text-action")) button.disabled = isImage || !editor.can()[`toggle${command[0].toUpperCase()}${command.slice(1)}`]();
+            else button.disabled = false;
         }
-        this.toolbar.querySelector("[data-rich-style]").value = editor.isActive("heading") ? String(editor.getAttributes("heading").level) : "paragraph";
-        const style = editor.getAttributes("textStyle");
-        this.toolbar.querySelector("[data-rich-font]").value = style.fontFamily || "";
-        this.toolbar.querySelector("[data-rich-size]").value = style.fontSize || "";
-        if (/^#[a-f0-9]{6}$/i.test(style.color || "")) this.toolbar.querySelector("[data-rich-color]").value = style.color;
-        if (/^#[a-f0-9]{6}$/i.test(style.backgroundColor || "")) this.toolbar.querySelector("[data-rich-highlight]").value = style.backgroundColor;
+        const style = this.toolbar.querySelector("[data-rich-style]");
+        syncSelect(style, formatting.style, formatting.mixedStyle);
+        syncSelect(this.toolbar.querySelector("[data-rich-font]"), formatting.values.fontFamily, formatting.mixed.has("fontFamily"));
+        syncSelect(this.toolbar.querySelector("[data-rich-size]"), formatting.values.fontSize, formatting.mixed.has("fontSize"));
+        for (const control of this.toolbar.querySelectorAll("select, [data-text-action]:not([data-rich-command])")) control.disabled = !editor.isEditable || isImage
+            || (control !== style && editor.isActive("codeBlock"));
+        for (const option of style.options) if (/^[1-3]$/.test(option.value)) option.disabled = !editor.can().setHeading({level: Number(option.value)});
+        for (const menu of this.toolbar.querySelectorAll("[data-text-menu]")) {
+            menu.inert = !editor.isEditable || isImage || (menu.hasAttribute("data-color-menu") && editor.isActive("codeBlock"));
+            if (menu.inert) menu.open = false;
+        }
+        const list = ["bulletList", "orderedList", "taskList"].find(type => editor.isActive(type));
+        const listMenu = this.toolbar.querySelector(".journal-list-menu");
+        listMenu.dataset.active = String(Boolean(list));
+        for (const icon of listMenu.querySelectorAll("[data-list-icon]")) icon.hidden = icon.dataset.listIcon !== (list || "bulletList");
+        for (const menu of this.toolbar.querySelectorAll("[data-color-menu]")) {
+            const property = menu.dataset.colorMenu;
+            const color = formatting.values[property];
+            const mixed = formatting.mixed.has(property);
+            menu.dataset.hasColor = String(Boolean(color));
+            menu.dataset.mixed = String(mixed);
+            menu.style.setProperty("--selected-color", color || (property === "color" ? "currentColor" : "transparent"));
+            const label = (property === "color" ? "Text colour" : "Highlight colour") + (mixed ? " (mixed)" : "");
+            menu.querySelector("summary").title = label;
+            menu.querySelector("summary").setAttribute("aria-label", label);
+            for (const swatch of menu.querySelectorAll("[data-rich-color-value]")) swatch.setAttribute("aria-pressed", String(!mixed && (swatch.dataset.richColorValue || null) === color));
+            const picker = menu.querySelector("[data-rich-custom-color]");
+            if (color && document.activeElement !== picker) picker.value = color;
+        }
+    }
+
+    setColor(menu, value, close = true) {
+        const editor = this.active();
+        if (!editor?.isEditable || imageSelected(editor)) return;
+        const background = menu.dataset.colorMenu === "backgroundColor";
+        const chain = editor.chain().focus();
+        if (background) value ? chain.setBackgroundColor(value).run() : chain.unsetBackgroundColor().run();
+        else value ? chain.setColor(value).run() : chain.unsetColor().run();
+        this.syncToolbar();
+        if (close) this.closeMenus();
     }
 
     command(name) {
@@ -139,10 +284,16 @@ class JournalEditor {
         const chain = editor.chain().focus();
         if (["bold", "italic", "underline", "strike", "bulletList", "orderedList", "taskList", "blockquote", "codeBlock"].includes(name)) {
             chain[`toggle${name[0].toUpperCase()}${name.slice(1)}`]().run();
-        } else if (["left", "center", "right", "justify"].includes(name)) chain.setTextAlign(name).run();
-        else if (name === "insertTable") chain.insertTable({rows: 3, cols: 3, withHeaderRow: true}).run();
-        else if (name === "horizontalRule") chain.setHorizontalRule().run();
-        else if (name === "clear") chain.unsetAllMarks().clearNodes().unsetTextAlign().run();
+        } else if (alignments.includes(name)) chain.setTextAlign(name).run();
+        else if (name === "insertTable") {
+            if (imageSelected(editor)) chain.createParagraphNear();
+            chain.insertTable({rows: 3, cols: 3, withHeaderRow: true}).run();
+        }
+        else if (name === "horizontalRule") chain.insertContentAt(editor.state.selection.to, {type: "horizontalRule"}).run();
+        else if (name === "clear") {
+            if (imageSelected(editor)) chain.updateAttributes("image", {alignment: "left"}).run();
+            else chain.unsetAllMarks().clearNodes().unsetTextAlign().run();
+        }
         else if (typeof chain[name] === "function") chain[name]().run();
         this.closeMenus();
     }
@@ -151,9 +302,19 @@ class JournalEditor {
         for (const menu of this.form.querySelectorAll("[data-rich-menu][open]")) menu.open = false;
     }
 
+    positionMenu(menu) {
+        const panel = menu.querySelector(".journal-editor-menu-panel");
+        if (!panel) return;
+        const anchor = menu.getBoundingClientRect();
+        const width = panel.getBoundingClientRect().width;
+        const initial = menu.matches(".journal-list-menu, .journal-color-menu") ? 0 : anchor.width - width;
+        panel.style.left = `${Math.max(8 - anchor.left, Math.min(initial, document.documentElement.clientWidth - 8 - anchor.left - width))}px`;
+        panel.style.right = "auto";
+    }
+
     openLink() {
         const editor = this.active();
-        if (!editor?.isEditable) return;
+        if (!editor?.isEditable || imageSelected(editor)) return;
         if (editor.isActive("link")) editor.commands.extendMarkRange("link");
         this.linkEditor = editor;
         this.linkRange = {from: editor.state.selection.from, to: editor.state.selection.to};
@@ -186,8 +347,16 @@ class JournalEditor {
             return;
         }
         const text = dialog.querySelector("[data-rich-link-text]").value || href;
-        editor.chain().focus().insertContentAt(this.linkRange, {type: "text", text, marks: [{type: "link", attrs: {href, target: href.startsWith("/") ? null : "_blank", rel: "noopener noreferrer"}}]})
-            .command(({tr}) => { tr.removeStoredMark(editor.schema.marks.link); return true; }).run();
+        const attrs = {href, target: href.startsWith("/") ? null : "_blank", rel: "noopener noreferrer"};
+        const original = editor.state.doc.textBetween(this.linkRange.from, this.linkRange.to, " ");
+        const chain = editor.chain().focus().setTextSelection(this.linkRange);
+        if (original === text && this.linkRange.from !== this.linkRange.to) chain.setLink(attrs).setTextSelection(this.linkRange.to);
+        else {
+            const marks = (editor.state.doc.nodeAt(this.linkRange.from)?.marks || editor.state.storedMarks || editor.state.selection.$from.marks())
+                .filter(mark => mark.type.name !== "link").map(mark => mark.toJSON());
+            chain.insertContentAt(this.linkRange, {type: "text", text, marks: [...marks, {type: "link", attrs}]});
+        }
+        chain.command(({tr}) => { tr.removeStoredMark(editor.schema.marks.link); return true; }).run();
         dialog.close();
     }
 
@@ -264,6 +433,8 @@ class JournalEditor {
         for (const editor of this.editors.values()) editor.destroy();
         this.editors.clear();
         controllers.delete(this.form);
+        delete this.form.journalReady;
+        this.toolbar.inert = true;
     }
 }
 
@@ -280,7 +451,7 @@ export function registerJournalRichtext() {
         const form = document.querySelector("[data-journal-editor]");
         if (!form) return;
         for (const [previous, controller] of controllers) if (previous !== form && !previous.isConnected) {
-            void Promise.all(previous.journalPendingUploads || []).then(() => controller.destroy());
+            void Promise.all(previous.journalPendingUploads || []).then(() => { if (!previous.isConnected) controller.destroy(); });
         }
         if (controllers.has(form)) { controllers.get(form).refresh(); return; }
         if (form.journalReady) return;
@@ -298,7 +469,30 @@ export function registerJournalRichtext() {
         if (form) void Promise.all([form.journalReady, ...(form.journalPendingUploads || [])]).then(() => controllers.get(form)?.destroy()).catch(() => {});
     });
     document.addEventListener("pointerdown", event => {
-        if (event.target.closest("[data-rich-command], [data-rich-link], [data-rich-image], [data-rich-menu] > summary")) event.preventDefault();
+        if (event.target.closest("[data-rich-command], [data-rich-color-value], [data-rich-color-custom-apply], [data-rich-link], [data-rich-image], [data-rich-menu] > summary")) event.preventDefault();
+    });
+    document.addEventListener("pointerenter", event => {
+        const menu = event.target;
+        if (!(menu instanceof HTMLElement) || !menu.matches("[data-rich-hover-menu]") || menu.inert || event.pointerType === "touch") return;
+        const controller = controllers.get(menu.closest("[data-journal-editor]"));
+        controller?.closeMenus();
+        menu.open = true;
+    }, true);
+    document.addEventListener("pointerleave", event => {
+        const menu = event.target;
+        if (menu instanceof HTMLElement && menu.matches("[data-rich-hover-menu]") && !menu.contains(document.activeElement)) menu.open = false;
+    }, true);
+    document.addEventListener("focusout", event => {
+        const menu = event.target.closest("[data-rich-menu]");
+        if (menu && event.relatedTarget && !menu.contains(event.relatedTarget) && !menu.matches(":hover")) menu.open = false;
+    });
+    document.addEventListener("toggle", event => {
+        const menu = event.target;
+        if (!menu.matches?.("[data-rich-menu]") || !menu.open) return;
+        controllers.get(menu.closest("[data-journal-editor]"))?.positionMenu(menu);
+    }, true);
+    window.addEventListener("resize", () => {
+        for (const controller of controllers.values()) for (const menu of controller.form.querySelectorAll("[data-rich-menu][open]")) controller.positionMenu(menu);
     });
     document.addEventListener("click", event => {
         for (const controller of controllers.values()) for (const menu of controller.form.querySelectorAll("[data-rich-menu][open]")) {
@@ -309,6 +503,14 @@ export function registerJournalRichtext() {
         if (!controller) return;
         const command = event.target.closest("[data-rich-command]");
         if (command) controller.command(command.dataset.richCommand);
+        else if (event.target.closest("[data-rich-color-value]")) {
+            const swatch = event.target.closest("[data-rich-color-value]");
+            controller.setColor(swatch.closest("[data-color-menu]"), swatch.dataset.richColorValue);
+        }
+        else if (event.target.closest("[data-rich-color-custom-apply]")) {
+            const menu = event.target.closest("[data-color-menu]");
+            controller.setColor(menu, menu.querySelector("[data-rich-custom-color]").value);
+        }
         else if (event.target.closest("[data-rich-link]")) controller.openLink();
         else if (event.target.closest("[data-rich-image]")) form.querySelector("[data-rich-image-input]").click();
         else if (event.target.closest("[data-rich-link-apply]")) controller.applyLink();
@@ -325,15 +527,29 @@ export function registerJournalRichtext() {
         if (field.matches("[data-rich-style]")) field.value === "paragraph" ? chain.setParagraph().run() : chain.setHeading({level: Number(field.value)}).run();
         else if (field.matches("[data-rich-font]")) field.value ? chain.setFontFamily(field.value).run() : chain.unsetFontFamily().run();
         else if (field.matches("[data-rich-size]")) field.value ? chain.setFontSize(field.value).run() : chain.unsetFontSize().run();
-        else if (field.matches("[data-rich-color]")) chain.setColor(field.value).run();
-        else if (field.matches("[data-rich-highlight]")) chain.setBackgroundColor(field.value).run();
+        else if (field.matches("[data-rich-custom-color]")) controller.setColor(field.closest("[data-color-menu]"), field.value, false);
         else if (field.matches("[data-rich-image-input]")) { controller.insertImages(editor, [...field.files]); field.value = ""; }
+        controller.syncToolbar();
     });
     document.addEventListener("keydown", event => {
         const controller = controllers.get(event.target.closest("[data-journal-editor]"));
         if (!controller) return;
-        if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") { event.preventDefault(); controller.openLink(); }
+        if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "s" && !event.target.closest("dialog")) {
+            event.preventDefault();
+            controller.form.requestSubmit(controller.form.querySelector("[data-journal-save]"));
+        }
+        if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k" && event.target.closest(".journal-rich-editor")) { event.preventDefault(); controller.openLink(); }
         if (event.key === "Enter" && event.target.closest("[data-rich-link-dialog]")) { event.preventDefault(); controller.applyLink(); }
-        if (event.key === "Escape") controller.closeMenus();
+        if (event.key === "ArrowDown" && event.target.matches("[data-rich-menu] > summary")) {
+            event.preventDefault();
+            const menu = event.target.closest("[data-rich-menu]");
+            menu.open = true;
+            menu.querySelector("button:not(:disabled)")?.focus();
+        }
+        if (event.key === "Escape" && controller.form.querySelector("[data-rich-menu][open]")) {
+            event.preventDefault();
+            controller.closeMenus();
+            controller.active()?.commands.focus();
+        }
     });
 }

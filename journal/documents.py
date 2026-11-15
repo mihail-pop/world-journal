@@ -36,6 +36,17 @@ def text_color(value):
     return None
 
 
+def highlight_ink(value):
+    color = text_color(value)
+    if not color:
+        return None
+    color = color.lstrip("#")
+    if len(color) == 3:
+        color = "".join(char * 2 for char in color)
+    red, green, blue = (int(color[start:start + 2], 16) for start in (0, 2, 4))
+    return "dark" if red * .299 + green * .587 + blue * .114 >= 140 else "light"
+
+
 def image_url(attachment_id):
     return reverse("journal:image", args=[attachment_id])
 
@@ -148,6 +159,9 @@ def validate_document(value):
             except ValueError as error:
                 raise ValidationError("An image is still uploading or is not a local journal image.") from error
             cleaned = {"attachmentId": attachment_id, "src": image_url(attachment_id), "alt": str(attrs.get("alt") or "")[:255]}
+            alignment = attrs.get("alignment")
+            if isinstance(alignment, str) and alignment in {"left", "center", "right"}:
+                cleaned["alignment"] = alignment
             for key in ("width", "height"):
                 dimension = attrs.get(key)
                 if isinstance(dimension, str) and len(dimension) <= 5 and dimension.isdigit():
@@ -229,7 +243,9 @@ def render_document(document, *, limit=None):
                 elif mark["type"] == "textStyle":
                     properties = {"color": "color", "backgroundColor": "background-color", "fontSize": "font-size", "fontFamily": "font-family", "lineHeight": "line-height"}
                     style = ";".join(f"{properties[key]}:{value}" for key, value in mark["attrs"].items())
-                    html = f'<span style="{escape(style, quote=True)}">{html}</span>'
+                    ink = highlight_ink(mark["attrs"].get("backgroundColor")) if not mark["attrs"].get("color") else None
+                    contrast = f' data-highlight-ink="{ink}"' if ink else ""
+                    html = f'<span style="{escape(style, quote=True)}"{contrast}>{html}</span>'
                 elif mark["type"] == "link":
                     href = mark["attrs"]["href"]
                     from .formatting import render_video, video_token
@@ -248,7 +264,7 @@ def render_document(document, *, limit=None):
             if limit is not None:
                 return ""
             size = "".join(f' {key}="{attrs[key]}"' for key in ("width", "height") if key in attrs)
-            return f'<img src="{escape(attrs["src"], quote=True)}" alt="{escape(attrs["alt"], quote=True)}"{size} loading="lazy">'
+            return f'<img src="{escape(attrs["src"], quote=True)}" alt="{escape(attrs["alt"], quote=True)}" data-image-align="{attrs.get("alignment", "left")}"{size} loading="lazy">'
         if kind == "table":
             children = node.get("content", [])
             header = children and all(cell["type"] == "tableHeader" for cell in children[0].get("content", []))

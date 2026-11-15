@@ -321,12 +321,13 @@ class SelectControl {
 
 function enhance(root) {
     for (const select of root.querySelectorAll("select")) {
-        if ((select.hidden && !select.classList.contains("select-native"))
+        if (select.closest("[data-rich-editor]") || (select.hidden && !select.classList.contains("select-native"))
             || select.hasAttribute("data-native-select")) continue;
         if (!controls.has(select)) controls.set(select, new SelectControl(select));
         else controls.get(select).sync();
     }
     for (const input of root.querySelectorAll('input[type="checkbox"]')) {
+        if (input.closest("[data-rich-editor]")) continue;
         const label = input.closest("label") || input.labels[0];
         if (!label) continue;
         if (!label.contains(input)) label.prepend(input);
@@ -343,6 +344,9 @@ export function registerUiControls() {
         const changed = new Set();
         for (const record of records) {
             const target = record.target.nodeType === Node.ELEMENT_NODE ? record.target : record.target.parentElement;
+            // Tiptap owns its editable DOM, including checklist checkboxes.
+            // Enhancing those controls makes its observer repeatedly undo us.
+            if (target?.closest("[data-rich-editor]")) continue;
             const select = target?.closest("select");
             if (select && controls.has(select)) changed.add(select);
             for (const node of record.addedNodes) {

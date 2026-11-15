@@ -8,7 +8,7 @@ from django.views.decorators.cache import never_cache
 
 from core.preferences import preferences_snapshot
 
-from .documents import validate_document
+from .documents import highlight_ink, validate_document
 from .models import Entry
 
 
@@ -73,6 +73,8 @@ def word_document(entry, *, font="Inter"):
                 if height := attrs.get("lineHeight"):
                     paragraph.paragraph_format.line_spacing = float(height)
                 if background := attrs.get("backgroundColor"):
+                    if not attrs.get("color"):
+                        run.font.color.rgb = RGBColor.from_string("202124" if highlight_ink(background) == "dark" else "FFFFFF")
                     background = background.lstrip("#")
                     if len(background) == 3:
                         background = "".join(char * 2 for char in background)
@@ -187,7 +189,9 @@ def word_document(entry, *, font="Inter"):
                         converted = io.BytesIO()
                         picture.convert("RGBA").save(converted, format="PNG")
                         converted.seek(0)
-                    container.add_paragraph().add_run().add_picture(converted, width=target_width)
+                    image_paragraph = container.add_paragraph()
+                    image_paragraph.alignment = {"left": WD_ALIGN_PARAGRAPH.LEFT, "center": WD_ALIGN_PARAGRAPH.CENTER, "right": WD_ALIGN_PARAGRAPH.RIGHT}.get(attrs.get("alignment"), WD_ALIGN_PARAGRAPH.LEFT)
+                    image_paragraph.add_run().add_picture(converted, width=target_width)
 
     def add_content(content):
         blocks(output, content_document(content).get("content", []))

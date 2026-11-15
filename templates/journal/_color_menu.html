@@ -1,0 +1,24 @@
+<details class="journal-editor-menu journal-color-menu" data-rich-menu data-color-menu="{{ property }}" data-text-menu>
+    <summary title="{{ label }}" aria-label="{{ label }}" data-color-summary>
+        {% if property == 'color' %}<span class="journal-text-colour-icon" aria-hidden="true">A</span>{% else %}{% include 'journal/_icon.html' with name='highlight' %}{% endif %}
+        <span class="journal-color-indicator" aria-hidden="true"></span>
+    </summary>
+    <div class="journal-editor-menu-panel journal-color-panel">
+        <button type="button" class="journal-color-reset" data-rich-color-value="" aria-pressed="true">{% include 'journal/_icon.html' with name='remove-color' %} {{ reset_label }}</button>
+        <div class="journal-color-swatches" role="group" aria-label="{{ label }}">
+            <button type="button" data-rich-color-value="#ffffff" style="--swatch:#ffffff" aria-label="White" title="White" aria-pressed="false"></button>
+            <button type="button" data-rich-color-value="#202124" style="--swatch:#202124" aria-label="Black" title="Black" aria-pressed="false"></button>
+            <button type="button" data-rich-color-value="#80868b" style="--swatch:#80868b" aria-label="Grey" title="Grey" aria-pressed="false"></button>
+            <button type="button" data-rich-color-value="#e45a5a" style="--swatch:#e45a5a" aria-label="Red" title="Red" aria-pressed="false"></button>
+            <button type="button" data-rich-color-value="#ed9650" style="--swatch:#ed9650" aria-label="Orange" title="Orange" aria-pressed="false"></button>
+            <button type="button" data-rich-color-value="#ffe08a" style="--swatch:#ffe08a" aria-label="Yellow" title="Yellow" aria-pressed="false"></button>
+            <button type="button" data-rich-color-value="#6abd86" style="--swatch:#6abd86" aria-label="Green" title="Green" aria-pressed="false"></button>
+            <button type="button" data-rich-color-value="#59b9bb" style="--swatch:#59b9bb" aria-label="Teal" title="Teal" aria-pressed="false"></button>
+            <button type="button" data-rich-color-value="#70aaf2" style="--swatch:#70aaf2" aria-label="Blue" title="Blue" aria-pressed="false"></button>
+            <button type="button" data-rich-color-value="#b28be0" style="--swatch:#b28be0" aria-label="Purple" title="Purple" aria-pressed="false"></button>
+            <button type="button" data-rich-color-value="#e78fbb" style="--swatch:#e78fbb" aria-label="Pink" title="Pink" aria-pressed="false"></button>
+            <button type="button" data-rich-color-value="#b48c70" style="--swatch:#b48c70" aria-label="Brown" title="Brown" aria-pressed="false"></button>
+        </div>
+        <div class="journal-custom-color"><label>Custom<input type="color" data-rich-custom-color value="{% if property == 'color' %}#202124{% else %}#ffe08a{% endif %}" aria-label="Custom {{ label|lower }}"></label><button type="button" data-rich-color-custom-apply>Apply</button></div>
+    </div>
+</details>
