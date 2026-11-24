@@ -36,11 +36,13 @@
     .\.venv\Scripts\python.exe manage.py collectstatic --noinput
     ```
 
-8. Set your timezone for this terminal. Replace the example with your IANA timezone:
+8. World Journal detects your Windows timezone automatically. To override it for this terminal, set `TZ` to your IANA timezone:
 
     ```powershell
     $env:TZ="Europe/Bucharest"
     ```
+
+    Dates, times and date filters use this timezone, including daylight-saving changes. Restart the server after changing the timezone.
 
 9. Start World Journal with Django:
 

@@ -16,7 +16,7 @@
 			- TZ=Europe/Bucharest
 		```
 
-		Use an IANA timezone such as `Europe/London`, `Europe/Bucharest` or `America/New_York`. If it is omitted, World Journal uses UTC.
+		Use an IANA timezone such as `Europe/London`, `Europe/Bucharest` or `America/New_York`. This controls displayed dates, entered dates and date filters. If it is omitted, World Journal uses UTC. Set it even when Docker runs on Windows or macOS: the container does not detect the host computer's timezone.
 
 3. Build and start the app:
 

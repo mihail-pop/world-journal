@@ -42,6 +42,8 @@
 
 8. Start World Journal with your IANA timezone:
 
+    Replace `Europe/Bucharest` with your timezone. It controls displayed dates, entered dates and date filters. If `TZ` is omitted, the app uses UTC.
+
     ```sh
     TZ=Europe/Bucharest .venv/bin/python manage.py runserver 0.0.0.0:8000 --noreload
     ```

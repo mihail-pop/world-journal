@@ -164,5 +164,5 @@ def export_backup(request):
             return JsonResponse({"error": message}, status=500)
         messages.error(request, message)
         return redirect("core:backups")
-    filename = f"world-journal-{timezone.now():%Y%m%d-%H%M%S}.zip"
+    filename = f"world-journal-{timezone.localtime():%Y%m%d-%H%M%S}.zip"
     return FileResponse(archive, as_attachment=True, filename=filename, content_type="application/zip")

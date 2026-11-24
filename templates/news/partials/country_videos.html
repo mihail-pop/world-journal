@@ -43,7 +43,7 @@
                         <h4>{{ item.title }}</h4>
                         <p class="country-news-byline">
                             <span>{{ item.channel_name }}{% if item.is_stale %} · cached{% endif %}</span>
-                            {% if item.published_at %}<time datetime="{{ item.published_at|date:'c' }}">{{ item.published_at|date:'M j, H:i T' }}</time>{% endif %}
+                            {% if item.published_at %}<time datetime="{{ item.published_at|date:'c' }}">{{ item.published_at|date:'M j, H:i' }}</time>{% endif %}
                         </p>
                         <div class="video-card-actions">
                             <button

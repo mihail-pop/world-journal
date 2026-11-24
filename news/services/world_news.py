@@ -7,6 +7,7 @@ from urllib.parse import urlencode
 from django.core.cache import cache
 from django.db.models import Exists, OuterRef, Prefetch, Q
 from django.urls import reverse
+from django.utils.timezone import localtime
 
 from news.adapters.rss import clean_article_text, is_google_news_link
 from news.adapters.youtube import build_embed_url, build_thumbnail_url, build_watch_url
@@ -126,7 +127,7 @@ class CachedNews:
             if result.warning or result.error:
                 errors.append(("Google News", result.warning or result.error))
             if pause := google_pause_until(cache, self.now):
-                errors.append(("Google News", f"Refresh is paused until {pause:%H:%M UTC on %b %d}; cached headlines remain available."))
+                errors.append(("Google News", f"Refresh is paused until {localtime(pause):%H:%M on %b %d}; cached headlines remain available."))
         for feed in self.feeds:
             provider = self.registry.get_provider(feed.provider_id)
             result = get_fixed_feed(feed, provider, **options)

@@ -10,10 +10,12 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
+import mimetypes
 import os
 from pathlib import Path
 
-import mimetypes
+from .timezones import app_timezone_name
+
 mimetypes.add_type("text/javascript", ".mjs", True)
 mimetypes.add_type("application/javascript", ".js", True)
 
@@ -193,7 +195,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = os.environ.get("TZ", "UTC")
+TIME_ZONE = app_timezone_name()
 
 USE_I18N = True
 

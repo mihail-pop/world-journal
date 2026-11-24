@@ -10,7 +10,8 @@ services:
       - PYTHONDONTWRITEBYTECODE=1
       - PYTHONUNBUFFERED=1
       - WORLD_JOURNAL_DATA_DIR=/app/database
-      # Add your timezone, otherwise it will default to UTC
+      # Set your IANA timezone, including on Windows/macOS Docker hosts.
+      # If omitted, the container uses UTC.
       # - TZ=Europe/Bucharest
       # Use a unique value before exposing the app remotely
       # - SECRET_KEY=replace-this-with-a-long-random-value

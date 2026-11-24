@@ -9,6 +9,7 @@ from threading import Condition, Event, Thread
 from django.conf import settings
 from django.core.cache import cache
 from django.db import DatabaseError, close_old_connections
+from django.utils.timezone import localtime
 
 from core.database import database_write, write_transaction
 from news.feed_state import snapshot_metadata
@@ -209,7 +210,7 @@ class FeedWarmer:
         now = datetime.now(UTC)
         errors, errored = [], set()
         if paused and paused > now and ("google", "WORLD") in jobs:
-            errors.append({"name": "Google News", "error": f"Automatic refresh is paused after a rate-limit response. It resumes after {paused:%H:%M UTC on %b %d}. Cached headlines remain available."})
+            errors.append({"name": "Google News", "error": f"Automatic refresh is paused after a rate-limit response. It resumes after {localtime(paused):%H:%M on %b %d}. Cached headlines remain available."})
         missing = 0
         for job, key in jobs.items():
             state = states.get(key, {})

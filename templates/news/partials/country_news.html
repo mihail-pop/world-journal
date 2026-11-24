@@ -12,7 +12,7 @@
             <details class="country-news-meta"><summary>Feed details</summary>
                 <a href="{{ news_page.google.source.homepage_url }}" target="_blank" rel="noopener noreferrer">{{ news_page.google.source.display_name }}</a>
                 <span>English · US edition</span>
-                {% if news_page.google.fetched_at %}<span>Updated <time datetime="{{ news_page.google.fetched_at|date:'c' }}">{{ news_page.google.fetched_at|date:'M j, Y, H:i T' }}</time></span>{% endif %}
+                {% if news_page.google.fetched_at %}<span>Updated <time datetime="{{ news_page.google.fetched_at|date:'c' }}">{{ news_page.google.fetched_at|date:'M j, Y, H:i' }}</time></span>{% endif %}
             </details>
         </div>
         {% if news_page.google.warning %}<p class="country-news-message is-warning" role="status">{{ news_page.google.warning }}</p>{% endif %}
@@ -31,7 +31,7 @@
                         <a class="country-news-link" href="{{ item.link }}" target="_blank" rel="noopener noreferrer">{{ item.title }}</a>
                         <p class="country-news-byline">
                             <span>{{ item.publisher }}</span>
-                            {% if item.published_at %}<time datetime="{{ item.published_at|date:'c' }}">{{ item.published_at|date:'M j, H:i T' }}</time>{% endif %}
+                            {% if item.published_at %}<time datetime="{{ item.published_at|date:'c' }}">{{ item.published_at|date:'M j, H:i' }}</time>{% endif %}
                         </p>
                         {% if item.summary %}<details class="news-summary-details"><summary>Summary</summary><p class="country-news-summary">{{ item.summary }}</p></details>{% endif %}
                         <a class="news-save-journal" href="{% url 'journal:new' %}?type=article&amp;title={{ item.title|urlencode }}&amp;url={{ item.link|urlencode }}&amp;source={{ item.publisher|urlencode }}&amp;country={{ news_page.country_code }}{% if item.published_at %}&amp;published={{ item.published_at|date:'c'|urlencode }}{% endif %}" hx-boost="true" hx-target="#app-content" hx-push-url="true">{% include 'core/partials/icon.html' with name='bookmark' %} Save</a>
@@ -76,7 +76,7 @@
                         <a class="country-news-link" href="{{ item.link }}" target="_blank" rel="noopener noreferrer">{{ item.title }}</a>
                         <p class="country-news-byline">
                             {% if item.publisher != item.provider_name %}<span>Publisher: {{ item.publisher }}</span>{% endif %}
-                            {% if item.published_at %}<time datetime="{{ item.published_at|date:'c' }}">{{ item.published_at|date:'M j, H:i T' }}</time>{% endif %}
+                            {% if item.published_at %}<time datetime="{{ item.published_at|date:'c' }}">{{ item.published_at|date:'M j, H:i' }}</time>{% endif %}
                         </p>
                         {% if item.match_class == "summary_country" and item.summary %}<p class="country-news-summary">{{ item.summary }}</p>{% endif %}
                         <a class="news-save-journal" href="{% url 'journal:new' %}?type=article&amp;title={{ item.title|urlencode }}&amp;url={{ item.link|urlencode }}&amp;source={{ item.publisher|urlencode }}&amp;country={{ news_page.country_code }}{% if item.published_at %}&amp;published={{ item.published_at|date:'c'|urlencode }}{% endif %}" hx-boost="true" hx-target="#app-content" hx-push-url="true">{% include 'core/partials/icon.html' with name='bookmark' %} Save</a>
