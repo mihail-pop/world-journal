@@ -42,7 +42,7 @@ def index(request):
     rows = []
     for code, metadata in catalog.items():
         record = snapshot.get(code, {})
-        row = {key: metadata[key] for key in ("iso_a2", "iso_a3", "name", "flag", "region", "subregion")}
+        row = {key: metadata[key] for key in ("iso_a2", "iso_a3", "name", "flag", "flag_url", "flag_label", "region", "subregion")}
         row["is_custom"] = metadata.get("is_custom", False)
         row["favorite"] = code in favorites
         for field in ("population", "area"):

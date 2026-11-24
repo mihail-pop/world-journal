@@ -613,9 +613,10 @@ function renderSelection(controller, code, { fit = true, focusDrawer = false } =
     controller.videoContent.setAttribute("aria-busy", "false");
     const flagImage = controller.page.querySelector("[data-country-flag]");
     const flagFallback = controller.page.querySelector("[data-country-flag-fallback]");
-    flagImage.parentElement.hidden = false;
+    flagImage.parentElement.hidden = !country.flag_url;
+    flagImage.parentElement.title = country.flag_label;
     flagFallback.textContent = country.flag;
-    flagFallback.hidden = false;
+    flagFallback.hidden = !country.flag;
     flagImage.hidden = true;
     flagImage.onload = () => {
         flagImage.hidden = false;
@@ -623,12 +624,13 @@ function renderSelection(controller, code, { fit = true, focusDrawer = false } =
     };
     flagImage.onerror = () => {
         flagImage.hidden = true;
-        flagFallback.hidden = false;
+        flagFallback.hidden = !country.flag;
+        flagImage.parentElement.hidden = !country.flag;
     };
-    if (country.is_custom) {
+    if (!country.flag_url) {
         flagImage.onload = flagImage.onerror = null;
         flagImage.removeAttribute("src");
-    } else flagImage.src = `https://flagcdn.com/${country.iso_a2.toLowerCase()}.svg`;
+    } else flagImage.src = country.flag_url;
     controller.page.querySelector("[data-country-name]").textContent = country.name;
     controller.page.querySelector("[data-country-journal-link]").href = `/journal/?country=${encodeURIComponent(code)}`;
     controller.page.querySelector("[data-country-region]").textContent = country.region;

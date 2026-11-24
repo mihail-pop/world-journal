@@ -6,12 +6,13 @@ from functools import lru_cache
 from django.conf import settings
 from django.utils.dateparse import parse_datetime
 from .models import TerritoryDetails
+from .flags import flag_details
 
 
 @lru_cache(maxsize=1)
 def _bundled_catalog():
     metadata = json.loads((settings.BASE_DIR / "data/countries.json").read_text(encoding="utf-8"))
-    return {row["iso_a2"]: row for row in metadata["countries"]}, metadata["source"]
+    return {row["iso_a2"]: {**row, **flag_details(row)} for row in metadata["countries"]}, metadata["source"]
 
 
 def bundled_catalog():

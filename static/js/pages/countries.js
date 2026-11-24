@@ -33,8 +33,9 @@ function countryRow(state, country, favorite) {
         const link = node.querySelector("a");
         link.dataset.directoryCountry = country.iso_a2;
         node.querySelector("[data-row-name]").textContent = country.name;
-        node.querySelector(".directory-flag").hidden = Boolean(country.is_custom);
-        if (!country.is_custom) node.querySelector("img").src = `https://flagcdn.com/${country.iso_a2.toLowerCase()}.svg`;
+        node.querySelector(".directory-flag").hidden = !country.flag_url;
+        node.querySelector(".directory-flag").title = country.flag_label;
+        if (country.flag_url) node.querySelector("img").src = country.flag_url;
         node.querySelector("[data-flag-fallback]").textContent = country.flag;
         state.rows.set(key,node);
     }
@@ -209,9 +210,10 @@ function select(state, code, tab = state.tab, {historyChange = true} = {}) {
         flag.hidden = false;
         flag.parentElement.querySelector("[data-flag-fallback]").hidden = true;
         flag.parentElement.querySelector("[data-flag-fallback]").textContent = country.flag;
-        flag.parentElement.hidden = Boolean(country.is_custom);
-        if (country.is_custom) flag.removeAttribute("src");
-        else flag.src = `https://flagcdn.com/${code.toLowerCase()}.svg`;
+        flag.parentElement.hidden = !country.flag_url;
+        flag.parentElement.title = country.flag_label;
+        if (!country.flag_url) flag.removeAttribute("src");
+        else flag.src = country.flag_url;
         state.favoriteForm.action = state.page.dataset.favoriteUrlTemplate.replace("COUNTRY_CODE",code);
     }
     if (changed) {
@@ -318,7 +320,7 @@ function initialize() {
     page.addEventListener("error",event => {
         if (!event.target.matches("img")) return;
         const fallback = event.target.parentElement.querySelector("[data-flag-fallback]");
-        if (fallback) {event.target.hidden = true; fallback.hidden = false;}
+        if (fallback) {event.target.hidden = true; fallback.hidden = !fallback.textContent; event.target.parentElement.hidden = !fallback.textContent;}
         else if (event.target.matches("[data-video-thumbnail]")) event.target.hidden = true;
     },{capture:true,signal});
     window.addEventListener("popstate",() => {

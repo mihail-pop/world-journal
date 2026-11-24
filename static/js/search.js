@@ -93,17 +93,18 @@ export function initializePlaceSearch() {
                 const flag = document.createElement("span");
                 flag.className = "place-search-flag";
                 flag.setAttribute("aria-hidden", "true");
+                flag.title = place.flag_label || "";
                 const fallback = document.createElement("span");
                 fallback.textContent = place.flag;
                 flag.append(fallback);
-                if (place.flag) {
+                if (place.flag_url) {
                     const image = document.createElement("img");
                     image.alt = "";
                     image.referrerPolicy = "no-referrer";
                     image.hidden = true;
                     image.onload = () => { image.hidden = false; fallback.hidden = true; };
                     image.onerror = () => { image.hidden = true; fallback.hidden = false; };
-                    image.src = `https://flagcdn.com/${place.country.toLowerCase()}.svg`;
+                    image.src = place.flag_url;
                     flag.append(image);
                 }
                 const description = document.createElement("span");

@@ -108,7 +108,7 @@ def validate_country_data(metadata: dict, geometry: dict) -> None:
         if not isinstance(alpha_2, str) or not ALPHA_2_PATTERN.fullmatch(alpha_2):
             raise CountryDataError(f"Country metadata item {index} has invalid ISO alpha-2")
         if custom and (alpha_2 not in custom_codes or alpha_3 != "" or country["flag"] != ""):
-            raise CountryDataError(f"Custom territory {alpha_2} must not claim an ISO identity or flag")
+            raise CountryDataError(f"Source metadata for {alpha_2} must keep its local identity; display flags are resolved separately")
         if custom and (country["source_id"] != custom_definitions[alpha_2]["ne_id"] or country["qid"] != custom_definitions[alpha_2]["qid"]):
             raise CountryDataError(f"Custom territory {alpha_2} does not match its reviewed source identity")
         if not custom and (alpha_2 in custom_codes or not isinstance(alpha_3, str) or not ALPHA_3_PATTERN.fullmatch(alpha_3)):

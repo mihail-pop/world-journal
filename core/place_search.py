@@ -89,6 +89,7 @@ def search_places(query, category="all", limit=24):
                 matches.append(((score, 0, 0, country["name"], code), {
                     "id": f"country-{code}", "name": country["name"], "label": country["name"],
                     "country": code, "kind": "country", "region": "", "flag": country["flag"],
+                    "flag_url": country["flag_url"], "flag_label": country["flag_label"],
                     "url": map_url + "?" + urlencode({"country": code}),
                 }))
     if category in {"all", "capitals", "cities"}:
@@ -105,6 +106,7 @@ def search_places(query, category="all", limit=24):
                 matches.append(((score, 1 if place["kind"] == "capital" else 2, -place["population"], place["name"], place["id"]), {
                     "id": place["id"], "name": place["name"], "label": f"{place['name']}, {country['name']}",
                     "country": code, "kind": place["kind"], "region": place["region"], "flag": country["flag"],
+                    "flag_url": country["flag_url"], "flag_label": country["flag_label"],
                     "url": map_url + "?" + urlencode({"country": code, "place": place["id"]}),
                 }))
     matches.sort(key=lambda match: match[0])
