@@ -2,10 +2,9 @@
 from __future__ import annotations
 
 import logging
-import time
 from collections import OrderedDict
 from datetime import UTC, datetime, timedelta
-from threading import Condition, Event, Lock, Thread
+from threading import Condition, Event, Thread
 
 from django.conf import settings
 from django.core.cache import cache
@@ -64,8 +63,6 @@ class FeedWarmer:
         self.maintenance_requested = self.full_cleanup = self.batch_full = False
         self.urgent, self.normal = OrderedDict(), OrderedDict()
         self.running, self.force_jobs = set(), set()
-        self.google_pacing = Lock()
-        self.next_google_at = 0.0
         self.scan_requested = Event()
         self.cycle = {}
         self.cycle_started_at = self.cycle_finished_at = None
@@ -425,13 +422,8 @@ class FeedWarmer:
             success = not result.refresh_failed
             key = youtube_cache_key(source)
         else:
-            with self.google_pacing:
-                if google_pause_until(cache, datetime.now(UTC)):
-                    return None
-                delay = self.next_google_at - time.monotonic()
-                if delay > 0:
-                    time.sleep(delay)
-                self.next_google_at = time.monotonic() + settings.NEWS_GOOGLE_REQUEST_SPACING_SECONDS
+            if google_pause_until(cache, datetime.now(UTC)):
+                return None
             result = get_world_news(registry=registry, **options) if identity == "WORLD" else get_country_news(identity, registry=registry, **options)
             success = not (result.error or result.warning)
             key = google_cache_key(registry.get("google_news_country"), identity)

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import time
+from contextlib import contextmanager
 from datetime import UTC, datetime, timedelta
 from hashlib import blake2b
 from math import ceil
@@ -84,6 +86,8 @@ def record_failure(snapshot, now, error):
 
 
 GOOGLE_COOLDOWN_KEY = "news:google_rate_limit"
+_GOOGLE_REQUEST_LOCK = Lock()
+_next_google_request_at = 0.0
 
 
 def google_pause_until(backend, now):
@@ -92,27 +96,50 @@ def google_pause_until(backend, now):
     return deadline if deadline and now < deadline else None
 
 
+@contextmanager
+def google_request_slot(backend, *, now=None):
+    """Serialize automatic and manual requests, with a gap after each response."""
+    global _next_google_request_at
+    with _GOOGLE_REQUEST_LOCK:
+        if google_pause_until(backend, now or datetime.now(UTC)):
+            yield None
+            return
+        delay = _next_google_request_at - time.monotonic()
+        if delay > 0:
+            time.sleep(delay)
+        attempted_at = now or datetime.now(UTC)
+        # A pause may have been saved while this request waited for its turn.
+        if google_pause_until(backend, attempted_at):
+            yield None
+            return
+        try:
+            yield attempted_at
+        finally:
+            _next_google_request_at = time.monotonic() + settings.NEWS_GOOGLE_REQUEST_SPACING_SECONDS
+
+
 def pause_google(backend, now, error):
     # One blocked country must pause all country queries, including manual sweeps.
     with cache_lock(GOOGLE_COOLDOWN_KEY):
         state = backend.get(GOOGLE_COOLDOWN_KEY) or {}
-        existing = google_pause_until(backend, now)
-        if existing:
-            deadline = max(existing, now + timedelta(seconds=getattr(error, "retry_after_seconds", 0) or 0))
+        deadline = parse_datetime(state.get("retry_after_at"))
+        last_limited = parse_datetime(state.get("last_rate_limit_at")) or deadline
+        # Isolated successes don't prove the limit is lifted for the full sweep.
+        # Retain the count across requests/restarts until 24 hours without a 429.
+        if (
+            last_limited and (not deadline or now >= deadline)
+            and (now - last_limited).total_seconds() >= settings.NEWS_GOOGLE_BACKOFF_RESET_SECONDS
+        ):
+            state = {}
+        if deadline and now < deadline:
+            deadline = max(deadline, now + timedelta(seconds=getattr(error, "retry_after_seconds", 0) or 0))
             state["retry_after_at"] = deadline.isoformat()
-            timeout = max(settings.NEWS_STALE_SECONDS, int((deadline - now).total_seconds()) + 60)
+            timeout = int((deadline - now).total_seconds()) + 60
         else:
-            timeout = max(settings.NEWS_STALE_SECONDS, record_failure(state, now, error))
+            timeout = record_failure(state, now, error)
+        state["last_rate_limit_at"] = now.isoformat()
+        timeout = max(settings.NEWS_STALE_SECONDS, settings.NEWS_GOOGLE_BACKOFF_RESET_SECONDS + 60, timeout)
         backend.set(GOOGLE_COOLDOWN_KEY, state, timeout)
-
-
-def clear_google_pause(backend, now):
-    with cache_lock(GOOGLE_COOLDOWN_KEY):
-        state = backend.get(GOOGLE_COOLDOWN_KEY)
-        if state:
-            deadline = parse_datetime(state.get("retry_after_at"))
-            if deadline is None or now >= deadline:
-                backend.delete(GOOGLE_COOLDOWN_KEY)
 
 
 def deserialize_items(snapshot: dict) -> tuple[NewsItem, ...] | None:

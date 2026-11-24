@@ -17,8 +17,8 @@ from news.types import CountryNewsPage, CountryNewsResult, NewsItem
 from .cache import age as _age
 from .cache import cache_lock as _cache_lock
 from .cache import (
-    clear_google_pause, deserialize_items, failure_retry_pending, google_cache_key,
-    google_pause_until, pause_google, record_failure, stale_cache_remaining,
+    deserialize_items, failure_retry_pending, google_cache_key, google_pause_until,
+    google_request_slot, pause_google, record_failure, stale_cache_remaining,
 )
 from .cache import parse_datetime as _parse_datetime
 from .fetch import FeedFetchError, FeedResponse, fetch_feed
@@ -109,6 +109,7 @@ def _get_google_news(
         ))
 
     with _cache_lock(cache_key):
+        current_time = now or datetime.now(UTC)
         snapshot = backend.get(cache_key)
         if not isinstance(snapshot, dict):
             snapshot = {}
@@ -122,69 +123,79 @@ def _get_google_news(
         if not force_refresh and not retrying_failure and failure_retry_pending(snapshot, current_time):
             return _result(country, source, snapshot, is_stale=bool(snapshot.get("last_success_at")))
 
-        try:
-            response = fetcher(
-                build_feed_url(source, country),
-                allowed_hosts={source.feed_host},
-                etag=snapshot.get("etag"),
-                last_modified=snapshot.get("last_modified"),
-            )
-            if response.not_modified:
-                if not snapshot.get("last_success_at"):
-                    raise FeedFetchError("The feed returned not-modified without cached content")
-                snapshot.update({
-                    "fetched_at": current_time.isoformat(),
-                    "etag": response.etag,
-                    "last_modified": response.last_modified,
-                    "last_error": "",
-                    "last_error_detail": "",
-                    "last_attempt_at": current_time.isoformat(),
-                    "consecutive_failures": 0,
-                    "retry_after_at": None,
-                })
-            else:
-                limit = settings.NEWS_WORLD_MAX_ITEMS if country["iso_a2"] == "WORLD" else settings.NEWS_MAX_ITEMS
-                normalized = normalize_feed(response.body, source, limit)
-                snapshot = {
-                    "items": [item.as_cache_value() for item in normalized.items],
-                    "fetched_at": current_time.isoformat(),
-                    "last_success_at": current_time.isoformat(),
-                    "etag": response.etag,
-                    "last_modified": response.last_modified,
-                    "last_error": "",
-                    "last_error_detail": "",
-                    "last_attempt_at": current_time.isoformat(),
-                    "parser_warnings": list(normalized.parser_warnings),
-                }
-            clear_google_pause(backend, current_time)
-            backend.set(cache_key, snapshot, settings.NEWS_STALE_SECONDS)
-            return _result(country, source, snapshot)
-        except (FeedFetchError, FeedParseError) as error:
-            if getattr(error, "status_code", None) == 429:
-                pause_google(backend, current_time, error)
-            failure_ttl = record_failure(snapshot, current_time, error)
-            snapshot["last_error"] = "Google News is temporarily unavailable."
-            snapshot["last_error_detail"] = str(error)[:240]
-            snapshot["last_attempt_at"] = current_time.isoformat()
-            remaining = stale_cache_remaining(snapshot, current_time, settings.NEWS_STALE_SECONDS)
-            if remaining:
-                backend.set(cache_key, snapshot, max(remaining, failure_ttl))
-                return _result(country, source, snapshot, is_stale=True)
-            empty_snapshot = {
-                "items": [],
-                "fetched_at": None,
-                "last_success_at": None,
-                "etag": None,
-                "last_modified": None,
-                "last_error": "Google News is temporarily unavailable.",
-                "last_error_detail": str(error)[:240],
-                "last_attempt_at": current_time.isoformat(),
-                "parser_warnings": [],
-                "consecutive_failures": snapshot["consecutive_failures"],
-                "retry_after_at": snapshot["retry_after_at"],
+        with google_request_slot(backend, now=now) as attempted_at:
+            if attempted_at is None:
+                paused = {**snapshot, "last_error": "Google News refresh is paused after a rate-limit response; it will resume automatically."}
+                return _result(country, source, paused, is_stale=bool(snapshot.get("last_success_at")))
+            return _refresh_google_news(country, source, snapshot, backend, fetcher, attempted_at, now=now)
+
+
+def _refresh_google_news(country, source, snapshot, backend, fetcher, attempted_at, *, now=None):
+    cache_key = google_cache_key(source, country["iso_a2"])
+    try:
+        response = fetcher(
+            build_feed_url(source, country),
+            allowed_hosts={source.feed_host},
+            etag=snapshot.get("etag"),
+            last_modified=snapshot.get("last_modified"),
+        )
+        checked_at = now or datetime.now(UTC)
+        if response.not_modified:
+            if not snapshot.get("last_success_at"):
+                raise FeedFetchError("The feed returned not-modified without cached content")
+            snapshot.update({
+                "fetched_at": checked_at.isoformat(),
+                "etag": response.etag,
+                "last_modified": response.last_modified,
+                "last_error": "",
+                "last_error_detail": "",
+                "last_attempt_at": attempted_at.isoformat(),
+                "consecutive_failures": 0,
+                "retry_after_at": None,
+            })
+        else:
+            limit = settings.NEWS_WORLD_MAX_ITEMS if country["iso_a2"] == "WORLD" else settings.NEWS_MAX_ITEMS
+            normalized = normalize_feed(response.body, source, limit)
+            snapshot = {
+                "items": [item.as_cache_value() for item in normalized.items],
+                "fetched_at": checked_at.isoformat(),
+                "last_success_at": checked_at.isoformat(),
+                "etag": response.etag,
+                "last_modified": response.last_modified,
+                "last_error": "",
+                "last_error_detail": "",
+                "last_attempt_at": attempted_at.isoformat(),
+                "parser_warnings": list(normalized.parser_warnings),
             }
-            backend.set(cache_key, empty_snapshot, failure_ttl)
-            return _result(country, source, empty_snapshot)
+        backend.set(cache_key, snapshot, settings.NEWS_STALE_SECONDS)
+        return _result(country, source, snapshot)
+    except (FeedFetchError, FeedParseError) as error:
+        failed_at = now or datetime.now(UTC)
+        if getattr(error, "status_code", None) == 429:
+            pause_google(backend, failed_at, error)
+        failure_ttl = record_failure(snapshot, failed_at, error)
+        snapshot["last_error"] = "Google News is temporarily unavailable."
+        snapshot["last_error_detail"] = str(error)[:240]
+        snapshot["last_attempt_at"] = attempted_at.isoformat()
+        remaining = stale_cache_remaining(snapshot, failed_at, settings.NEWS_STALE_SECONDS)
+        if remaining:
+            backend.set(cache_key, snapshot, max(remaining, failure_ttl))
+            return _result(country, source, snapshot, is_stale=True)
+        empty_snapshot = {
+            "items": [],
+            "fetched_at": None,
+            "last_success_at": None,
+            "etag": None,
+            "last_modified": None,
+            "last_error": "Google News is temporarily unavailable.",
+            "last_error_detail": str(error)[:240],
+            "last_attempt_at": attempted_at.isoformat(),
+            "parser_warnings": [],
+            "consecutive_failures": snapshot["consecutive_failures"],
+            "retry_after_at": snapshot["retry_after_at"],
+        }
+        backend.set(cache_key, empty_snapshot, failure_ttl)
+        return _result(country, source, empty_snapshot)
 
 
 def get_country_news_page(
