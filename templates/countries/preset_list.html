@@ -1,11 +1,47 @@
-<section class="page page-standard journal-page" data-page="settings" hx-boost="true" hx-target="#app-content" hx-push-url="true" aria-labelledby="presets-title">
-    <a class="journal-back-link" href="{% url 'core:map' %}">← Map</a>
-    <div class="journal-page-heading"><div class="page-copy"><p class="eyebrow">Personal map</p><h1 id="presets-title">Color presets</h1><p>Group countries using your own colors. One preset is active at a time, shared across browsers.</p></div><a class="journal-button is-primary" href="{% url 'countries:preset_new' %}">New preset</a></div>
-    {% if active_preset_id %}<form method="post" action="{% url 'countries:preset_clear' %}">{% csrf_token %}<button class="journal-button" type="submit">Turn off preset colors</button></form>{% endif %}
-    {% for preset in presets %}<article class="journal-entry-card">
-        <h2>{{ preset.name }}{% if preset.pk == active_preset_id %} <span class="journal-badge">· Active</span>{% endif %}</h2>
-        {% if preset.description %}<p>{{ preset.description|linebreaksbr }}</p>{% endif %}
-        <div class="preset-swatches">{% for group in preset.display_groups %}<details class="preset-summary-group"><summary><i style="--preset-swatch: {{ group.color }}"></i>{% if group.title %}{{ group.title }}{% else %}Color {{ forloop.counter }}{% endif %} <small>({{ group.countries|length }})</small></summary><p>{% if group.country_names %}{{ group.country_names|join:', ' }}{% else %}No countries selected{% endif %}</p></details>{% endfor %}{% if preset.default_color %}<span><i style="--preset-swatch: {{ preset.default_color }}"></i>Other countries</span>{% endif %}</div>
-        <div class="journal-actions"><form method="post" action="{% url 'countries:preset_activate' preset.pk %}">{% csrf_token %}<button class="journal-button" type="submit">Activate</button></form><a href="{% url 'countries:preset_edit' preset.pk %}">Edit</a><a href="{% url 'core:map' %}?edit_preset={{ preset.pk }}">Select on map</a><a href="{% url 'countries:preset_duplicate' preset.pk %}">Duplicate</a><a href="{% url 'countries:preset_delete' preset.pk %}">Delete</a></div>
-    </article>{% empty %}<p class="empty-state">No presets yet. Create one and assign colors to the countries you want to group.</p>{% endfor %}
+<section class="page page-standard journal-page preset-list-page" data-page="settings" hx-boost="true" hx-target="#app-content" hx-push-url="true" aria-labelledby="presets-title">
+    <header class="preset-list-heading">
+        <a class="journal-icon-button" href="{% url 'core:map' %}" aria-label="Back to map" title="Back to map">{% include 'core/partials/icon.html' with name='arrow-left' %}</a>
+        <h1 id="presets-title">Color presets</h1>
+        <a class="journal-icon-button preset-list-new" href="{% url 'countries:preset_new' %}" aria-label="New preset" title="New preset">{% include 'core/partials/icon.html' with name='plus' %}</a>
+    </header>
+    <div class="preset-list">
+        {% for preset in presets %}
+        <article class="preset-list-card" aria-labelledby="preset-{{ preset.pk }}-name">
+            <header class="preset-list-card-heading">
+                <h2 id="preset-{{ preset.pk }}-name"><a href="{% url 'countries:preset_edit' preset.pk %}">{{ preset.name }}</a></h2>
+                <span class="preset-list-active"{% if preset.pk != active_preset_id %} aria-hidden="true"{% endif %}>Active</span>
+            </header>
+            {% if preset.description %}<p class="preset-list-description">{{ preset.description|linebreaksbr }}</p>{% endif %}
+            {% if preset.display_groups or preset.default_color %}
+            <ul class="preset-list-groups" aria-label="Color groups" role="list">
+                {% for group in preset.display_groups %}
+                <li class="preset-list-group">
+                    <span class="preset-list-swatch" style="--preset-swatch: {{ group.color }}" aria-hidden="true"></span>
+                    <div class="preset-list-group-content">
+                        <div class="preset-list-group-heading"><h3>{% if group.title %}{{ group.title }}{% else %}Color {{ forloop.counter }}{% endif %}</h3><span>{{ group.countries|length }} countr{{ group.countries|length|pluralize:'y,ies' }}</span></div>
+                        {% if group.country_names %}<p class="preset-list-countries" tabindex="0" aria-label="Countries in {% if group.title %}{{ group.title }}{% else %}color {{ forloop.counter }}{% endif %}">{{ group.country_names|join:', ' }}</p>{% endif %}
+                    </div>
+                </li>
+                {% endfor %}
+                {% if preset.default_color %}<li class="preset-list-group preset-list-ungrouped"><span class="preset-list-swatch" style="--preset-swatch: {{ preset.default_color }}" aria-hidden="true"></span><h3>Ungrouped countries</h3></li>{% endif %}
+            </ul>
+            {% endif %}
+            <footer class="preset-list-footer">
+                {% if preset.pk == active_preset_id %}
+                <form method="post" action="{% url 'countries:preset_clear' %}">{% csrf_token %}<button class="journal-button" type="submit">Turn off</button></form>
+                {% else %}
+                <form method="post" action="{% url 'countries:preset_activate' preset.pk %}">{% csrf_token %}<button class="journal-button is-primary" type="submit">Activate</button></form>
+                {% endif %}
+                <div class="preset-list-actions">
+                    <a class="journal-button" href="{% url 'countries:preset_edit' preset.pk %}">Edit</a>
+                    <a class="journal-button" href="{% url 'core:map' %}?edit_preset={{ preset.pk }}">Select on map</a>
+                    <a class="journal-button" href="{% url 'countries:preset_duplicate' preset.pk %}">Duplicate</a>
+                    <a class="journal-button preset-list-delete" href="{% url 'countries:preset_delete' preset.pk %}">Delete</a>
+                </div>
+            </footer>
+        </article>
+        {% empty %}
+        <div class="preset-list-empty"><p>No presets yet.</p><a class="journal-button is-primary" href="{% url 'countries:preset_new' %}">Create preset</a></div>
+        {% endfor %}
+    </div>
 </section>

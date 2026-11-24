@@ -1195,9 +1195,6 @@ body:has(.persistent-player[data-player-state="playing"]) #app-content:not(:has(
 .preset-color-row legend { color: var(--text-secondary); padding-inline: 0.5rem; }
 .preset-color-fields { display: grid; grid-template-columns: minmax(0, 1fr) 6rem; gap: 1rem; }
 .preset-color-fields input[type=color] { padding: 0.25rem; cursor: pointer; }
-.preset-swatches { display: flex; flex-wrap: wrap; gap: 0.5rem 1rem; margin-block: 1rem; }
-.preset-swatches span { display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; overflow-wrap: anywhere; }
-.preset-swatches i { width: 1rem; height: 1rem; flex-shrink: 0; background: var(--preset-swatch); border: 1px solid var(--text-primary); border-radius: 2px; }
 
 /* Country facts retain their dates and source attribution in every theme. */
 .country-content-tabs { grid-template-columns: repeat(4, minmax(0, 1fr)); }
