@@ -62,7 +62,8 @@ function context(page) {
     if (!prefs || !MODES.includes(prefs.mapType) || ["country", "place", "edit_preset"].some(key => params.has(key))) return null;
     const signature = JSON.stringify([VERSION,
         Object.keys(prefs).filter(key => key !== "revision").sort().map(key => [key, prefs[key]]),
-        page.dataset.mapStyleUrl, page.dataset.countryGeometryUrl, page.dataset.capitalGeometryUrl, page.dataset.adventureDataUrl]);
+        page.dataset.mapStyleUrl, page.dataset.countryGeometryUrl, page.dataset.capitalGeometryUrl, page.dataset.adventureDataUrl,
+        ...(prefs.mapType === "adventure" ? ["water-only-artwork"] : [])]);
     const intent = prefs.homeCountry ? `home:${prefs.homeCountry}` : cameraKey(readViewport() ?? WORLD_CAMERA);
     const workspace = page.querySelector(".map-workspace");
     return {mode: prefs.mapType, signature, intent, width: workspace.clientWidth, height: workspace.clientHeight};

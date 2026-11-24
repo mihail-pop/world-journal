@@ -76,45 +76,6 @@ function waves(palette) {
     });
 }
 
-function mountain(palette, snowy = false) {
-    return drawing(128, context => {
-        const stone = snowy ? "#a8b7af" : palette.land[1];
-        const snow = snowy ? "#f5efd8" : palette.paper;
-        context.lineJoin = "round"; context.lineCap = "round"; context.lineWidth = 1.5;
-        context.fillStyle = palette.shadow; context.globalAlpha = .12;
-        context.beginPath(); context.ellipse(64, 103, 55, 8, 0, 0, Math.PI * 2); context.fill();
-        context.globalAlpha = 1;
-        path(context, [[7,100],[35,52],[67,103]], stone, palette.border);
-        path(context, [[40,103],[86,39],[123,102]], snowy ? snow : palette.land[6], palette.border);
-        path(context, [[21,105],[62,19],[101,105]], snow, palette.border);
-        path(context, [[62,19],[62,105],[101,105]], stone, null);
-        path(context, snowy ? [[41,64],[62,19],[83,64],[70,53],[64,64],[57,54],[49,63]] : [[48,48],[62,19],[76,48],[66,42],[61,50],[56,42]], snow, palette.border);
-        if (snowy) {
-            path(context, [[23,74],[35,52],[46,73],[36,69],[32,76]], snow, palette.border);
-            path(context, [[73,58],[86,39],[98,59],[88,53],[83,61]], snow, palette.border);
-        }
-        context.strokeStyle = palette.border; context.globalAlpha = .45;
-        for (let y = 60; y < 98; y += 7) {
-            context.beginPath(); context.moveTo(66, y); context.lineTo(66 + (y - 30) * .35, y + 6); context.stroke();
-        }
-        context.globalAlpha = .7;
-        context.beginPath(); context.moveTo(13,107); context.quadraticCurveTo(62,114,114,106); context.stroke();
-    });
-}
-
-function forest(palette) {
-    return drawing(128, context => {
-        context.lineJoin = "round"; context.lineWidth = 1.2;
-        context.fillStyle = palette.shadow; context.globalAlpha = .12;
-        context.beginPath(); context.ellipse(64,105,53,9,0,0,Math.PI*2); context.fill(); context.globalAlpha = 1;
-        for (const [x,y,size] of [[27,56,29],[87,54,31],[49,30,37],[103,74,24],[62,65,34]]) {
-            path(context, [[x,y],[x-size*.43,y+size*.55],[x-size*.2,y+size*.5],[x-size*.6,y+size],[x-3,y+size],[x-3,y+size+10],[x+3,y+size+10],[x+3,y+size],[x+size*.6,y+size],[x+size*.2,y+size*.5],[x+size*.43,y+size*.55]], palette.vegetation, palette.border);
-            context.strokeStyle = palette.paper; context.globalAlpha = .25;
-            context.beginPath(); context.moveTo(x-2,y+size*.2); context.lineTo(x-2,y+size*.85); context.stroke(); context.globalAlpha = 1;
-        }
-    });
-}
-
 function ship(palette) {
     return drawing(128, context => {
         context.lineWidth = 2; context.lineJoin = "round"; context.strokeStyle = palette.border;
@@ -126,53 +87,6 @@ function ship(palette) {
         context.strokeStyle = palette.ink; context.globalAlpha = .45;
         for (const [x,y,length] of [[20,115,39],[65,118,38],[7,102,18],[100,106,22]]) {
             context.beginPath(); context.moveTo(x,y); context.quadraticCurveTo(x+length/2,y+5,x+length,y); context.stroke();
-        }
-    });
-}
-
-function desert(palette) {
-    return drawing(128, context => {
-        context.lineJoin = "round"; context.lineCap = "round"; context.lineWidth = 1.5;
-        context.fillStyle = palette.shadow; context.globalAlpha = .1;
-        context.beginPath(); context.ellipse(64,104,55,8,0,0,Math.PI*2); context.fill(); context.globalAlpha = 1;
-        context.fillStyle = palette.land[4]; context.strokeStyle = palette.border;
-        context.beginPath(); context.moveTo(9,93); context.bezierCurveTo(26,88,43,45,73,51);
-        context.bezierCurveTo(91,59,102,75,120,83); context.lineTo(115,103); context.lineTo(15,106); context.closePath(); context.fill(); context.stroke();
-        context.fillStyle = palette.land[1];
-        context.beginPath(); context.moveTo(9,101); context.bezierCurveTo(42,97,65,70,88,76);
-        context.bezierCurveTo(99,81,111,96,121,104); context.quadraticCurveTo(60,117,9,101); context.fill(); context.stroke();
-        context.strokeStyle = palette.paper; context.lineWidth = 2; context.globalAlpha = .7;
-        context.beginPath(); context.moveTo(20,93); context.bezierCurveTo(38,82,48,57,72,53); context.stroke();
-        context.beginPath(); context.moveTo(30,100); context.quadraticCurveTo(61,91,88,78); context.stroke();
-        context.strokeStyle = palette.border; context.lineWidth = .8; context.globalAlpha = .3;
-        for (let index = 0; index < 6; index++) {
-            context.beginPath(); context.moveTo(78+index*4,59+index*4); context.quadraticCurveTo(82+index*4,77+index*3,95+index*3,85+index*3); context.stroke();
-        }
-    });
-}
-
-function grove(palette) {
-    return drawing(128, context => {
-        context.lineJoin = "round"; context.lineCap = "round"; context.lineWidth = 1.4;
-        context.fillStyle = palette.shadow; context.globalAlpha = .12;
-        context.beginPath(); context.ellipse(65,106,47,7,0,0,Math.PI*2); context.fill(); context.globalAlpha = 1;
-        for (const [x,y,height] of [[83,48,52],[44,32,73]]) {
-            context.strokeStyle = palette.border; context.fillStyle = palette.land[1];
-            context.beginPath(); context.moveTo(x-5,y+height); context.quadraticCurveTo(x+8,y+height*.5,x,y);
-            context.quadraticCurveTo(x+2,y+height*.5,x+3,y+height); context.closePath(); context.fill(); context.stroke();
-            for (const [dx,dy] of [[-32,-8],[-33,14],[-19,26],[28,-13],[36,9],[22,27]]) {
-                context.fillStyle = palette.vegetation;
-                context.beginPath(); context.moveTo(x,y); context.quadraticCurveTo(x+dx*.35,y+dy-17,x+dx,y+dy);
-                context.quadraticCurveTo(x+dx*.55,y+dy-4,x,y+3); context.closePath(); context.fill(); context.stroke();
-                context.strokeStyle = palette.paper; context.globalAlpha = .25;
-                context.beginPath(); context.moveTo(x,y); context.quadraticCurveTo(x+dx*.55,y+dy-7,x+dx,y+dy); context.stroke();
-                context.globalAlpha = 1; context.strokeStyle = palette.border;
-            }
-            context.globalAlpha = .45;
-            for (let offset = 15; offset < height; offset += 10) {
-                context.beginPath(); context.moveTo(x-1,y+offset); context.lineTo(x+4,y+offset+2); context.stroke();
-            }
-            context.globalAlpha = 1;
         }
     });
 }
@@ -199,165 +113,6 @@ function seaMonster(palette) {
         for (const [x,y,width] of [[5,102,30],[39,104,34],[74,102,30],[109,105,16]]) {
             context.beginPath(); context.moveTo(x,y); context.quadraticCurveTo(x+width/2,y+5,x+width,y); context.stroke();
         }
-    });
-}
-
-function dragon(palette) {
-    return drawing(128, context => {
-        context.lineJoin = "round"; context.lineCap = "round"; context.lineWidth = 1.5;
-        context.strokeStyle = palette.border;
-        context.fillStyle = palette.land[2];
-        context.beginPath(); context.moveTo(63,73); context.lineTo(35,11); context.quadraticCurveTo(38,38,28,38);
-        context.lineTo(12,27); context.quadraticCurveTo(23,49,17,58); context.lineTo(7,58);
-        context.quadraticCurveTo(24,73,35,86); context.closePath(); context.fill(); context.stroke();
-        context.fillStyle = palette.land[1];
-        context.beginPath(); context.moveTo(60,73); context.lineTo(88,18); context.quadraticCurveTo(79,44,86,51);
-        context.lineTo(105,40); context.quadraticCurveTo(97,61,104,72); context.quadraticCurveTo(84,68,74,83); context.closePath(); context.fill(); context.stroke();
-        context.globalAlpha = .45;
-        for (const tip of [[35,15],[16,31],[89,22],[101,44]]) {
-            context.beginPath(); context.moveTo(61,74); context.lineTo(...tip); context.stroke();
-        }
-        context.globalAlpha = 1; context.fillStyle = palette.vegetation;
-        context.beginPath(); context.moveTo(72,72); context.quadraticCurveTo(87,64,87,53);
-        context.quadraticCurveTo(86,44,95,43); context.lineTo(107,48); context.lineTo(115,54);
-        context.lineTo(103,58); context.quadraticCurveTo(102,74,84,88);
-        context.bezierCurveTo(60,105,34,87,24,102); context.quadraticCurveTo(32,116,50,107);
-        context.quadraticCurveTo(38,123,22,111); context.quadraticCurveTo(11,98,30,93);
-        context.quadraticCurveTo(57,91,72,72); context.closePath(); context.fill(); context.stroke();
-        path(context, [[89,45],[90,34],[97,43]], palette.paper, palette.border);
-        context.fillStyle = palette.paper; context.beginPath(); context.arc(98,49,2.2,0,Math.PI*2); context.fill();
-        context.fillStyle = palette.border; context.beginPath(); context.arc(99,49,1,0,Math.PI*2); context.fill();
-        context.beginPath(); context.moveTo(83,83); context.lineTo(92,94); context.lineTo(104,96);
-        context.moveTo(91,93); context.lineTo(99,91); context.moveTo(64,92); context.lineTo(66,103); context.lineTo(78,108); context.stroke();
-        context.strokeStyle = palette.paper; context.globalAlpha = .3;
-        context.beginPath(); context.moveTo(41,97); context.quadraticCurveTo(76,90,96,61); context.stroke();
-    });
-}
-
-function unicorn(palette) {
-    return drawing(128, context => {
-        context.lineJoin = "round"; context.lineCap = "round"; context.lineWidth = 1.5;
-        context.fillStyle = palette.shadow; context.globalAlpha = .12;
-        context.beginPath(); context.ellipse(65,108,47,7,0,0,Math.PI*2); context.fill(); context.globalAlpha = 1;
-        context.strokeStyle = palette.border; context.fillStyle = palette.paper;
-        context.beginPath(); context.moveTo(29,65); context.bezierCurveTo(43,53,64,62,74,53);
-        context.lineTo(83,34); context.lineTo(94,30); context.lineTo(111,42); context.lineTo(106,51);
-        context.lineTo(93,48); context.lineTo(87,72); context.lineTo(91,103); context.lineTo(81,104);
-        context.lineTo(77,81); context.lineTo(68,82); context.lineTo(58,102); context.lineTo(47,104);
-        context.lineTo(55,82); context.lineTo(39,83); context.lineTo(34,105); context.lineTo(23,105);
-        context.lineTo(28,79); context.quadraticCurveTo(20,72,29,65); context.closePath(); context.fill(); context.stroke();
-        path(context, [[96,33],[103,13],[104,38]], palette.land[4], palette.border);
-        path(context, [[87,34],[84,23],[91,30]], palette.paper, palette.border);
-        context.fillStyle = palette.land[2];
-        context.beginPath(); context.moveTo(88,33); context.quadraticCurveTo(70,39,67,65);
-        context.quadraticCurveTo(81,56,87,42); context.closePath(); context.fill(); context.stroke();
-        context.beginPath(); context.moveTo(28,68); context.bezierCurveTo(9,68,23,86,10,92);
-        context.bezierCurveTo(33,86,24,80,31,75); context.closePath(); context.fill(); context.stroke();
-        context.fillStyle = palette.border; context.beginPath(); context.arc(97,40,1.6,0,Math.PI*2); context.fill();
-        for (const [x,y] of [[24,105],[48,104],[81,104]]) { context.beginPath(); context.moveTo(x,y); context.lineTo(x+9,y); context.stroke(); }
-        context.globalAlpha = .35;
-        for (let offset = 0; offset < 4; offset++) { context.beginPath(); context.moveTo(36+offset*5,71); context.lineTo(40+offset*5,77); context.stroke(); }
-    });
-}
-
-function golem(palette) {
-    return drawing(128, context => {
-        context.lineJoin = "round"; context.lineCap = "round"; context.lineWidth = 1.5;
-        context.fillStyle = palette.shadow; context.globalAlpha = .12;
-        context.beginPath(); context.ellipse(65,110,44,6,0,0,Math.PI*2); context.fill(); context.globalAlpha = 1;
-        for (const points of [
-            [[24,56],[42,50],[44,73],[33,84],[20,76]], [[83,51],[101,57],[108,77],[93,86],[82,73]],
-            [[43,84],[61,88],[59,109],[38,109],[36,101]], [[67,87],[83,83],[91,104],[85,109],[66,109]],
-            [[41,47],[64,41],[85,49],[87,79],[69,94],[42,80]], [[48,23],[72,20],[83,33],[78,52],[51,53],[43,37]],
-        ]) path(context, points, palette.land[5], palette.border);
-        context.strokeStyle = palette.border;
-        for (const points of [[[47,61],[58,66],[54,81]],[[73,53],[67,70],[83,77]],[[53,24],[62,33],[59,44]]]) {
-            context.beginPath(); points.forEach(([x,y],index) => index ? context.lineTo(x,y) : context.moveTo(x,y)); context.stroke();
-        }
-        context.fillStyle = palette.border;
-        for (const x of [56,70]) { context.beginPath(); context.ellipse(x,37,3.5,2.5,0,0,Math.PI*2); context.fill(); }
-        context.beginPath(); context.moveTo(58,46); context.lineTo(69,46); context.stroke();
-        path(context, [[42,51],[35,45],[44,40],[51,43]], palette.vegetation, palette.border);
-        path(context, [[70,24],[72,14],[79,10],[81,21]], palette.vegetation, palette.border);
-        context.strokeStyle = palette.paper; context.globalAlpha = .35;
-        context.beginPath(); context.moveTo(46,59); context.lineTo(45,75); context.moveTo(50,29); context.lineTo(48,39); context.stroke();
-    });
-}
-
-function spiritFox(palette) {
-    return drawing(128, context => {
-        context.lineJoin = "round"; context.lineCap = "round"; context.lineWidth = 1.5;
-        context.fillStyle = palette.shadow; context.globalAlpha = .12;
-        context.beginPath(); context.ellipse(66,107,48,6,0,0,Math.PI*2); context.fill(); context.globalAlpha = 1;
-        context.fillStyle = palette.paper; context.strokeStyle = palette.border;
-        context.beginPath(); context.moveTo(57,78); context.bezierCurveTo(22,80,14,49,18,30);
-        context.bezierCurveTo(36,38,59,51,59,77); context.closePath(); context.fill(); context.stroke();
-        context.beginPath(); context.moveTo(38,78); context.quadraticCurveTo(65,66,80,80);
-        context.lineTo(85,103); context.lineTo(73,104); context.lineTo(67,88); context.lineTo(57,90);
-        context.lineTo(51,104); context.lineTo(36,104); context.quadraticCurveTo(28,90,38,78); context.closePath(); context.fill(); context.stroke();
-        path(context, [[68,72],[70,33],[84,49],[95,31],[107,61],[104,74],[86,87]], palette.paper, palette.border);
-        path(context, [[73,41],[80,52],[73,56]], palette.land[2], null);
-        path(context, [[95,39],[101,56],[94,52]], palette.land[2], null);
-        context.strokeStyle = palette.vegetation; context.globalAlpha = .65;
-        context.beginPath(); context.moveTo(39,89); context.quadraticCurveTo(36,65,26,53); context.stroke();
-        context.globalAlpha = 1; context.strokeStyle = palette.border;
-        context.beginPath(); context.moveTo(77,66); context.lineTo(82,68); context.moveTo(93,68); context.lineTo(98,66); context.stroke();
-        path(context, [[85,75],[89,75],[87,78]], palette.border, null);
-        context.strokeStyle = palette.paper; context.globalAlpha = .5;
-        context.beginPath(); context.moveTo(41,53); context.lineTo(48,65); context.stroke();
-    });
-}
-
-function volcano(palette) {
-    return drawing(128, context => {
-        context.lineJoin = "round"; context.lineCap = "round"; context.lineWidth = 1.5;
-        context.fillStyle = palette.shadow; context.globalAlpha = .12;
-        context.beginPath(); context.ellipse(64,107,53,7,0,0,Math.PI*2); context.fill(); context.globalAlpha = 1;
-        // Broad cone, open crater and a narrow lava seam echo the mountain art.
-        path(context, [[10,105],[40,62],[49,47],[76,47],[87,69],[119,106]], palette.land[1], palette.border);
-        path(context, [[66,51],[76,47],[87,69],[119,106],[68,107]], palette.land[2], null);
-        context.fillStyle = palette.border;
-        context.beginPath(); context.ellipse(63,48,14,4,0,0,Math.PI*2); context.fill();
-        context.strokeStyle = palette.accent; context.lineWidth = 3;
-        context.beginPath(); context.moveTo(59,50); context.quadraticCurveTo(54,62,64,72);
-        context.quadraticCurveTo(68,81,60,88); context.lineTo(63,103); context.stroke();
-        context.fillStyle = palette.paper; context.strokeStyle = palette.border; context.lineWidth = 1.2;
-        context.beginPath(); context.moveTo(58,43); context.bezierCurveTo(42,34,54,31,50,24);
-        context.bezierCurveTo(38,20,49,10,58,15); context.bezierCurveTo(63,4,77,11,75,18);
-        context.bezierCurveTo(94,16,93,31,79,32); context.quadraticCurveTo(68,33,67,43);
-        context.closePath(); context.fill(); context.stroke();
-        context.globalAlpha = .35;
-        for (let y = 69; y < 102; y += 7) {
-            context.beginPath(); context.moveTo(79,y); context.lineTo(84+(y-69)*.55,y+5); context.stroke();
-        }
-        context.strokeStyle = palette.paper; context.globalAlpha = .6;
-        context.beginPath(); context.moveTo(17,102); context.lineTo(43,65); context.stroke();
-    });
-}
-
-function tornado(palette) {
-    return drawing(128, context => {
-        context.lineJoin = "round"; context.lineCap = "round"; context.lineWidth = 1.4;
-        context.fillStyle = palette.shadow; context.globalAlpha = .12;
-        context.beginPath(); context.ellipse(69,111,31,5,0,0,Math.PI*2); context.fill(); context.globalAlpha = 1;
-        context.fillStyle = palette.land[5]; context.strokeStyle = palette.border;
-        context.beginPath(); context.moveTo(25,36); context.bezierCurveTo(44,52,53,77,66,108);
-        context.quadraticCurveTo(74,99,77,88); context.bezierCurveTo(72,67,95,52,104,36);
-        context.closePath(); context.fill(); context.stroke();
-        context.fillStyle = palette.paper;
-        context.beginPath(); context.moveTo(19,34); context.bezierCurveTo(6,21,25,15,34,20);
-        context.bezierCurveTo(35,7,56,7,61,17); context.bezierCurveTo(73,6,95,13,91,24);
-        context.bezierCurveTo(113,14,124,30,111,37); context.quadraticCurveTo(67,45,19,34);
-        context.closePath(); context.fill(); context.stroke();
-        for (const [y,left,right] of [[49,35,95],[61,43,85],[73,51,78],[85,57,75],[97,62,71]]) {
-            context.strokeStyle = palette.border; context.globalAlpha = .7;
-            context.beginPath(); context.moveTo(left,y); context.quadraticCurveTo((left+right)/2,y+8,right,y+1); context.stroke();
-            context.strokeStyle = palette.paper; context.globalAlpha = .55;
-            context.beginPath(); context.moveTo(left+3,y+2); context.quadraticCurveTo((left+right)/2,y+6,right-3,y+3); context.stroke();
-        }
-        context.globalAlpha = .6; context.strokeStyle = palette.ink;
-        context.beginPath(); context.moveTo(42,96); context.quadraticCurveTo(23,101,39,106);
-        context.moveTo(89,91); context.quadraticCurveTo(103,99,88,104); context.stroke();
     });
 }
 
@@ -424,20 +179,8 @@ function illustrationData(geometry) {
         if (habitat !== "any" && onLand(coordinate) !== (habitat === "land")) return;
         points.push({type: "Feature", properties: {kind}, geometry: {type: "Point", coordinates: coordinate}});
     });
-    chain("mountain", [[-109,39],[-104,31],[-74,7],[-77,-3],[-75,-12],[-70,-22],[22,46],[-5,31],[37,10],[47,-20],[68,37],[99,34],[105,39],[118,48],[145,-6]],"land");
-    chain("snow-mountain", [[-150,63],[-124,58],[-119,52],[-114,46],[-72,-44],[8,46],[13,47],[8,61],[-44,65],[45,42],[76,34],[83,29],[91,29],[95,53],[171,-43]],"land");
-    chain("forest", [[-131,58],[-102,57],[-87,54],[-69,51],[20,62],[31,63],[57,60],[76,61],[106,59],[121,57]],"land");
-    chain("grove", [[-63,-3],[-55,-6],[-70,-8],[-58,-15],[18,0],[24,-4],[31,1],[102,16],[114,1],[132,-4],[146,-18]],"land");
-    chain("desert", [[-8,23],[8,25],[20,23],[45,22],[15,-23],[-69,-24],[103,42],[124,-25]],"land");
     chain("ship", [[-36,27],[-27,-24],[68,-24],[156,18],[-143,-27]]);
     chain("sea-monster", [[-16,-16],[-158,47]],"sea");
-    chain("dragon", [[110,31],[27,-27]],"land");
-    chain("unicorn", [[10,50],[-108,51]],"land");
-    chain("golem", [[-111,35],[96,46]],"land");
-    chain("spirit-fox", [[28,67],[125,63]],"land");
-    // Decorative volcanic belts, not an inventory or current eruption report.
-    chain("volcano", [[-19,65],[-98.6,19],[-69,-33],[37.3,-3.1],[140,39],[110.4,-7.5],[159,56]],"land");
-    chain("tornado", [[-98,38],[-63,-32]],"land");
     return {type: "FeatureCollection", features: points};
 }
 
@@ -489,9 +232,7 @@ export function prepareAdventure(controller, addLayer) {
     layer("routes",{type:"line",source:PREFIX+"chart",maxzoom:5,filter:["==",["get","kind"],"route"],layout:{"line-cap":"round","line-join":"round"},paint:{"line-width":1.1,"line-dasharray":[3,5],"line-opacity":["interpolate",["linear"],["zoom"],1,.3,3,.2,5,0]}});
     layer("paper",{type:"fill",source:COUNTRY_SOURCE,paint:{"fill-opacity":1}},OUTLINE_LAYER);
     const illustrationLayout = {"icon-size":["interpolate",["linear"],["zoom"],0,.26,1,.38,3,.6,5,.75],"icon-padding":2,"icon-anchor":"center","icon-allow-overlap":true,"icon-ignore-placement":true};
-    const waterArtwork = ["in",["get","kind"],["literal",["ship","sea-monster"]]];
-    layer("illustrations",{type:"symbol",source:PREFIX+"illustrations",filter:waterArtwork,layout:illustrationLayout,paint:{"icon-opacity":1}},HOVER_OUTLINE_LAYER);
-    layer("land-illustrations",{type:"symbol",source:PREFIX+"illustrations",minzoom:3.2,maxzoom:6.5,filter:["!",waterArtwork],layout:illustrationLayout,paint:{"icon-opacity":["interpolate",["linear"],["zoom"],3.2,0,3.8,1,5.3,1,6.5,0]}},HOVER_OUTLINE_LAYER);
+    layer("illustrations",{type:"symbol",source:PREFIX+"illustrations",layout:illustrationLayout,paint:{"icon-opacity":1}},HOVER_OUTLINE_LAYER);
     layer("ocean-names",{type:"symbol",source:PREFIX+"oceans",maxzoom:5,layout:{"text-field":["get","name"],"text-font":mapFontStack(),"text-size":["interpolate",["linear"],["zoom"],1,11,3,16],"text-letter-spacing":.22,"text-max-width":20},paint:{"text-opacity":["interpolate",["linear"],["zoom"],1,.65,3,.6,5,0]}},LABEL_LAYER);
 }
 
@@ -499,7 +240,7 @@ export function updateAdventure(controller, active, palette = adventurePalette()
     const {map} = controller;
     controller.page.dataset.mapType = controller.preferences.mapType;
     controller.container.setAttribute("aria-label", active ? "Interactive adventure world map" : "Interactive world map");
-    for (const name of ["waves","grid","routes","paper","illustrations","land-illustrations","ocean-names"]) {
+    for (const name of ["waves","grid","routes","paper","illustrations","ocean-names"]) {
         const id = PREFIX+name;
         if (!map.getLayer(id)) continue;
         const visible = active && (name !== "ocean-names" || controller.preferences.countryNames);
@@ -509,7 +250,7 @@ export function updateAdventure(controller, active, palette = adventurePalette()
     if (controller.adventurePaintKey !== palette.name || !map.hasImage(PREFIX+"paper-"+palette.name)) {
         controller.adventurePaintKey = palette.name;
         controller.adventureImages ||= new Map();
-        for (const [name, painter] of Object.entries({paper,waves,mountain,forest,ship,desert,grove,volcano,tornado,"snow-mountain": palette => mountain(palette,true),"sea-monster":seaMonster,dragon,unicorn,golem,"spirit-fox":spiritFox,"favorite-heart":fantasyHeart})) {
+        for (const [name, painter] of Object.entries({paper,waves,ship,"sea-monster":seaMonster,"favorite-heart":fantasyHeart})) {
             const id = PREFIX+name+"-"+palette.name;
             if (!map.hasImage(id)) {
                 const image = controller.adventureImages.get(id) || painter(palette);
@@ -520,7 +261,6 @@ export function updateAdventure(controller, active, palette = adventurePalette()
         map.setPaintProperty(PREFIX+"waves","background-pattern",PREFIX+"waves-"+palette.name);
         map.setPaintProperty(PREFIX+"paper","fill-pattern",PREFIX+"paper-"+palette.name);
         map.setLayoutProperty(PREFIX+"illustrations","icon-image",["concat",PREFIX,["get","kind"],"-"+palette.name]);
-        map.setLayoutProperty(PREFIX+"land-illustrations","icon-image",["concat",PREFIX,["get","kind"],"-"+palette.name]);
         for (const name of ["grid","routes"]) map.setPaintProperty(PREFIX+name,"line-color",palette.ink);
         map.setPaintProperty(PREFIX+"ocean-names","text-color",palette.ink);
         map.setPaintProperty(PREFIX+"ocean-names","text-halo-color",palette.sea);
