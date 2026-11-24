@@ -1,32 +1,66 @@
+import re
+
 from django import forms
 from django.forms import BaseFormSet, formset_factory
 
 from journal.models import Entry
 
-from .models import Country, CountryProfile, MapPreset, TerritoryDetails, validate_map_color
+from .models import Country, CountryProfile, MapPreset, TerritoryDetails
+
+
+class PresetColorField(forms.CharField):
+    palette = (
+        ("Blue", "#4a90e2"), ("Teal", "#52abb8"), ("Green", "#4aab83"),
+        ("Gold", "#d5ac47"), ("Apricot", "#da9567"), ("Coral", "#dd6858"),
+        ("Rose", "#cf78a3"), ("Lilac", "#a57bd5"), ("Slate", "#8295af"),
+        ("Sand", "#b4a087"),
+    )
+
+    def __init__(self, **kwargs):
+        super().__init__(max_length=40, widget=forms.TextInput(attrs={
+            "data-preset-color-value": "", "placeholder": "RGB or hex",
+            "spellcheck": "false", "autocomplete": "off",
+        }), **kwargs)
+
+    def to_python(self, value):
+        value = super().to_python(value).strip().lower()
+        if not value:
+            return value
+        if re.fullmatch(r"#[0-9a-f]{6}", value):
+            return value
+        if re.fullmatch(r"#[0-9a-f]{3}", value):
+            return "#" + "".join(char * 2 for char in value[1:])
+        rgb = re.fullmatch(r"(?:rgb\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})\s*\)|(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3}))", value)
+        if rgb:
+            channels = [int(channel) for channel in rgb.groups() if channel is not None]
+            if all(channel <= 255 for channel in channels):
+                return "#" + "".join(f"{channel:02x}" for channel in channels)
+        raise forms.ValidationError("Use a hex color or RGB values from 0 to 255.")
 
 
 class PresetForm(forms.ModelForm):
+    default_color = PresetColorField(required=False, label="Ungrouped countries")
+
     class Meta:
         model = MapPreset
         fields = ("name", "description", "default_color")
-        widgets = {"description": forms.Textarea(attrs={"rows": 3}), "default_color": forms.TextInput(attrs={"placeholder": "#4a90e2"})}
-        help_texts = {"default_color": "Optional: color for countries outside your color groups. Leave empty to keep the ordinary map color."}
-
-    def clean_default_color(self):
-        return self.cleaned_data["default_color"].lower()
+        widgets = {
+            "name": forms.TextInput(attrs={"placeholder": "Preset name", "aria-label": "Preset name"}),
+            "description": forms.Textarea(attrs={"rows": 2, "placeholder": "Description", "aria-label": "Description"}),
+        }
 
 
 class ColorGroupForm(forms.Form):
-    title = forms.CharField(max_length=160, required=False, widget=forms.TextInput(attrs={"placeholder": "Group title, e.g. Western aligned"}))
-    color = forms.CharField(max_length=7, validators=[validate_map_color], widget=forms.TextInput(attrs={"type": "color"}), initial="#4a90e2")
-    countries = forms.ModelMultipleChoiceField(queryset=Country.objects.all(), required=False, widget=forms.SelectMultiple(attrs={"data-country-select": ""}))
-
-    def clean_color(self):
-        return self.cleaned_data["color"].lower()
+    title = forms.CharField(max_length=160, required=False, widget=forms.TextInput(attrs={"placeholder": "Group title", "aria-label": "Group title"}))
+    color = PresetColorField(initial="#4a90e2")
+    countries = forms.ModelMultipleChoiceField(queryset=Country.objects.all(), required=False, widget=forms.SelectMultiple(attrs={"data-country-select": "", "data-select-summary": "Add countries"}))
 
 
 class ColorGroupFormSet(BaseFormSet):
+    def add_fields(self, form, index):
+        super().add_fields(form, index)
+        form.fields["DELETE"].widget.attrs.update({"data-native-checkbox": "", "class": "visually-hidden"})
+
     def clean(self):
         if any(self.errors):
             return

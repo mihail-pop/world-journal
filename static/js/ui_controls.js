@@ -159,8 +159,8 @@ class SelectControl {
         this.trigger.disabled = this.select.matches(":disabled");
         this.trigger.setAttribute("aria-required", String(this.select.required));
         const selected = [...this.select.selectedOptions].filter(option => !this.select.multiple || option.value);
-        const text = selected.length ? selected.map(option => option.textContent.trim()).join(", ")
-            : this.select.dataset.selectPlaceholder || (this.country ? "Choose countries" : "Choose an option");
+        const text = this.select.dataset.selectSummary || (selected.length ? selected.map(option => option.textContent.trim()).join(", ")
+            : this.select.dataset.selectPlaceholder || (this.country ? "Choose countries" : "Choose an option"));
         if (this.value.textContent !== text) this.value.textContent = text;
         this.trigger.title = text;
         if (this.inline) {
@@ -327,7 +327,7 @@ function enhance(root) {
         else controls.get(select).sync();
     }
     for (const input of root.querySelectorAll('input[type="checkbox"]')) {
-        if (input.closest("[data-rich-editor]")) continue;
+        if (input.closest("[data-rich-editor]") || input.hasAttribute("data-native-checkbox")) continue;
         const label = input.closest("label") || input.labels[0];
         if (!label) continue;
         if (!label.contains(input)) label.prepend(input);

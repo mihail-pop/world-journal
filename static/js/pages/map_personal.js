@@ -337,23 +337,75 @@ export function initializePersonalMap(controller, selectCountry) {
     loadPersonalData(controller);
 }
 
+function presetColorValue(value) {
+    const text = value.trim().toLowerCase();
+    if (!text || COLOR.test(text)) return text;
+    if (/^#[0-9a-f]{3}$/.test(text)) return `#${[...text.slice(1)].map(char => char + char).join("")}`;
+    const rgb = text.match(/^(?:rgb\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})\s*\)|(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3}))$/);
+    if (!rgb) return null;
+    const channels = rgb.slice(1).filter(channel => channel !== undefined).map(Number);
+    return channels.every(channel => channel <= 255)
+        ? `#${channels.map(channel => channel.toString(16).padStart(2, "0")).join("")}` : null;
+}
+
+function syncPresetColor(control, normalize = false) {
+    const input = control.querySelector("[data-preset-color-value]");
+    const color = presetColorValue(input.value);
+    const row = control.closest("[data-preset-row]");
+    const deleted = row?.querySelector('[name$="-DELETE"]')?.checked;
+    if (row) input.required = !deleted;
+    input.setCustomValidity(!deleted && color === null ? "Use a hex color or RGB values from 0 to 255." : "");
+    if (normalize && color !== null) input.value = color;
+    for (const choice of control.querySelectorAll("[data-preset-color-choice]")) {
+        const selected = color !== null && choice.dataset.presetColorChoice === color;
+        choice.setAttribute("aria-pressed", String(selected));
+    }
+    if (color) control.querySelector("[data-preset-native-color]").value = color;
+}
+
 export function registerPresetEditor() {
     if (editorRegistered) return;
     editorRegistered = true;
+    const syncColors = () => document.querySelectorAll("[data-preset-editor] [data-preset-color]").forEach(control => syncPresetColor(control));
+    document.addEventListener("world-journal:page-ready", syncColors);
+    document.addEventListener("input", event => {
+        const control = event.target.closest("[data-preset-color]");
+        if (!control || !event.target.matches("input")) return;
+        if (event.target.matches("[data-preset-native-color]")) control.querySelector("[data-preset-color-value]").value = event.target.value;
+        syncPresetColor(control);
+    });
+    document.addEventListener("change", event => {
+        if (event.target.matches("[data-preset-color-value]")) syncPresetColor(event.target.closest("[data-preset-color]"), true);
+        if (event.target.matches('[data-preset-row] input[name$="-DELETE"]')) syncPresetColor(event.target.closest("[data-preset-row]").querySelector("[data-preset-color]"));
+    });
+    document.addEventListener("reset", event => {
+        if (event.target.matches("[data-preset-editor]")) queueMicrotask(syncColors);
+    });
     document.addEventListener("click", event => {
+        const choice = event.target.closest("[data-preset-color-choice]");
+        if (choice) {
+            const control = choice.closest("[data-preset-color]");
+            control.querySelector("[data-preset-color-value]").value = choice.dataset.presetColorChoice;
+            syncPresetColor(control);
+            return;
+        }
         const button = event.target.closest("[data-preset-add-color]");
         if (!button) return;
         event.preventDefault();
         const editor = button.closest("[data-preset-editor]");
         const total = editor.querySelector('[name="colors-TOTAL_FORMS"]');
         const index = Number(total.value);
-        if (index >= 238) return;
+        const maximum = Number(editor.querySelector('[name="colors-MAX_NUM_FORMS"]')?.value || 252);
+        if (index >= maximum) return;
         const rows = editor.querySelector("[data-preset-rows]");
         rows.insertAdjacentHTML("beforeend", editor.querySelector("[data-preset-row-template]").innerHTML.replaceAll("__prefix__", String(index)));
         total.value = index + 1;
-        const used = new Set([...rows.querySelectorAll('input[type="color"]')].slice(0, -1).map(input => input.value));
-        const nextColor = ["#4a90e2", "#dd6858", "#4aab83", "#a57bd5", "#d5ac47", "#52abb8", "#cf78a3"].find(color => !used.has(color));
-        if (nextColor) rows.lastElementChild.querySelector('input[type="color"]').value = nextColor;
-        rows.lastElementChild.querySelector("select")?.focus();
+        const used = new Set([...rows.querySelectorAll("[data-preset-color-value]")].slice(0, -1).map(input => presetColorValue(input.value)));
+        const row = rows.lastElementChild;
+        const nextColor = [...row.querySelectorAll("[data-preset-color-choice]")].map(choice => choice.dataset.presetColorChoice).find(color => !used.has(color));
+        if (nextColor) row.querySelector("[data-preset-color-value]").value = nextColor;
+        syncPresetColor(row.querySelector("[data-preset-color]"));
+        row.querySelector('[name$="-title"]')?.focus();
     });
+    syncColors();
 }

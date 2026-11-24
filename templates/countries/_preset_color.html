@@ -1,0 +1,12 @@
+<div class="preset-color-control" data-preset-color>
+    <div class="preset-color-options" role="group" aria-label="{{ field.label }}">
+        {% for name, color in field.field.palette %}<button type="button" class="preset-color-swatch" style="--swatch-color: {{ color }}" data-preset-color-choice="{{ color }}" aria-label="{{ name }}" title="{{ name }}" aria-pressed="{% if field.value == color %}true{% else %}false{% endif %}">{% include 'core/partials/icon.html' with name='check' %}</button>{% endfor %}
+    </div>
+    <label class="preset-color-input-label" for="{{ field.id_for_label }}">Hex / RGB</label>
+    <div class="preset-custom-color-fields">
+        <label class="preset-native-picker" title="Choose color"><span class="visually-hidden">Choose color</span><input type="color" value="#4a90e2" data-preset-native-color></label>
+        {{ field }}
+    </div>
+    {% if not field.field.required %}<button type="button" class="preset-map-color" data-preset-color-choice="" aria-pressed="{% if not field.value %}true{% else %}false{% endif %}">Map color</button>{% endif %}
+    {{ field.errors }}
+</div>
