@@ -10,19 +10,19 @@ import { basemapFeaturePreferences, isBasemapCapitalLabel, isBasemapCountryLabel
 import { factsSelectionChanged, initializeCountryFacts, loadCountryOverview } from "./map_facts.js";
 import { applyPersonalLayers, initializePersonalMap, loadCountryNotes, loadPersonalData, personalSelectionChanged, updateFavoriteMarkerVisibility } from "./map_personal.js";
 import { initializePresetMap, selectPresetCountry, syncPresetEditor } from "./preset_map_editor.js";
+import { WORLD_CAMERA, readViewport, saveViewport } from "../map_camera.js";
+import { connectMapPreview } from "../map_preview.js";
 import {
     Map as MapLibreMap,
     NavigationControl,
 } from "../../vendor/maplibre-gl/maplibre-gl.mjs";
 import {
     clearSavedMapViewport,
-    MAP_VIEWPORT_STORAGE_KEY,
     MAP_BOOLEAN_PREFERENCES,
     readMapPreferences,
     writeMapPreferences,
 } from "../map_preferences.js";
 
-const WORLD_CAMERA = { center: [8, 18], zoom: 1.35 };
 const SOURCE_ID = "world-journal-countries";
 const CENTROID_SOURCE_ID = "world-journal-country-centroids";
 const CAPITAL_SOURCE_ID = "world-journal-capitals";
@@ -48,35 +48,6 @@ const LAYERS = {
 
 let lifecycleRegistered = false;
 let activeController = null;
-
-function readViewport() {
-    try {
-        const value = JSON.parse(localStorage.getItem(MAP_VIEWPORT_STORAGE_KEY));
-        if (
-            Array.isArray(value?.center)
-            && value.center.length === 2
-            && value.center.every(Number.isFinite)
-            && Number.isFinite(value.zoom)
-        ) {
-            return value;
-        }
-    } catch (error) {
-        return null;
-    }
-    return null;
-}
-
-function saveViewport(map) {
-    const center = map.getCenter();
-    try {
-        localStorage.setItem(MAP_VIEWPORT_STORAGE_KEY, JSON.stringify({
-            center: [center.lng, center.lat],
-            zoom: map.getZoom(),
-        }));
-    } catch (error) {
-        // The map remains usable when browser storage is unavailable.
-    }
-}
 
 function getThemeColor(variable) {
     return getComputedStyle(document.documentElement).getPropertyValue(variable).trim();
@@ -1145,6 +1116,7 @@ function createMap(controller, styleUrl) {
     map.setStyle(controller.providerStyleRequested ? styleUrl : bundledMapStyle(), {
         transformStyle: localMapStyle, diff: false,
     });
+    controller.preview = connectMapPreview(controller);
 }
 
 function closeControlsPanel(controller, { restoreFocus = false } = {}) {
@@ -1206,6 +1178,7 @@ function initializeControls(controller) {
             return;
         }
         closeCountry(controller, { focusMap: false });
+        controller.preview?.home();
         focusCountry(controller, homeCountry);
     }, { signal: controller.abortController.signal });
     controller.worldButton.addEventListener("click", () => {
@@ -1607,6 +1580,7 @@ export function cleanupMapPage() {
     controller.abortController.abort();
     if (controller.map) {
         saveViewport(controller.map);
+        controller.preview?.disconnect();
         controller.map.remove();
     }
     controller.container.replaceChildren();

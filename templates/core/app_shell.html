@@ -39,6 +39,11 @@
     <link rel="stylesheet" href="{% static 'css/search.css' %}">
     <link rel="stylesheet" href="{% static 'css/player.css' %}">
     <script src="{% static 'vendor/htmx/htmx-2.0.8.min.js' %}" defer></script>
+    {% if active_page == 'map' %}
+    <link rel="preload" href="{% static 'data/countries.geojson' %}" as="fetch" crossorigin="anonymous">
+    {# Match the canonical URL used by the app's existing ES module imports. #}
+    <script type="module" src="{% get_static_prefix %}js/map_preview.js"></script>
+    {% endif %}
     <script type="module" src="{% static 'js/app.js' %}"></script>
 </head>
 <body hx-ext="page-memory" data-preferences-url="{% url 'core:preferences' %}" data-journal-new-url="{% url 'journal:new' %}" data-journal-quick-save-url="{% url 'journal:quick_save' %}" data-journal-bookmark-status-url="{% url 'journal:bookmark_status' %}">

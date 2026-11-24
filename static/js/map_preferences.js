@@ -1,6 +1,7 @@
 import { readAppPreferences, writeAppPreferences } from "./app_preferences.js";
+import { MAP_VIEWPORT_STORAGE_KEY } from "./map_camera.js";
 
-export const MAP_VIEWPORT_STORAGE_KEY = "world-journal:map-viewport";
+export { MAP_VIEWPORT_STORAGE_KEY };
 
 export const DEFAULT_MAP_PREFERENCES = Object.freeze({
     homeCountry: null, countryNames: true, capitalNames: false, cityNames: true,

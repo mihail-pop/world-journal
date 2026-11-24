@@ -186,6 +186,7 @@ export async function loadPersonalData(controller) {
         state.ready = true;
         state.status.textContent = state.activePreset ? "Preset colors are active." : "";
         updatePersonalControls(controller);
+        controller.map?.triggerRepaint();
     } catch (error) {
         if (error.name !== "AbortError" && isAlive(controller) && id === state.loadId) {
             state.status.textContent = "Saved map data could not be loaded. The ordinary map is still available.";
@@ -294,6 +295,7 @@ export function initializePersonalMap(controller, selectCountry) {
             if (!isAlive(controller)) return;
             if (result.favorite) state.favorites.add(code);
             else state.favorites.delete(code);
+            void controller.preview?.invalidate();
             if (controller.selectedCode === code) state.favoriteStatus.textContent = "";
         } catch (error) {
             if (error.name !== "AbortError") {
