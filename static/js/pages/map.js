@@ -4,7 +4,7 @@ import { terrainCountrySize, updateMapLabels } from "./map_labels.js";
 import { ensurePlaceLabels } from "./place_labels.js";
 import { adventurePalette, prepareAdventure, updateAdventure } from "./adventure_map.js";
 import { getCountryFeed, rememberCountryFeed } from "../news_cache.js";
-import { replaceCountryMarkup } from "../news_archive.js";
+import { applyCountryNewsFilter, replaceCountryMarkup } from "../news_archive.js";
 import { notify } from "../notifications.js";
 import { basemapFeaturePreferences, isBasemapCapitalLabel, isBasemapCountryLabel, splitBasemapRegionLabels } from "./basemap_features.js";
 import { factsSelectionChanged, initializeCountryFacts, loadCountryOverview } from "./map_facts.js";
@@ -353,12 +353,7 @@ function showNewsMessage(controller, message, { retry = false } = {}) {
 }
 
 function applyNewsFilter(controller, filter) {
-    for (const button of controller.newsContent.querySelectorAll("[data-news-filter]")) {
-        button.setAttribute("aria-pressed", String(button.dataset.newsFilter === filter));
-    }
-    for (const section of controller.newsContent.querySelectorAll("[data-news-section]")) {
-        section.hidden = filter !== "all" && section.dataset.newsSection !== filter;
-    }
+    applyCountryNewsFilter(controller.newsContent, filter);
 }
 
 function loadCountryNews(controller, code, countryName, { retryFailed = false } = {}) {

@@ -5,7 +5,6 @@
     data-video-status="{{ video_page.status }}"
     data-feed-pending="{{ feed_pending|yesno:'true,false' }}"
 >
-    {% if feed_pending %}<p class="country-news-message" role="status">Some feeds are still refreshing. Reopen Videos to see their latest results.</p>{% endif %}
     {% if video_page.warning %}
         <div class="country-news-message {% if video_page.status == 'unavailable' %}is-error{% else %}is-warning{% endif %}" {% if video_page.status == 'unavailable' %}role="alert"{% else %}role="status"{% endif %}>
             <p>{{ video_page.warning }}</p>
@@ -53,22 +52,14 @@
                                 data-video-id="{{ item.video_id }}"
                                 data-video-title="{{ item.title }}"
                                 data-video-channel="{{ item.channel_name }}"
-                            >{% include 'core/partials/icon.html' with name='play' %} Play</button>
-                            <a href="{{ item.watch_url }}" target="_blank" rel="noopener noreferrer">{% include 'core/partials/icon.html' with name='external' %} YouTube</a>
-                            <a href="{% url 'journal:new' %}?type=youtube&amp;title={{ item.title|urlencode }}&amp;video={{ item.video_id|urlencode }}&amp;source={{ item.channel_name|urlencode }}&amp;country={{ video_page.country_code }}{% if item.published_at %}&amp;published={{ item.published_at|date:'c'|urlencode }}{% endif %}" hx-boost="true" hx-target="#app-content" hx-push-url="true">{% include 'core/partials/icon.html' with name='bookmark' %} Save</a>
+                            >Play</button>
+                            <a href="{{ item.watch_url }}" target="_blank" rel="noopener noreferrer">YouTube</a>
+                            <a href="{% url 'journal:new' %}?type=youtube&amp;title={{ item.title|urlencode }}&amp;video={{ item.video_id|urlencode }}&amp;source={{ item.channel_name|urlencode }}&amp;country={{ video_page.country_code }}{% if item.published_at %}&amp;published={{ item.published_at|date:'c'|urlencode }}{% endif %}" hx-boost="true" hx-target="#app-content" hx-push-url="true">Save</a>
                         </div>
                     </div>
                 </li>
             {% endfor %}
         </ol>
-    {% elif feed_pending %}
-    {% elif video_page.status == "unavailable" %}
-        <p class="country-news-message">No cached videos are available for this country.</p>
-    {% elif not video_page.sources %}
-        <p class="country-news-message">No enabled video channels cover this region. <a href="{% url 'news:settings' %}" hx-boost="true" hx-target="#app-content" hx-push-url="true">Manage news sources</a></p>
-    {% else %}
-        <p class="country-news-message">No country references were found in the channels' recent uploads.</p>
     {% endif %}
-    <details class="video-feed-note"><summary>About these videos</summary><p>Channel feeds contain only a limited set of recent uploads. Playing a video connects your browser to YouTube.</p></details>
-    {% include 'news/partials/archive_section.html' %}
+    {% include 'news/partials/coverage_tail.html' %}
 </div>

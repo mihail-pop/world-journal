@@ -20,7 +20,7 @@ def flag_details(country):
     custom = country.get("is_custom", False)
     definition = _territories().get(country["iso_a2"], {}) if custom else {}
     code = definition.get("flag_code") if custom else country["iso_a2"]
-    asset = definition.get("flag_asset")
+    asset = definition.get("flag_asset") or ("world.svg" if custom and not code else None)
     url = ""
     if asset:
         url = static(f"vendor/flags/{asset}")
@@ -30,5 +30,5 @@ def flag_details(country):
     return {
         "flag": emoji,
         "flag_url": url,
-        "flag_label": definition.get("flag_label", f"{country['name']} flag" if url else ""),
+        "flag_label": definition.get("flag_label", "World flag — neutral territory marker" if asset == "world.svg" else f"{country['name']} flag" if url else ""),
     }

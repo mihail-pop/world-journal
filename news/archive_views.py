@@ -11,7 +11,7 @@ from django.views.decorators.http import require_GET
 
 from .adapters.youtube import build_thumbnail_url
 from .adapters.rss import clean_article_text, is_google_news_link
-from .models import ArchivedNews
+from .models import ArchivedNews, ArchivedNewsSource
 from .services.archive import archived_items, country_revisions, enabled_feed_ids, identities, revision
 from .paging import archive_page, decode_cursor, encode_cursor, NewsCursorError, page_changed, paging_time, result_version, search_archive, search_query
 from .services.cache import deserialize_items, deserialize_video_items, fixed_feed_cache_key, google_cache_key, youtube_cache_key
@@ -28,10 +28,12 @@ def earlier_coverage(request):
     kind = request.GET.get("kind", "articles")
     code = request.GET.get("country", "WORLD").upper()
     category = request.GET.get("source", "all")
+    inline = request.GET.get("inline") == "1"
     query, at = search_query(request.GET), paging_time(request.GET)
     if kind not in {"articles", "videos"} or code != "WORLD" and code not in _countries_by_code():
         raise Http404("Unknown country coverage")
     excluded = ()
+    has_current = False
     registry = None
     if code != "WORLD":
         # Exclude the cards already shown in the live drawer, not every feed
@@ -44,6 +46,9 @@ def earlier_coverage(request):
             excluded = (*page.google.items, *page.regional_items)
         else:
             excluded = get_country_videos(code, **options).items
+        has_current = bool(excluded)
+        if kind == "articles" and category in {"google", "regional"}:
+            has_current = bool(page.google.items if category == "google" else page.regional_items)
     else:
         registry = effective_registry()
         current = []
@@ -61,6 +66,7 @@ def earlier_coverage(request):
             for source in channels:
                 current.extend(deserialize_video_items(snapshots.get(youtube_cache_key(source), {}), source) or ())
         excluded = tuple(current)
+        has_current = bool(excluded)
     try:
         rows = archived_items(kind, None if code == "WORLD" else code, category=category, exclude=excluded, registry=registry)
         rows = search_archive(rows.filter(first_seen_at__lte=at), query)
@@ -75,6 +81,12 @@ def earlier_coverage(request):
         has_next = len(batch) > settings.NEWS_ARCHIVE_PAGE_SIZE
         batch = batch[:settings.NEWS_ARCHIVE_PAGE_SIZE]
         selected = ArchivedNews.objects.in_bulk([identity for identity, date, views in batch])
+        origins = {}
+        if kind == "articles":
+            google_id = registry.get("google_news_country").id + ":"
+            active_ids = enabled_feed_ids(registry, kind, None if code == "WORLD" else code)
+            for identity, feed_id in ArchivedNewsSource.objects.filter(item_id__in=selected, feed_id__in=active_ids).values_list("item_id", "feed_id"):
+                origins.setdefault(identity, set()).add("google" if feed_id.startswith(google_id) else "regional")
         cards = []
         for identity, date, views in batch:
             item = selected.get(identity)
@@ -93,18 +105,20 @@ def earlier_coverage(request):
             if item.published_at:
                 initial["published"] = item.published_at.isoformat()
             cards.append({"item":item, "save_url":reverse("journal:new")+"?"+urlencode(initial),
-                          "thumbnail_url":build_thumbnail_url(item.video_id) if kind == "videos" else ""})
+                          "thumbnail_url":build_thumbnail_url(item.video_id) if kind == "videos" else "",
+                          "kinds":" ".join(sorted(origins.get(identity, ()))), "via_google":"google" in origins.get(identity, ())})
         def page_url():
             identity, date, views = batch[-1]
             position = {"identity": identity, "published": date.isoformat()}
             return reverse("news:archive") + "?" + urlencode({"country":code, "kind":kind, "source":category,
-                "q":query, "cursor":encode_cursor(position, query_signature), "v":version, "at":at.isoformat()})
+                "q":query, "cursor":encode_cursor(position, query_signature), "v":version, "at":at.isoformat(), "inline":int(inline)})
         context = {"cards":cards, "kind":kind,
                    "query": query, "paging_version": version, "query_signature": query_signature,
-                   "refresh_url":reverse("news:archive")+"?"+urlencode({"country":code, "kind":kind, "source":category, "q":query}),
+                   "inline":inline, "has_current":has_current,
+                   "refresh_url":reverse("news:archive")+"?"+urlencode({"country":code, "kind":kind, "source":category, "q":query, "inline":int(inline)}),
                    "next_url":page_url() if has_next else ""}
     except NewsCursorError:
         return HttpResponse("Refresh these news results to continue.", status=400)
     except DatabaseError:
-        context = {"cards":[], "kind":kind, "unavailable":True}
+        context = {"cards":[], "kind":kind, "unavailable":True, "inline":inline}
     return render(request, "news/partials/archive_results.html", context)

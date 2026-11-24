@@ -1,5 +1,5 @@
 import { getCountryFeed, rememberCountryFeed } from "../news_cache.js";
-import { replaceCountryMarkup } from "../news_archive.js";
+import { applyCountryNewsFilter, replaceCountryMarkup } from "../news_archive.js";
 import { notify } from "../notifications.js";
 
 let controller = null;
@@ -111,10 +111,15 @@ function renderContent(state, entry) {
 }
 
 function applyArticleFilter(state, filter) {
-    const buttons = [...state.content.querySelectorAll("[data-news-filter]")];
-    if (!buttons.some(button => button.dataset.newsFilter === filter)) filter = "all";
-    for (const button of buttons) button.setAttribute("aria-pressed",String(button.dataset.newsFilter === filter));
-    for (const section of state.content.querySelectorAll("[data-news-section]")) section.hidden = filter !== "all" && section.dataset.newsSection !== filter;
+    applyCountryNewsFilter(state.content, filter);
+}
+
+function sortOrder(state) {
+    const order = state.form.elements.order.value;
+    const button = state.form.querySelector("[data-directory-sort-order]");
+    button.dataset.order = order;
+    button.title = order === "asc" ? "Ascending" : "Descending";
+    button.setAttribute("aria-label", `Sort ${order === "asc" ? "ascending" : "descending"}`);
 }
 
 function showMessage(state, message, retry = false) {
@@ -299,7 +304,11 @@ function initialize() {
     },{signal});
     state.form.addEventListener("submit",event => {event.preventDefault(); renderLists(state); rememberLocation(state,true);},{signal});
     state.form.addEventListener("input",event => {if (event.target.name === "q") {renderLists(state); rememberLocation(state,true);}},{signal});
-    state.form.addEventListener("change",() => {renderLists(state); if (!state.restoringHistory) rememberLocation(state,true);},{signal});
+    state.form.addEventListener("change",() => {sortOrder(state); renderLists(state); if (!state.restoringHistory) rememberLocation(state,true);},{signal});
+    state.form.querySelector("[data-directory-sort-order]").addEventListener("click",() => {
+        state.form.elements.order.value = state.form.elements.order.value === "asc" ? "desc" : "asc";
+        state.form.elements.order.dispatchEvent(new Event("change", {bubbles:true}));
+    },{signal});
     state.favoriteForm.addEventListener("submit",event => {event.preventDefault(); toggleFavorite(state);},{signal});
     page.addEventListener("click",event => {
         const row = event.target.closest("[data-directory-country]");

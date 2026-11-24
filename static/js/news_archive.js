@@ -1,12 +1,17 @@
-// One lazy archive viewer for Map and Countries. Feed history never
+// One scroll-driven coverage viewer for Map and Countries. Feed history never
 // preloads into all 238 browser drawers and never creates a separate player.
 let registered = false;
 let generation = 0;
+let inlineObserver = null;
+
+function observeInline(root = document) {
+    for (const archive of root.querySelectorAll("[data-inline-archive]")) inlineObserver?.observe(archive);
+}
 
 function load(details, force = false) {
     const target = details.querySelector("[data-archive-content]");
-    if (!target || !details.isConnected) return;
-    const version = `${generation}:${details.dataset.archiveRevision || ""}`;
+    if (!target || !details.isConnected || !details.getClientRects().length) return;
+    const version = `${generation}:${details.dataset.archiveRevision || ""}:${details.dataset.archiveSource || "all"}`;
     if (!force && (target.dataset.archiveLoaded === version || target.dataset.archivePending === version)) return;
     target.dataset.archiveRequested = version;
     // A newly opened search can arrive before HTMX's settling pass has wired
@@ -15,31 +20,51 @@ function load(details, force = false) {
     window.htmx?.trigger(target,"archive-open");
 }
 
+export function applyCountryNewsFilter(container, filter = "all") {
+    const buttons = [...container.querySelectorAll("[data-news-filter]")];
+    if (!buttons.some(button => button.dataset.newsFilter === filter)) filter = "all";
+    for (const button of buttons) button.setAttribute("aria-pressed", String(button.dataset.newsFilter === filter));
+    for (const item of container.querySelectorAll("[data-news-section]")) item.hidden = filter !== "all" && !item.dataset.newsSection.split(" ").includes(filter);
+    const archive = container.querySelector('[data-inline-archive][data-archive-kind="articles"]');
+    if (!archive || archive.dataset.archiveSource === filter) return;
+    const target = archive.querySelector("[data-archive-content]");
+    window.htmx?.trigger(target, "htmx:abort");
+    archive.dataset.archiveSource = filter;
+    delete target.dataset.archiveLoaded;
+    delete target.dataset.archivePending;
+    delete target.dataset.archiveRequested;
+    target.replaceChildren();
+    const url = new URL(target.getAttribute("hx-get"), location.origin);
+    url.searchParams.set("source", filter);
+    target.setAttribute("hx-get", url.pathname + url.search);
+    window.htmx?.process(target);
+    inlineObserver?.unobserve(archive);
+    inlineObserver?.observe(archive);
+}
+
 export function replaceCountryMarkup(container, markup) {
     const template = document.createElement("template");
     template.innerHTML = markup;
-    const previous = container.querySelector("[data-news-archive]");
-    const next = template.content.querySelector("[data-news-archive]");
-    if (previous?.open && next && ["archiveCountry","archiveKind","archiveConfig"].every(key => previous.dataset[key] === next.dataset[key])) {
-        // Keep the actual reader and its page while the live feed updates.
-        previous.dataset.archiveRevision = next.dataset.archiveRevision;
-        next.replaceWith(previous);
-    }
     container.replaceChildren(template.content);
+    observeInline(container);
 }
 
 export function registerNewsArchive() {
     if (registered) return;
     registered = true;
-    document.addEventListener("toggle",event => {
-        if (event.target.matches?.("[data-news-archive]") && event.target.open) load(event.target);
-    },true);
+    inlineObserver = new IntersectionObserver(entries => {
+        for (const entry of entries) {
+            if (!entry.target.isConnected) inlineObserver.unobserve(entry.target);
+            else if (entry.isIntersecting) load(entry.target);
+        }
+    }, {rootMargin: "0px 0px 400px 0px"});
     document.addEventListener("click",event => {
         if (event.target.closest("[data-archive-retry]")) load(event.target.closest("[data-news-archive]"),true);
     });
     document.body.addEventListener("htmx:afterSwap",event => {
         const target = event.detail.target;
         if (target?.matches("[data-archive-content]")) target.dataset.archiveLoaded = target.dataset.archiveRequested;
+        observeInline(target || document);
     });
     document.body.addEventListener("htmx:beforeRequest",event => {
         const target = event.detail.elt;
@@ -50,11 +75,16 @@ export function registerNewsArchive() {
         if (target?.matches("[data-archive-content]")) delete target.dataset.archivePending;
     });
     document.addEventListener("world-journal:page-ready",() => {
-        for (const details of document.querySelectorAll("[data-news-archive][open]")) load(details);
+        observeInline();
     });
+    document.addEventListener("world-journal:page-cleanup", () => inlineObserver.disconnect());
     document.addEventListener("world-journal:data-changed",event => {
         if (!event.detail?.path?.startsWith("/settings/news/") && !event.detail?.path?.startsWith("/settings/backups/")) return;
         generation++;
-        for (const details of document.querySelectorAll("[data-news-archive][open]")) load(details,true);
+        for (const archive of document.querySelectorAll("[data-inline-archive]")) {
+            inlineObserver.unobserve(archive);
+            inlineObserver.observe(archive);
+        }
     });
+    observeInline();
 }

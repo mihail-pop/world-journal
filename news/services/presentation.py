@@ -13,6 +13,25 @@ from .region_routing import eligible_youtube_sources
 from .youtube_news import get_country_videos
 
 
+def country_article_cards(page):
+    from .archive import identities
+
+    incoming = [(item, "google") for item in page.google.items] + [(item, "regional") for item in page.regional_items]
+    incoming.sort(key=lambda row: row[0].published_at or datetime.min.replace(tzinfo=UTC), reverse=True)
+    cards, seen = [], {}
+    for item, kind in incoming:
+        identity, fingerprint = identities(item, "articles")
+        card = seen.get(identity) or seen.get(fingerprint)
+        if card is None:
+            card = {"item": item, "kinds": kind, "via_google": kind == "google"}
+            cards.append(card)
+        else:
+            card["kinds"] = " ".join(sorted(set(card["kinds"].split()) | {kind}))
+            card["via_google"] |= kind == "google"
+        seen[identity] = seen[fingerprint] = card
+    return cards
+
+
 class CachedDrawers:
     def __init__(self, codes):
         self.registry = effective_registry()
@@ -52,12 +71,11 @@ class CachedDrawers:
                    "archive_revision":self.archive_revisions.get(code, ""), "archive_config":sha256(repr(signature).encode()).hexdigest()[:16]}
         if kind == "articles":
             context["news_page"] = get_country_news_page(code, **options)
-            context["archive_open"] = not (context["news_page"].google.items or context["news_page"].regional_items)
+            context["article_cards"] = country_article_cards(context["news_page"])
             google_key, _ = self.keys[code]
             context["google_pending"] = bool(google_key and self._pending(google_key))
             template = "news/partials/country_news.html"
         else:
             context["video_page"] = get_country_videos(code, **options)
-            context["archive_open"] = not context["video_page"].items
             template = "news/partials/country_videos.html"
         return render_to_string(template, context)

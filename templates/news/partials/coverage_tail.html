@@ -1,0 +1,3 @@
+<div class="country-coverage-tail" data-news-archive data-inline-archive data-archive-country="{{ archive_country }}" data-archive-kind="{{ archive_kind }}" data-archive-source="all" data-archive-config="{{ archive_config }}" data-archive-revision="{{ archive_revision }}">
+    <div data-archive-content hx-get="{% url 'news:archive' %}?country={{ archive_country }}&amp;kind={{ archive_kind }}&amp;source=all&amp;inline=1" hx-trigger="archive-open" hx-target="this" hx-swap="innerHTML" hx-sync="closest [data-archive-content]:replace" aria-live="polite"></div>
+</div>

@@ -146,7 +146,7 @@ def get_fixed_feed(
             return _feed_result(feed, snapshot)
         except (FeedFetchError, FeedParseError) as error:
             failure_ttl = record_failure(snapshot, current_time, error)
-            snapshot["last_error"] = "This regional feed is temporarily unavailable."
+            snapshot["last_error"] = "This source is temporarily unavailable."
             snapshot["last_error_detail"] = str(error)[:240]
             snapshot["last_attempt_at"] = current_time.isoformat()
             remaining = stale_cache_remaining(snapshot, current_time, settings.NEWS_REGIONAL_STALE_SECONDS)
@@ -159,7 +159,7 @@ def get_fixed_feed(
                 "last_success_at": None,
                 "etag": None,
                 "last_modified": None,
-                "last_error": "This regional feed is temporarily unavailable.",
+                "last_error": "This source is temporarily unavailable.",
                 "last_error_detail": str(error)[:240],
                 "last_attempt_at": current_time.isoformat(),
                 "parser_warnings": [],
@@ -289,7 +289,7 @@ def _failed_feed(feed: NewsFeed) -> FeedResult:
         (),
         None,
         refresh_failed=True,
-        error="This regional feed is temporarily unavailable.",
+        error="This source is temporarily unavailable.",
     )
 
 
@@ -414,9 +414,5 @@ def get_regional_news(
     affected = sum(result.status != "available" for result in provider_results)
     warning = ""
     if affected:
-        noun = "provider has" if affected == 1 else "providers have"
-        warning = (
-            f"{affected} regional {noun} feed availability issues; "
-            "cached results are shown where available."
-        )
+        warning = f"{affected} {'source' if affected == 1 else 'sources'} could not be refreshed."
     return ordered_items, tuple(provider_results), warning

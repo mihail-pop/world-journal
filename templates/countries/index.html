@@ -9,14 +9,17 @@
     {{ catalog|json_script:'country-directory-catalog' }}
     <div class="countries-layout">
         <aside class="countries-sidebar" aria-label="Country browser">
-            <h1>Countries</h1>
             <form method="get" action="{% url 'countries:index' %}" data-directory-filters>
                 <input type="hidden" name="country" value="{{ options.country }}"><input type="hidden" name="tab" value="{{ options.tab }}">
                 <label class="visually-hidden" for="directory-search">Search countries</label>
-                <input type="search" id="directory-search" name="q" value="{{ options.q }}" placeholder="Search countries…" autocomplete="off">
+                <input type="search" id="directory-search" name="q" value="{{ options.q }}" placeholder="Search" autocomplete="off">
                 <div class="directory-sort-fields">
-                    <div><label for="directory-sort">Sort by</label><select id="directory-sort" name="sort"><option value="name"{% if options.sort == 'name' %} selected{% endif %}>Name</option><option value="population"{% if options.sort == 'population' %} selected{% endif %}>Population</option><option value="area"{% if options.sort == 'area' %} selected{% endif %}>Surface area</option></select></div>
-                    <div><label for="directory-order">Order</label><select id="directory-order" name="order"><option value="asc"{% if options.order == 'asc' %} selected{% endif %}>Ascending</option><option value="desc"{% if options.order == 'desc' %} selected{% endif %}>Descending</option></select></div>
+                    <h2>Sort By</h2>
+                    <div class="journal-sort-controls">
+                        <label class="visually-hidden" for="directory-sort">Sort by</label><select id="directory-sort" name="sort"><option value="name"{% if options.sort == 'name' %} selected{% endif %}>Name</option><option value="population"{% if options.sort == 'population' %} selected{% endif %}>Population</option><option value="area"{% if options.sort == 'area' %} selected{% endif %}>Surface area</option></select>
+                        <input type="hidden" name="order" value="{{ options.order }}">
+                        <button class="news-sort-order journal-sort-order" type="button" data-directory-sort-order data-order="{{ options.order }}" title="{% if options.order == 'asc' %}Ascending{% else %}Descending{% endif %}" aria-label="Sort {% if options.order == 'asc' %}ascending{% else %}descending{% endif %}"></button>
+                    </div>
                 </div>
                 <button class="journal-button" type="submit" data-directory-apply>Apply</button>
             </form>
