@@ -4,7 +4,7 @@
     <div class="journal-entry-list" data-journal-items>
         {% for entry in entries_page %}
             <article class="journal-entry-card" data-journal-entry-card data-journal-item="{{ entry.pk }}" tabindex="0" role="link" aria-labelledby="entry-title-{{ entry.pk }}">
-                <div class="journal-entry-meta">{% if entry.is_pinned %}<span>Pinned</span>{% endif %}{% if entry.is_favorite %}<span>Favorite</span>{% endif %}{% if entry.collection %}<span>{{ entry.collection.name }}</span>{% endif %}</div>
+                <div class="journal-entry-meta">{% if entry.is_pinned %}<span>Pinned</span>{% endif %}{% if entry.is_favorite %}<span>Favorite</span>{% endif %}{% if entry.collection %}<span>{{ entry.collection.name }} Collection</span>{% endif %}</div>
                 <h2 id="entry-title-{{ entry.pk }}"><a data-entry-link href="{{ entry.get_absolute_url }}">{{ entry.title }}</a></h2>
                 {% if entry.excerpt %}<div class="journal-excerpt journal-rendered">{% if entry.body_format == 'richtext' %}{{ entry.excerpt|linebreaksbr }}{% else %}{{ entry.excerpt|journal_markdown }}{% endif %}</div>{% endif %}
                 <div class="journal-entry-meta">{% if entry.event_date %}<span>Event: <time datetime="{{ entry.event_date|date:'Y-m-d' }}">{{ entry.event_date|date:'M j, Y' }}</time></span>{% endif %}<span>Saved {{ entry.created_at|date:'M j, Y' }}</span>{% if entry.source_name %}<span>{{ entry.source_name }}</span>{% endif %}</div>

@@ -1,10 +1,36 @@
 <section class="page page-standard journal-page journal-reader" data-page="journal" aria-labelledby="journal-detail-title" hx-boost="true" hx-target="#app-content" hx-push-url="true">
-    <a class="journal-back-link" href="{% url 'journal:list' %}">{% include 'core/partials/icon.html' with name='arrow-left' %} Journal</a>
-    <div class="journal-detail-heading"><div><p class="eyebrow">{{ entry.get_entry_type_display }}{% if entry.collection %} · {{ entry.collection.name }}{% endif %}</p><h1 id="journal-detail-title">{{ entry.title }}</h1></div><div class="journal-actions"><a class="journal-button" href="{% url 'journal:edit' entry.pk %}">{% include 'core/partials/icon.html' with name='edit' %} Edit</a><a href="{% url 'journal:delete' entry.pk %}">Delete</a></div></div>
-    <div class="journal-entry-meta">{% if entry.is_pinned %}<span>Pinned</span>{% endif %}{% if entry.is_favorite %}<span>Favorite</span>{% endif %}{% if entry.event_date %}<span>Event: {{ entry.event_date|date:'M j, Y' }}</span>{% endif %}<span>Saved {{ entry.created_at|date:'M j, Y H:i' }}</span><span>Updated {{ entry.updated_at|date:'M j, Y H:i' }}</span></div>
-    <div class="journal-country-tags">{% for country in entry.countries.all %}<a href="/?country={{ country.pk }}">{{ country.name }} ↗</a>{% endfor %}</div>
-    {% if entry.sections.all %}<nav class="journal-contents" aria-label="Entry contents"><h2>In this entry</h2><a href="#main-note" hx-boost="false">Main section</a>{% for section in entry.sections.all %}<a href="#section-{{ section.pk }}" hx-boost="false">{{ section.title }}</a>{% endfor %}</nav>{% endif %}
-    <div class="journal-actions"><a class="journal-button" href="{% url 'journal:export' entry.pk 'pdf' %}" target="_blank" hx-boost="false" rel="noopener">PDF / Print</a><a class="journal-button" href="{% url 'journal:export' entry.pk 'docx' %}" download hx-boost="false">Word (.docx)</a></div>
-    <article class="journal-reading-surface journal-prose" id="main-note"><h2 class="visually-hidden">Main section</h2>{% include 'journal/_content.html' with content=entry %}{% if entry.body_format != 'richtext' %}{% include 'journal/_images.html' with images=main_attachments %}{% endif %}</article>
-    {% for section in entry.sections.all %}<article class="journal-reading-surface journal-reading-section journal-prose" id="section-{{ section.pk }}"><h2>{{ section.title }}</h2>{% include 'journal/_content.html' with content=section %}{% if section.body_format != 'richtext' %}{% include 'journal/_images.html' with images=section.attachments.all %}{% endif %}</article>{% endfor %}
+    <div class="journal-reader-toolbar">
+        <a class="journal-icon-button" href="{% url 'journal:list' %}" aria-label="Back to Journal" title="Back to Journal">{% include 'core/partials/icon.html' with name='arrow-left' %}</a>
+        <div class="journal-reader-labels">
+            <span class="journal-badge">{{ entry.get_entry_type_display }}</span>
+            {% if entry.collection %}<span class="journal-reader-collection">{{ entry.collection.name }} Collection</span>{% endif %}
+            {% if entry.is_pinned %}<span class="journal-reader-flag" role="img" aria-label="Pinned" title="Pinned">{% include 'core/partials/icon.html' with name='pin' %}</span>{% endif %}
+            {% if entry.is_favorite %}<span class="journal-reader-flag journal-reader-favorite" role="img" aria-label="Favorite" title="Favorite">{% include 'core/partials/icon.html' with name='heart' %}</span>{% endif %}
+        </div>
+        <nav class="journal-reader-actions" aria-label="Item actions">
+            <a class="journal-icon-button" href="{% url 'journal:edit' entry.pk %}" aria-label="Edit" title="Edit">{% include 'core/partials/icon.html' with name='edit' %}</a>
+            <a class="journal-icon-button journal-reader-delete" href="{% url 'journal:delete' entry.pk %}" aria-label="Delete" title="Delete">{% include 'core/partials/icon.html' with name='trash' %}</a>
+        </nav>
+    </div>
+    {% if entry.sections.all %}<nav class="journal-contents" aria-label="Writing sections"><a href="#main-note" hx-boost="false">Main text</a>{% for section in entry.sections.all %}<a href="#section-{{ section.pk }}" hx-boost="false">{{ section.title }}</a>{% endfor %}</nav>{% endif %}
+    <header class="journal-reader-heading"><h1 id="journal-detail-title">{{ entry.title }}</h1></header>
+    <article class="journal-reading-surface journal-prose" id="main-note" aria-labelledby="journal-detail-title">{% include 'journal/_content.html' with content=entry %}{% if entry.body_format != 'richtext' %}{% include 'journal/_images.html' with images=main_attachments %}{% endif %}</article>
+    {% for section in entry.sections.all %}
+        <section class="journal-reader-section" id="section-{{ section.pk }}" aria-labelledby="section-title-{{ section.pk }}">
+            <h2 id="section-title-{{ section.pk }}">{{ section.title }}</h2>
+            <article class="journal-reading-surface journal-prose" aria-labelledby="section-title-{{ section.pk }}">{% include 'journal/_content.html' with content=section %}{% if section.body_format != 'richtext' %}{% include 'journal/_images.html' with images=section.attachments.all %}{% endif %}</article>
+        </section>
+    {% endfor %}
+    <footer class="journal-reader-footer">
+        <dl class="journal-reader-dates">
+            <div><dt>Saved</dt><dd><time datetime="{{ entry.created_at|date:'c' }}">{{ entry.created_at|date:'M j, Y H:i' }}</time></dd></div>
+            <div><dt>Updated</dt><dd><time datetime="{{ entry.updated_at|date:'c' }}">{{ entry.updated_at|date:'M j, Y H:i' }}</time></dd></div>
+            {% if entry.event_date %}<div><dt>Event date</dt><dd><time datetime="{{ entry.event_date|date:'Y-m-d' }}">{{ entry.event_date|date:'M j, Y' }}</time></dd></div>{% endif %}
+        </dl>
+        <nav class="journal-reader-exports" aria-label="Export">
+            <a class="journal-button" href="{% url 'journal:export' entry.pk 'pdf' %}" target="_blank" hx-boost="false" rel="noopener">PDF / Print</a>
+            <a class="journal-button" href="{% url 'journal:export' entry.pk 'docx' %}" download hx-boost="false">Word (.docx)</a>
+        </nav>
+        {% if entry.countries.all %}<div class="journal-country-tags">{% for country in entry.countries.all %}<a href="/?country={{ country.pk }}">{{ country.name }} ↗</a>{% endfor %}</div>{% endif %}
+    </footer>
 </section>
