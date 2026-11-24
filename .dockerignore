@@ -11,6 +11,8 @@ __pycache__/
 .vscode/
 staticfiles/
 site/
+build/
+dist/
 .git/
 node_modules/
 .github/

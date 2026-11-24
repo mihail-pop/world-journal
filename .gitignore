@@ -19,6 +19,10 @@ runtime/
 staticfiles/
 site/
 
+# Generated Windows installers and downloaded build tools
+/build/
+/dist/
+
 # Tests and coverage
 .pytest_cache/
 .coverage
