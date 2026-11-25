@@ -2,6 +2,7 @@ import { countryFillExpression } from "./country_paint.js";
 import { localMapStyle, mapFontStack, updateMapFonts } from "./map_fonts.js";
 import { terrainCountrySize, updateMapLabels } from "./map_labels.js";
 import { ensurePlaceLabels } from "./place_labels.js";
+import { monitorProviderResources } from "./map_provider_status.js";
 import { adventurePalette, prepareAdventure, updateAdventure } from "./adventure_map.js";
 import { getCountryFeed, rememberCountryFeed } from "../news_cache.js";
 import { applyCountryNewsFilter, replaceCountryMarkup } from "../news_archive.js";
@@ -1061,13 +1062,7 @@ function createMap(controller, styleUrl) {
         controller.mapFontKey = null;
         installCountryLayers(controller);
     });
-    map.on("error", () => {
-        if (!controller.layersInstalled) {
-            applyProviderFallback(controller);
-        } else if (!controller.usingFallbackStyle) {
-            showNotice(controller, "Some map-provider resources are unavailable; bundled country selection remains active.");
-        }
-    });
+    monitorProviderResources(controller, showNotice, applyProviderFallback);
     map.on("movestart", () => {
         cancelHoverFrame(controller);
         setHoveredCountry(controller, null);

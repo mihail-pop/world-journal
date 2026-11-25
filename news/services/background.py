@@ -208,9 +208,32 @@ class FeedWarmer:
             return sources[identity].display_name if identity in sources else "Updating sources"
 
         now = datetime.now(UTC)
-        errors, errored = [], set()
-        if paused and paused > now and ("google", "WORLD") in jobs:
-            errors.append({"name": "Google News", "error": f"Automatic refresh is paused after a rate-limit response. It resumes after {localtime(paused):%H:%M on %b %d}. Cached headlines remain available."})
+        problems, errored = OrderedDict(), set()
+
+        def problem_group(job):
+            kind, identity = job
+            if kind == "google":
+                key, name = (kind, "google_news_country"), "Google News"
+                scope = "World headlines" if identity == "WORLD" else _countries_by_code()[identity]["name"]
+            elif kind == "rss" and identity in feeds:
+                feed = feeds[identity]
+                key, name = (kind, feed.provider_id), providers[feed.provider_id].display_name
+                scope = feed.section_label
+            else:
+                key, name, scope = job, label(job), ""
+            group = problems.setdefault(key, {"name": name, "pause": "", "messages": OrderedDict()})
+            return group, scope
+
+        def add_problem(job, message):
+            group, scope = problem_group(job)
+            scopes = group["messages"].setdefault(message, [])
+            if scope and scope not in scopes:
+                scopes.append(scope)
+
+        google_paused = paused and paused > now and ("google", "WORLD") in jobs
+        if google_paused:
+            group, _scope = problem_group(("google", "WORLD"))
+            group["pause"] = f"Automatic refresh is paused after a rate-limit response. It resumes after {localtime(paused):%H:%M on %b %d}. Cached headlines remain available."
         missing = 0
         for job, key in jobs.items():
             state = states.get(key, {})
@@ -218,11 +241,25 @@ class FeedWarmer:
             if not metadata.get("last_success_at") or metadata.get("item_count") is None or state.get("expires_at", now) <= now:
                 missing += 1
             if metadata.get("last_error"):
-                errors.append({"name": label(job), "error": metadata.get("last_error_detail") or metadata["last_error"]})
+                add_problem(job, metadata.get("last_error_detail") or metadata["last_error"])
                 errored.add(job)
         for job in progress.pop("failed_jobs"):
             if job in jobs and job not in errored:
-                errors.append({"name": label(job), "error": "The last check could not be completed; cached results are retained where available."})
+                if job[0] == "google" and google_paused:
+                    continue
+                add_problem(job, "The last check could not be completed; cached results are retained where available.")
+        errors = []
+        for group in problems.values():
+            messages = [group["pause"]] if group["pause"] else []
+            for message, scopes in group["messages"].items():
+                scope = ", ".join(scopes[:5])
+                if len(scopes) > 5:
+                    scope += f" and {len(scopes) - 5} more"
+                if group["pause"] and "HTTP 429" in message:
+                    messages.append(f"Rate-limited checks: {scope}.")
+                else:
+                    messages.append(f"{scope + ': ' if scope else ''}{message.rstrip('. ')}.")
+            errors.append({"name": group["name"], "error": " ".join(messages)})
         progress["current"] = [label(job) for job in progress.pop("running")]
         progress.pop("started_at")
         return {**progress, "errors": errors, "failed": len(errors), "enabled": len(jobs), "missing": missing,

@@ -19,6 +19,13 @@ function openDatabase() {
             request.onsuccess = () => {
                 const db = request.result;
                 db.onversionchange = () => { db.close(); database = null; };
+                try {
+                    const store = db.transaction("frames", "readwrite").objectStore("frames");
+                    const keys = store.getAllKeys();
+                    keys.onsuccess = () => {
+                        for (const key of keys.result) if (!MODES.includes(key)) store.delete(key);
+                    };
+                } catch { /* Optional cleanup must not block reading a preview. */ }
                 resolve(db);
             };
             request.onerror = request.onblocked = () => resolve(null);
