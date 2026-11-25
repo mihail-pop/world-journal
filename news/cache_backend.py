@@ -15,6 +15,18 @@ class CacheWriteError(DatabaseError):
 
 
 class FeedDatabaseCache(DatabaseCache):
+    def google_request_deadline(self):
+        from .services.cache import parse_datetime
+
+        values = FeedState.objects.filter(cache_key__contains=":google_country:").values_list("metadata__google_request_ready_at", flat=True)
+        return max((parsed for value in values if (parsed := parse_datetime(value))), default=None)
+
+    def google_succeeded_since(self, since, spacing):
+        return FeedState.objects.filter(
+            cache_key__contains=":google_country:", metadata__last_error="",
+            metadata__last_attempt_at__gt=since.isoformat(), metadata__google_spacing_seconds=spacing,
+        ).exists()
+
     def set(self, key, value, timeout=DEFAULT_TIMEOUT, version=None):
         feed_key = key if is_feed_key(key) and isinstance(value, dict) else None
         key = self.make_and_validate_key(key, version=version)

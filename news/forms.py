@@ -52,7 +52,8 @@ class NewsPreferencesForm(forms.Form):
 
 
 class CustomSourceForm(forms.Form):
-    kind = forms.ChoiceField(label="Source type", choices=[(CustomSource.Kind.RSS, "News articles"), (CustomSource.Kind.YOUTUBE, "YouTube channel")])
+    kind = forms.ChoiceField(initial=CustomSource.Kind.RSS, widget=forms.HiddenInput,
+                             choices=[(CustomSource.Kind.RSS, "News articles"), (CustomSource.Kind.YOUTUBE, "YouTube channel")])
     location = forms.CharField(label="Link", max_length=2048,
                               widget=forms.TextInput(attrs={"placeholder": "https://…", "autocomplete": "off"}))
     name = forms.CharField(label="Name (optional)", max_length=160, required=False)

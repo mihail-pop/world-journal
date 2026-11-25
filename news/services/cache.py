@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 import time
 from contextlib import contextmanager
+from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from hashlib import blake2b
 from math import ceil
@@ -91,6 +92,19 @@ def record_failure(snapshot, now, error):
 GOOGLE_COOLDOWN_KEY = "news:google_rate_limit"
 _GOOGLE_REQUEST_LOCK = Lock()
 _next_google_request_at = 0.0
+_google_deadline_loaded = False
+
+
+@dataclass
+class GoogleRequest:
+    attempted_at: datetime
+    spacing_seconds: int
+    gap_seconds: float
+    ready_at: datetime | None = None
+
+    def metadata(self, completed_at):
+        self.ready_at = completed_at + timedelta(seconds=self.gap_seconds)
+        return {"google_spacing_seconds": self.spacing_seconds, "google_request_ready_at": self.ready_at.isoformat()}
 
 
 def _google_pause_until(state, now):
@@ -119,12 +133,19 @@ def google_request_spacing(state):
 @contextmanager
 def google_request_slot(backend, *, now=None):
     """Serialize automatic and manual requests, with a gap after each response."""
-    global _next_google_request_at
+    global _next_google_request_at, _google_deadline_loaded
     with _GOOGLE_REQUEST_LOCK:
         state = backend.get(GOOGLE_COOLDOWN_KEY) or {}
         if _google_pause_until(state, now or datetime.now(UTC)):
             yield None
             return
+        if not _google_deadline_loaded:
+            restore = getattr(backend, "google_request_deadline", None)
+            deadline = restore() if restore else None
+            if deadline:
+                remaining = max(0, (deadline - (now or datetime.now(UTC))).total_seconds())
+                _next_google_request_at = max(_next_google_request_at, time.monotonic() + remaining)
+            _google_deadline_loaded = True
         delay = _next_google_request_at - time.monotonic()
         if delay > 0:
             time.sleep(delay)
@@ -134,10 +155,14 @@ def google_request_slot(backend, *, now=None):
         if _google_pause_until(state, attempted_at):
             yield None
             return
+        request = GoogleRequest(attempted_at, google_request_spacing_range(state)[0], google_request_spacing(state))
         try:
-            yield attempted_at
+            yield request
         finally:
-            _next_google_request_at = time.monotonic() + google_request_spacing(state)
+            completed_at = now or datetime.now(UTC)
+            if request.ready_at is None:
+                request.metadata(completed_at)
+            _next_google_request_at = time.monotonic() + max(0, (request.ready_at - completed_at).total_seconds())
 
 
 def pause_google(backend, now, error):
@@ -147,6 +172,11 @@ def pause_google(backend, now, error):
         spacing, _maximum = google_request_spacing_range(state)
         deadline = parse_datetime(state.get("retry_after_at"))
         last_limited = parse_datetime(state.get("last_rate_limit_at")) or deadline
+        recovered = getattr(backend, "google_succeeded_since", None)
+        # A failed first probe after a pause is still the previous block. Only
+        # reject a new range after Google has accepted requests at that range.
+        since = last_limited or now - timedelta(seconds=settings.NEWS_GOOGLE_BACKOFF_RESET_SECONDS)
+        advance = bool(recovered and recovered(since, spacing))
         # Isolated successes don't prove the limit is lifted for the full sweep.
         # Retain the count across requests/restarts until 24 hours without a 429.
         if (
@@ -160,13 +190,14 @@ def pause_google(backend, now, error):
         else:
             record_failure(state, now, error)
         state["last_rate_limit_at"] = now.isoformat()
-        state["request_spacing_seconds"] = spacing + settings.NEWS_GOOGLE_REQUEST_SPACING_STEP_SECONDS
+        state["request_spacing_seconds"] = spacing + (settings.NEWS_GOOGLE_REQUEST_SPACING_STEP_SECONDS if advance else 0)
         minimum, maximum = google_request_spacing_range(state)
         state["request_spacing_seconds"] = minimum
         # Keep the learned pace after the pause expires and across restarts.
         # This single small record changes only when Google returns HTTP 429.
         backend.set(GOOGLE_COOLDOWN_KEY, state, None)
-        logger.warning("Google News returned HTTP 429; next request gaps: %s–%s seconds.", minimum, maximum)
+        logger.warning("Google News returned HTTP 429; %s request gap range %s–%s seconds.",
+                       "keeping" if minimum == spacing else "advancing to", minimum, maximum)
 
 
 def deserialize_items(snapshot: dict) -> tuple[NewsItem, ...] | None:

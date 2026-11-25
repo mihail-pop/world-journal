@@ -1,10 +1,10 @@
-"""One persisted refresh clock, sleeping workers, and an in-memory status display."""
+"""Persisted refresh rounds, sleeping workers, and status from saved feed state."""
 from __future__ import annotations
 
 import logging
 from collections import OrderedDict
 from datetime import UTC, datetime, timedelta
-from threading import Condition, Event, Thread
+from threading import Condition, Event, Lock, Thread
 
 from django.conf import settings
 from django.core.cache import cache
@@ -53,6 +53,7 @@ def next_refresh(started_at, interval):
 class FeedWarmer:
     def __init__(self):
         self.condition = Condition()
+        self.refresh_lock = Lock()
         self.started = self.ready = False
         self.registry = None
         self.interval = settings.NEWS_REFRESH_SECONDS
@@ -75,6 +76,10 @@ class FeedWarmer:
                 if self.wake_at and datetime.now(UTC) >= self.wake_at:
                     self.scan_requested.set()
                 return
+            # Restore compact metadata before a page reads progress. No feed
+            # contents or network requests are needed to resume the round.
+            self._load_configuration()
+            self.reload_requested = False
             self.started = True
             for index in range(settings.NEWS_BACKGROUND_WORKERS):
                 Thread(target=self._worker, args=(False,), daemon=True, name=f"feeds-{index}").start()
@@ -99,12 +104,6 @@ class FeedWarmer:
         with self.condition:
             if job in self.running:
                 return
-            if not (self.urgent or self.normal or self.running):
-                self.cycle = {}
-                self.cycle_started_at = datetime.now(UTC).isoformat()
-                self.cycle_finished_at = None
-                self.manual_refresh = self.batch_full = False
-            self.cycle[job] = "queued"
             if force:
                 self.force_jobs.add(job)
             if urgent:
@@ -164,16 +163,39 @@ class FeedWarmer:
 
     def refresh_all(self):
         self.start()
-        with self.condition:
-            if self.force_requested or self.manual_refresh and self.cycle_finished_at is None:
-                return
-            self.manual_refresh = True
-            self.cycle_finished_at = None
-            self.force_requested = True
+        with self.refresh_lock:
+            with self.condition:
+                if self.force_requested or self.manual_refresh and self.cycle_finished_at is None:
+                    return
+            now = datetime.now(UTC)
+            with write_transaction():
+                schedule = FeedSchedule.objects.filter(pk=1).first()
+                if schedule is None:
+                    schedule = FeedSchedule(pk=1, cycle_started_at=now, next_refresh_at=next_refresh(now, self.interval))
+                schedule.manual_requested = True
+                schedule.save()
+            with self.condition:
+                self.force_requested = True
         self.scan_requested.set()
+
+    def _progress_state(self, job):
+        state = self.states.get(self.jobs[job], {})
+        metadata = state.get("metadata", {})
+        attempted = parse_datetime(metadata.get("last_attempt_at"))
+        if self.refresh_started_at and attempted and attempted >= self.refresh_started_at and not metadata.get("archive_pending"):
+            if metadata.get("last_error"):
+                return "failed"
+            if metadata.get("last_success_at") == state.get("archive_stamp"):
+                return "done"
+        if job in self.running:
+            return "running"
+        if job in self.normal or job in self.urgent:
+            return "queued"
+        return "waiting"
 
     def progress(self):
         with self.condition:
+            self.cycle = {job: self._progress_state(job) for job in self.jobs}
             return {
                 "total": len(self.cycle),
                 "completed": sum(state in {"done", "failed", "skipped"} for state in self.cycle.values()),
@@ -287,6 +309,11 @@ class FeedWarmer:
             self.google_until = max((value for value in (self.google_until, paused) if value), default=None)
             if schedule:
                 self.refresh_started_at, self.next_refresh_at = schedule.cycle_started_at, schedule.next_refresh_at
+                self.cycle_started_at = schedule.cycle_started_at.isoformat()
+                self.cycle_finished_at = schedule.cycle_finished_at.isoformat() if schedule.cycle_finished_at else None
+                self.manual_refresh = schedule.cycle_manual
+                self.force_requested |= schedule.manual_requested
+                self.batch_full = schedule.cycle_finished_at is None
             self.urgent = OrderedDict((job, retry) for job, retry in self.urgent.items() if job in jobs)
             self.normal = OrderedDict((job, retry) for job, retry in self.normal.items() if job in jobs)
             self.cycle = {job: state for job, state in self.cycle.items() if job in jobs}
@@ -304,43 +331,60 @@ class FeedWarmer:
                     state["metadata"] = {**metadata, "archive_pending": True,
                         "last_error": metadata.get("last_error") or "Retained coverage is waiting to be saved.",
                         "retry_after_at": metadata.get("retry_after_at") or datetime.now(UTC).isoformat()}
-            if self.cycle_started_at and self.cycle_finished_at is None and not (self.urgent or self.normal or self.running):
-                self.cycle_finished_at = datetime.now(UTC).isoformat()
-                self.maintenance_requested = True
-                self.full_cleanup |= self.batch_full
-                self.batch_full = False
+            if self.cycle_finished_at and any(self._progress_state(job) == "waiting" for job in jobs):
+                self.cycle_finished_at = None
+                self.batch_full = True
             self.condition.notify_all()
 
     def _begin_cycle(self, now, manual=False):
-        deadline = next_refresh(now, self.interval)
-        with write_transaction():
-            FeedSchedule.objects.update_or_create(pk=1, defaults={"cycle_started_at": now, "next_refresh_at": deadline})
-        with self.condition:
-            self.refresh_started_at, self.next_refresh_at = now, deadline
-            for job in self.jobs:
-                if self._due_at(job, now, new_cycle=True, manual=manual) <= now:
-                    self._enqueue(job, retry=manual, force=True)
-            self.cycle = {job: "running" if job in self.running else "queued" if job in self.urgent or job in self.normal else "skipped"
-                          for job in self.jobs}
-            self.cycle_started_at = now.isoformat()
-            self.cycle_finished_at = None
-            self.manual_refresh, self.batch_full = manual, True
-            if manual:
+        with self.refresh_lock:
+            with self.condition:
+                manual |= self.force_requested
+            deadline = next_refresh(now, self.interval)
+            with write_transaction():
+                FeedSchedule.objects.update_or_create(pk=1, defaults={"cycle_started_at": now,
+                    "next_refresh_at": deadline, "cycle_finished_at": None, "cycle_manual": manual, "manual_requested": False})
+            with self.condition:
+                self.refresh_started_at, self.next_refresh_at = now, deadline
+                self.cycle_started_at, self.cycle_finished_at = now.isoformat(), None
+                self.manual_refresh, self.batch_full = manual, True
+                for job in self.jobs:
+                    if self._due_at(job, now, new_cycle=True, manual=manual) <= now:
+                        self._enqueue(job, retry=manual, force=True)
                 self.force_requested = False
-            if not (self.urgent or self.normal or self.running):
-                self.maintenance_requested = self.full_cleanup = True
-                self.cycle_finished_at = now.isoformat()
+
+    def _finish_cycle(self):
+        with self.refresh_lock:
+            with self.condition:
+                progress = self.progress()
+                if (not self.refresh_started_at or self.cycle_finished_at or self.running or self.normal or self.urgent
+                        or progress["completed"] != progress["total"]):
+                    return
+                started = self.refresh_started_at
+            finished = datetime.now(UTC)
+            with database_write():
+                saved = FeedSchedule.objects.filter(pk=1, cycle_started_at=started).update(cycle_finished_at=finished)
+            with self.condition:
+                if saved and self.refresh_started_at == started:
+                    self.cycle_finished_at = finished.isoformat()
+                    self.maintenance_requested = self.full_cleanup = True
+                    self.batch_full = False
 
     def _due_at(self, job, now, *, new_cycle=False, manual=False):
         metadata = self.states.get(self.jobs[job], {}).get("metadata", {})
         attempted = parse_datetime(metadata.get("last_attempt_at"))
-        completed = parse_datetime(metadata.get("saved_at")) or attempted
+        attempted_this_round = attempted and self.refresh_started_at and attempted >= self.refresh_started_at
+        manual |= self.manual_refresh and not self.cycle_finished_at and not attempted_this_round
         if metadata.get("last_error") and not manual:
             due = parse_datetime(metadata.get("retry_after_at")) or (attempted or now) + timedelta(seconds=settings.NEWS_FAILURE_BACKOFF_SECONDS)
-        elif new_cycle or not completed or self.refresh_started_at and completed < self.refresh_started_at:
+        elif new_cycle or not attempted_this_round:
             due = now
         else:
             due = self.next_refresh_at or now
+            if not self.cycle_finished_at and due <= now:
+                # A deliberately slow Google sweep may outlast the interval.
+                # Finish it before downloading already-completed feeds again.
+                due = datetime.max.replace(tzinfo=UTC)
         if job[0] == "google" and self.google_until and self.google_until > due:
             due = self.google_until
         return due
@@ -355,10 +399,11 @@ class FeedWarmer:
                     reload_config, self.reload_requested = self.reload_requested, False
                 if reload_config:
                     self._load_configuration()
+                self._finish_cycle()
                 now = datetime.now(UTC)
                 with self.condition:
                     manual = self.force_requested
-                    due = self.next_refresh_at is None or now >= self.next_refresh_at
+                    due = self.next_refresh_at is None or now >= self.next_refresh_at and self.cycle_finished_at is not None
                 if manual or due:
                     self._begin_cycle(now, manual)
                 with self.condition:
@@ -371,11 +416,13 @@ class FeedWarmer:
                             self._enqueue(job, force=True)
                         else:
                             deadlines.append(deadline)
+                self._finish_cycle()
+                with self.condition:
                     cleanup, full = self.maintenance_requested, self.full_cleanup
                     self.maintenance_requested = self.full_cleanup = False
                 if cleanup:
                     maintain_archive(force=full)
-                future = [deadline for deadline in deadlines if deadline is not None]
+                future = [deadline for deadline in deadlines if deadline is not None and deadline > now]
                 with self.condition:
                     self.wake_at = min(future) if future else None
                 delay = min(settings.NEWS_SCHEDULER_MAX_SLEEP_SECONDS, max(1, (self.wake_at - datetime.now(UTC)).total_seconds())) if self.wake_at else settings.NEWS_SCHEDULER_MAX_SLEEP_SECONDS
@@ -394,36 +441,22 @@ class FeedWarmer:
                 queue = self.urgent if self.urgent else self.normal
                 job, retry = queue.popitem(last=False)
                 self.running.add(job)
-                self.cycle[job] = "running"
                 force = job in self.force_jobs
                 self.force_jobs.discard(job)
-            outcome = "failed"
             try:
                 close_old_connections()
-                result = self._run(job, retry, force)
-                outcome = "skipped" if result is None else "done" if result else "failed"
+                self._run(job, retry, force)
             except ArchiveWriteError:
                 self._archive_failed(job)
             except Exception:
                 logger.exception("Background feed %s failed", job)
-                # Unexpected failures must also wait instead of forming a busy loop.
-                with self.condition:
-                    state = self.states.setdefault(self.jobs.get(job, ""), {})
-                    metadata = dict(state.get("metadata", {}))
-                    metadata.update(last_error="The last check could not be completed.",
-                                    retry_after_at=(datetime.now(UTC) + timedelta(seconds=settings.NEWS_FAILURE_BACKOFF_SECONDS)).isoformat())
-                    state["metadata"] = metadata
+                self._unexpected_failure(job)
             finally:
                 close_old_connections()
                 with self.condition:
                     self.running.discard(job)
-                    if job in self.cycle:
-                        self.cycle[job] = outcome
                     if not (self.urgent or self.normal or self.running):
-                        self.cycle_finished_at = datetime.now(UTC).isoformat()
                         self.maintenance_requested = True
-                        self.full_cleanup |= self.batch_full
-                        self.batch_full = False
                 self.scan_requested.set()
 
     def _run(self, job, retry, force=False):
@@ -491,6 +524,24 @@ class FeedWarmer:
             # The durable archive checkpoint still identifies the unfinished
             # import if the database is also unavailable for this status write.
             logger.warning("Could not retain the archive retry time for %s", job)
+
+    def _unexpected_failure(self, job):
+        now = datetime.now(UTC)
+        with self.condition:
+            key = self.jobs.get(job)
+            if key is None:
+                return
+            state = self.states.setdefault(key, {})
+            metadata = {**state.get("metadata", {}), "last_error": "The last check could not be completed.",
+                        "last_error_detail": "", "last_attempt_at": now.isoformat(), "saved_at": now.isoformat(),
+                        "retry_after_at": (now + timedelta(seconds=settings.NEWS_FAILURE_BACKOFF_SECONDS)).isoformat()}
+            state["metadata"] = metadata
+            expiry = state.get("expires_at") or now + timedelta(seconds=settings.NEWS_STALE_SECONDS)
+        try:
+            with write_transaction():
+                FeedState.objects.update_or_create(pk=key, defaults={"metadata": metadata, "expires_at": expiry})
+        except DatabaseError:
+            logger.warning("Could not retain the retry time for %s", job)
 
 
 feed_warmer = FeedWarmer()

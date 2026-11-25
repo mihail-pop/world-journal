@@ -4,9 +4,8 @@
         <button class="source-remove-button" type="button" data-source-modal-close aria-label="Close">{% include 'core/partials/icon.html' with name='close' %}</button>
     </header>
     <form method="post" action="{% url 'news:custom_add' %}" hx-disabled-elt="find button" hx-indicator="find .source-check-progress">
-        {% csrf_token %}<input type="hidden" name="country" value="{{ country.pk }}">{{ custom_form.non_field_errors }}
-        <div class="source-modal-fields">
-            <div class="settings-field"><label for="{{ custom_form.kind.id_for_label }}">{{ custom_form.kind.label }}</label>{{ custom_form.kind }}{{ custom_form.kind.errors }}</div>
+        {% csrf_token %}<input type="hidden" name="country" value="{{ country.pk }}">{{ custom_form.kind }}{{ custom_form.kind.errors }}{{ custom_form.non_field_errors }}
+        <div class="source-modal-fields source-add-fields">
             <div class="settings-field"><label for="{{ custom_form.name.id_for_label }}">{{ custom_form.name.label }}</label>{{ custom_form.name }}{{ custom_form.name.errors }}</div>
             <div class="settings-field source-modal-link"><label for="{{ custom_form.location.id_for_label }}">{{ custom_form.location.label }}</label>{{ custom_form.location }}{{ custom_form.location.errors }}</div>
         </div>

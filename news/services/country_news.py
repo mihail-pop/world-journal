@@ -123,15 +123,16 @@ def _get_google_news(
         if not force_refresh and not retrying_failure and failure_retry_pending(snapshot, current_time):
             return _result(country, source, snapshot, is_stale=bool(snapshot.get("last_success_at")))
 
-        with google_request_slot(backend, now=now) as attempted_at:
-            if attempted_at is None:
+        with google_request_slot(backend, now=now) as request:
+            if request is None:
                 paused = {**snapshot, "last_error": "Google News refresh is paused after a rate-limit response; it will resume automatically."}
                 return _result(country, source, paused, is_stale=bool(snapshot.get("last_success_at")))
-            return _refresh_google_news(country, source, snapshot, backend, fetcher, attempted_at, now=now)
+            return _refresh_google_news(country, source, snapshot, backend, fetcher, request, now=now)
 
 
-def _refresh_google_news(country, source, snapshot, backend, fetcher, attempted_at, *, now=None):
+def _refresh_google_news(country, source, snapshot, backend, fetcher, request, *, now=None):
     cache_key = google_cache_key(source, country["iso_a2"])
+    attempted_at = request.attempted_at
     try:
         response = fetcher(
             build_feed_url(source, country),
@@ -167,6 +168,7 @@ def _refresh_google_news(country, source, snapshot, backend, fetcher, attempted_
                 "last_attempt_at": attempted_at.isoformat(),
                 "parser_warnings": list(normalized.parser_warnings),
             }
+        snapshot.update(request.metadata(checked_at))
         backend.set(cache_key, snapshot, settings.NEWS_STALE_SECONDS)
         return _result(country, source, snapshot)
     except (FeedFetchError, FeedParseError) as error:
@@ -177,6 +179,7 @@ def _refresh_google_news(country, source, snapshot, backend, fetcher, attempted_
         snapshot["last_error"] = "Google News is temporarily unavailable."
         snapshot["last_error_detail"] = str(error)[:240]
         snapshot["last_attempt_at"] = attempted_at.isoformat()
+        snapshot.update(request.metadata(failed_at))
         remaining = stale_cache_remaining(snapshot, failed_at, settings.NEWS_STALE_SECONDS)
         if remaining:
             backend.set(cache_key, snapshot, max(remaining, failure_ttl))
@@ -193,6 +196,7 @@ def _refresh_google_news(country, source, snapshot, backend, fetcher, attempted_
             "parser_warnings": [],
             "consecutive_failures": snapshot["consecutive_failures"],
             "retry_after_at": snapshot["retry_after_at"],
+            **request.metadata(failed_at),
         }
         backend.set(cache_key, empty_snapshot, failure_ttl)
         return _result(country, source, empty_snapshot)

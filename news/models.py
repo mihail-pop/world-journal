@@ -18,6 +18,9 @@ class FeedSchedule(models.Model):
     id = models.PositiveSmallIntegerField(primary_key=True, default=1, editable=False)
     cycle_started_at = models.DateTimeField()
     next_refresh_at = models.DateTimeField()
+    cycle_finished_at = models.DateTimeField(null=True, blank=True)
+    cycle_manual = models.BooleanField(default=False)
+    manual_requested = models.BooleanField(default=False)
 
 
 class ArchivedNews(models.Model):

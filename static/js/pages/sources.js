@@ -14,8 +14,15 @@ function closeSourceDialog() {
     sourceDialog = null;
 }
 
-function openSourceDialog(dialog) {
+function openSourceDialog(dialog, kind = null) {
     if (!dialog || dialog.open) return;
+    const input = dialog.querySelector('[name="kind"]');
+    if (kind && input.value !== kind) {
+        for (const field of dialog.querySelectorAll('[name="location"], [name="name"]')) field.value = "";
+        for (const error of dialog.querySelectorAll(".errorlist")) error.remove();
+    }
+    if (kind) input.value = kind;
+    updateHelp(dialog, input.value);
     sourceDialog = dialog;
     dialog.showModal();
     document.documentElement.classList.add("source-modal-open");
@@ -183,13 +190,14 @@ function initialize() {
     modalEvents?.abort();
     modalEvents = new AbortController();
     stateFor(page);
-    const input = page.querySelector('[name="kind"]');
-    updateHelp(page, input.value);
     const dialog = page.querySelector("[data-source-modal]");
+    updateHelp(dialog, dialog.querySelector('[name="kind"]').value);
     dialog.addEventListener("close", () => {
+        if (dialog.open) return;
         document.documentElement.classList.remove("source-modal-open");
         if (sourceDialog === dialog) sourceDialog = null;
-        if (dialog.isConnected) page.querySelector("[data-source-modal-open]").focus({preventScroll: true});
+        const kind = dialog.querySelector('[name="kind"]').value === "youtube" ? "youtube" : "rss";
+        if (dialog.isConnected) page.querySelector(`[data-source-modal-open="${kind}"]`)?.focus({preventScroll: true});
     }, {signal: modalEvents.signal});
     dialog.addEventListener("click", event => {
         if (event.target !== dialog) return;
@@ -205,11 +213,13 @@ function initialize() {
     snapshot?.remove();
 }
 
-function updateHelp(page, kind) {
-    page.querySelector("[data-custom-source-help]").textContent = kind === "youtube"
+function updateHelp(dialog, kind) {
+    const youtube = kind === "youtube";
+    dialog.querySelector("#add-source-title").textContent = youtube ? "Add a YouTube channel" : "Add a news source";
+    dialog.querySelector("[data-custom-source-help]").textContent = youtube
         ? "Paste a YouTube channel link or @handle."
         : "Paste the website’s news feed link.";
-    page.querySelector('[name="location"]').placeholder = kind === "youtube" ? "YouTube channel link or @handle" : "https://example.com/news.xml";
+    dialog.querySelector('[name="location"]').placeholder = youtube ? "YouTube channel link or @handle" : "https://example.com/news.xml";
 }
 
 export function registerSourceSettings() {
@@ -219,7 +229,7 @@ export function registerSourceSettings() {
     document.addEventListener("world-journal:page-cleanup", cleanupSources);
     document.addEventListener("click", event => {
         const opener = event.target.closest("[data-source-modal-open]");
-        if (opener) openSourceDialog(opener.closest("[data-source-settings]").querySelector("[data-source-modal]"));
+        if (opener) openSourceDialog(opener.closest("[data-source-settings]").querySelector("[data-source-modal]"), opener.dataset.sourceModalOpen);
         if (event.target.closest("[data-source-modal-close]")) closeSourceDialog();
     });
     document.addEventListener("visibilitychange", () => {
@@ -232,7 +242,6 @@ export function registerSourceSettings() {
         const input = event.target;
         const page = input.closest?.("[data-source-settings]");
         if (!page) return;
-        if (input.name === "kind") { updateHelp(page, input.value); return; }
         if (!input.matches('[data-source-choice], [name="freshness_minutes"], [name="archive_storage_mb"]')) return;
         if (input.name === "freshness_minutes" && !input.checkValidity()) {
             notify({id: "source-choice", kind: "warning", title: "Choose a refresh interval", message: "Choose 2, 4, 6, 8, 10 or 12 hours."});

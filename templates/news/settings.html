@@ -20,14 +20,13 @@
             <p class="source-tile-description"><strong>Estimated storage for 90 days: around 1.5 GB.</strong></p>
             <noscript><button type="submit" class="journal-button is-primary">Save source preferences</button></noscript>
         </form>
-        <article class="settings-card source-add-card">
-            <h2>Your sources</h2>
-            <div class="source-add-action"><button class="journal-button" type="button" data-source-modal-open aria-haspopup="dialog" aria-controls="add-source-dialog">Add a source</button></div>
-        </article>
     </div>
     {{ refresh_status|json_script:'source-refresh-snapshot' }}
     <section class="settings-card sources-library" aria-labelledby="news-sources-title">
-        <h2 id="news-sources-title">News sources</h2>
+        <div class="source-library-heading">
+            <h2 id="news-sources-title">News sources</h2>
+            <button class="journal-icon-button" type="button" data-source-modal-open="rss" aria-label="Add news source" title="Add news source" aria-haspopup="dialog" aria-controls="add-source-dialog">{% include 'core/partials/icon.html' with name='plus' %}</button>
+        </div>
         <div class="source-library-list">
             {% for row in google_sources %}{% include 'news/partials/source_item.html' with subtitle='Worldwide headlines' %}{% endfor %}
             {% for provider in providers %}{% include 'news/partials/source_publisher.html' %}{% endfor %}
@@ -35,7 +34,10 @@
         </div>
     </section>
     <section class="settings-card sources-library" aria-labelledby="video-sources-title">
-        <h2 id="video-sources-title">YouTube channels</h2>
+        <div class="source-library-heading">
+            <h2 id="video-sources-title">YouTube channels</h2>
+            <button class="journal-icon-button" type="button" data-source-modal-open="youtube" aria-label="Add YouTube channel" title="Add YouTube channel" aria-haspopup="dialog" aria-controls="add-source-dialog">{% include 'core/partials/icon.html' with name='plus' %}</button>
+        </div>
         <div class="source-library-list">
             {% for row in youtube_sources %}{% include 'news/partials/source_item.html' %}{% endfor %}
             {% for row in custom_youtube_sources %}{% include 'news/partials/custom_source_item.html' %}{% endfor %}
