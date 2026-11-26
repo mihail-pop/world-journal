@@ -11,7 +11,7 @@ from .models import Entry, EntryType
 from .query import filtered_entries
 
 
-FILTER_KEYS = ("q", "country", "collection", "type", "date_basis", "date", "year", "month", "favorite", "pinned", "undated", "untagged")
+FILTER_KEYS = ("q", "country", "collection", "type", "filter_mode", "date_basis", "date", "year", "month", "day", "favorite", "pinned", "undated", "untagged")
 
 
 def filter_params(params):

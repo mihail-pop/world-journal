@@ -1,13 +1,50 @@
-from datetime import date
+from datetime import date, datetime, timedelta
 from uuid import UUID
 
 from django.db.models import Case, DateTimeField, F, Q, When
 from django.db.models.functions import Coalesce, Lower, Substr
+from django.utils import timezone
 
 from .models import Entry, EntryType
 
 
-def filtered_entries(params, *, for_display=True):
+def entry_date_field(params):
+    return {"updated": "updated_at", "event": "event_date"}.get(params.get("date_basis"), "created_at")
+
+
+def date_bounds(params):
+    if value := params.get("date"):
+        start = date.fromisoformat(value)
+        return start, start + timedelta(days=1) if start < date.max else None
+    values = []
+    for name, digits, maximum in (("year", 4, 9999), ("month", 2, 12), ("day", 2, 31)):
+        value = params.get(name, "").strip()
+        if value and (not value.isascii() or not value.isdigit() or len(value) > digits or not 1 <= int(value) <= maximum):
+            raise ValueError("Enter a valid date.")
+        values.append(int(value) if value else None)
+    year, month, day = values
+    today = timezone.localdate()
+    if year is None and (month is not None or day is not None):
+        year = today.year
+    if month is None and day is not None:
+        month = today.month
+    if year is None:
+        return None, None
+    start = date(year, month or 1, day or 1)
+    if day is not None:
+        end = start + timedelta(days=1) if start < date.max else None
+    elif month is not None and month < 12:
+        end = date(year, month + 1, 1)
+    else:
+        end = date(year + 1, 1, 1) if year < 9999 else None
+    return start, end
+
+
+def date_boundary(value, field):
+    return value if field == "event_date" else timezone.make_aware(datetime.combine(value, datetime.min.time()))
+
+
+def filtered_entries(params, *, for_display=True, apply_date=True):
     entries = Entry.objects.all()
     if for_display:
         entries = entries.select_related("collection").prefetch_related("countries").annotate(excerpt=Substr("body_text", 1, 1600)).defer("body", "body_text")
@@ -25,11 +62,10 @@ def filtered_entries(params, *, for_display=True):
             entries = entries.filter(collection_id=UUID(collection))
         except ValueError:
             entries = entries.none()
-    entry_type = params.get("type", "")
-    if entry_type == "mixed":
-        entry_type = EntryType.NOTE
-    if entry_type in EntryType.values:
-        entries = entries.filter(entry_type=entry_type)
+    types = [EntryType.NOTE if value == "mixed" else value for value in params.getlist("type")]
+    types = [value for value in types if value in EntryType.values]
+    if types:
+        entries = entries.exclude(entry_type__in=types) if params.get("filter_mode") == "exclude" else entries.filter(entry_type__in=types)
     if params.get("favorite") == "1":
         entries = entries.filter(is_favorite=True)
     if params.get("pinned") == "1":
@@ -46,34 +82,16 @@ def filtered_entries(params, *, for_display=True):
             When(entry_type=EntryType.NOTE, then=F("updated_at")),
             default=Coalesce("source_published_at", "updated_at"), output_field=DateTimeField(),
         ))
-    if params.get("date_basis") in {"event", "created"}:
-        date_field = "created_at__date" if params["date_basis"] == "created" else "event_date"
-    else:
-        date_field = "journal_release_date__date" if sort == "release" else "updated_at__date"
-    day = params.get("date", "")
-    if day:
+    if apply_date:
         try:
-            entries = entries.filter(**{date_field: date.fromisoformat(day)})
+            start, end = date_bounds(params)
+            field = entry_date_field(params)
+            if start is not None:
+                entries = entries.filter(**{field + "__gte": date_boundary(start, field)})
+            if end is not None:
+                entries = entries.filter(**{field + "__lt": date_boundary(end, field)})
         except ValueError:
             entries = entries.none()
-    else:
-        year, month = params.get("year", ""), params.get("month", "")
-        if year:
-            try:
-                number = int(year)
-                if not 1 <= number <= 9999:
-                    raise ValueError
-                entries = entries.filter(**{f"{date_field}__year": number})
-            except ValueError:
-                entries = entries.none()
-        if month:
-            try:
-                number = int(month)
-                if not 1 <= number <= 12:
-                    raise ValueError
-                entries = entries.filter(**{f"{date_field}__month": number})
-            except ValueError:
-                entries = entries.none()
     field = Lower("title") if sort == "title" else F("journal_release_date" if sort == "release" else "updated_at")
     ordering = field.asc(nulls_last=True) if params.get("order") == "asc" else field.desc(nulls_last=True)
     return entries.order_by(ordering, "id") if for_display else entries.order_by()

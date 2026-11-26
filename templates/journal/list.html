@@ -3,14 +3,18 @@
         <aside class="journal-sidebar" aria-label="Journal collections and filters">
             <form method="get" action="{% url 'journal:list' %}" class="journal-search-form journal-sidebar-form" hx-get="{% url 'journal:list' %}" hx-target="#journal-results" hx-headers='{"X-Journal-Filtering":"1"}' hx-swap="innerHTML" hx-sync="this:replace" data-journal-filters>
                 <label class="visually-hidden" for="journal-search">Search journal</label>
-                <input id="journal-search" type="search" name="q" value="{{ filters.q }}" placeholder="Search" autocomplete="off" maxlength="300" data-journal-search>
+                <div class="journal-search-control">
+                    {% for filter in country_filters %}{% include 'journal/partials/filter_token.html' %}{% endfor %}
+                    <input id="journal-search" type="search" name="q" value="{{ filters.q }}" placeholder="Search" autocomplete="off" maxlength="300" data-journal-search>
+                </div>
                 <input type="hidden" name="collection" value="{{ filters.collection }}">
-                <input type="hidden" name="year" value="{{ filters.year }}">
-                <input type="hidden" name="month" value="{{ filters.month }}">
+                <input type="hidden" name="month" value="{{ date_parts.month }}">
+                <input type="hidden" name="date_basis" value="{{ date_basis }}">
+                <input type="hidden" name="filter_mode" value="{{ filter_mode }}">
                 <input type="hidden" name="order" value="{{ order }}">
                 {% for name,value in extra_filters %}<input type="hidden" name="{{ name }}" value="{{ value }}" data-journal-extra-filter>{% endfor %}
                 <section class="journal-collections" aria-labelledby="journal-collections-title">
-                    <div class="journal-sidebar-heading"><h2 id="journal-collections-title">Collections</h2><button class="journal-collection-add" type="button" data-journal-collection-new aria-label="New collection">{% include 'core/partials/icon.html' with name='plus' %}</button></div>
+                    <div class="journal-sidebar-heading"><h2 id="journal-collections-title">Collections</h2><button class="journal-filter-pill" type="button" data-journal-collection-new aria-label="Add collection">Add</button></div>
                     <div class="journal-collection-choices">
                         <button type="button" data-journal-select-collection="" {% if not filters.collection %}aria-current="page"{% endif %}><span>All items</span><span class="journal-collection-count">{{ total_entries }}</span></button>
                         {% for collection in collections %}<button type="button" data-journal-select-collection="{{ collection.pk }}" {% if filters.collection == collection.pk|stringformat:'s' %}aria-current="page"{% endif %}><span>{{ collection.name }}</span><span class="journal-collection-count">{{ collection.entry_count }}</span></button>{% endfor %}
@@ -25,12 +29,18 @@
                     </div>
                 </section>
                 <section class="journal-filter-section" aria-labelledby="journal-filter-title">
-                    <h2 id="journal-filter-title">Filter By</h2>
+                    <div class="journal-sidebar-heading"><h2 id="journal-filter-title">Filter By</h2><button class="journal-filter-pill" type="button" data-journal-filter-mode aria-pressed="{% if filter_mode == 'exclude' %}true{% else %}false{% endif %}">{% if filter_mode == 'exclude' %}Exclude{% else %}Include{% endif %}</button></div>
                     <label class="visually-hidden" for="journal-type">Type</label>
-                    <select id="journal-type" name="type"><option value="">All types</option>{% for value,label in entry_types %}<option value="{{ value }}" {% if filters.type == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select>
-                    <div class="journal-year-filters" aria-label="Year">{% for year in years %}<button type="button" data-journal-year="{{ year }}" aria-pressed="{% if filters.year == year|stringformat:'s' %}true{% else %}false{% endif %}">{{ year }}</button>{% endfor %}</div>
-                    <div class="journal-month-filters" aria-label="Month">{% for value,label in months %}<button type="button" data-journal-month="{{ value }}" aria-pressed="{% if filters.month == value %}true{% else %}false{% endif %}">{{ label }}</button>{% endfor %}</div>
-                    <button class="journal-clear-filters" type="button" data-journal-clear-filters hidden>Clear filters</button>
+                    <select id="journal-type" name="type" multiple data-inline-select data-select-placeholder="Type">{% for value,label in entry_types %}<option value="{{ value }}" {% if value in selected_types %}selected{% endif %}>{{ label }}</option>{% endfor %}</select>
+                    <div class="journal-linked-filters">{% for filter in linked_filters %}{% include 'journal/partials/filter_token.html' %}{% endfor %}</div>
+                </section>
+                <section class="journal-date-section" aria-labelledby="journal-date-title">
+                    <div class="journal-sidebar-heading"><h2 id="journal-date-title">Date</h2><div class="journal-date-actions"><button class="journal-filter-pill" type="button" data-journal-date-basis aria-label="{% if date_basis == 'updated' %}Filter by updated date{% else %}Filter by saved date{% endif %}">{% if date_basis == 'updated' %}Updated{% else %}Saved{% endif %}</button><button class="journal-filter-pill" type="button" data-journal-rewind aria-pressed="false">Rewind</button></div></div>
+                    <div class="journal-date-inputs">
+                        <input type="text" name="day" value="{{ date_parts.day }}" placeholder="Day" aria-label="Day" inputmode="numeric" maxlength="2" autocomplete="off" data-journal-date-part="day">
+                        <input type="text" value="{{ date_parts.month }}" placeholder="Month" aria-label="Month" inputmode="text" maxlength="9" autocomplete="off" spellcheck="false" data-journal-date-part="month">
+                        <input type="text" name="year" value="{{ date_parts.year }}" placeholder="Year" aria-label="Year" inputmode="numeric" maxlength="4" autocomplete="off" data-journal-date-part="year">
+                    </div>
                 </section>
                 <noscript><button class="journal-button" type="submit">Apply</button></noscript>
             </form>

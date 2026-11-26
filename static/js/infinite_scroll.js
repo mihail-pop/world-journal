@@ -32,8 +32,9 @@ function stop(collection) {
 }
 
 function mount() {
-    for (const collection of states.keys()) if (!collection.isConnected) stop(collection);
+    for (const [collection, state] of states) if (!collection.isConnected || collection.closest(`[data-${state.config.prefix}-rewinding="true"]`)) stop(collection);
     for (const config of configurations.values()) for (const collection of document.querySelectorAll("#app-content " + selector(config, "collection"))) {
+        if (collection.closest(`[data-${config.prefix}-rewinding="true"]`)) continue;
         if (states.has(collection) || !find(collection, config, "pagination")) continue;
         const state = {collection, config, active: true, pending: false, abort: null, observer: null};
         states.set(collection, state);
@@ -49,7 +50,8 @@ function mount() {
 
 async function load(state, reload = false) {
     const {collection} = state;
-    if (!state.active || state.pending || !collection.isConnected || !collection.getClientRects().length) return;
+    if (!state.active || state.pending || !collection.isConnected || !collection.getClientRects().length
+        || collection.closest(`[data-${state.config.prefix}-rewinding="true"]`)) return;
     const config = state.config;
     const footer = find(collection, config, "pagination");
     if (!footer) return;

@@ -56,7 +56,10 @@ class SelectControl {
         } else {
             this.trigger.setAttribute("aria-label", this.label);
         }
-        this.trigger.append(this.value, icon("down"));
+        const arrow = document.createElement("span");
+        arrow.className = "select-arrow";
+        arrow.setAttribute("aria-hidden", "true");
+        this.trigger.append(this.value, arrow);
         this.tags = document.createElement("div");
         this.tags.className = "select-tags";
         this.error = document.createElement("p");
@@ -378,4 +381,12 @@ export function registerUiControls() {
     window.visualViewport?.addEventListener("resize", () => activeControl?.position());
     document.addEventListener("reset", () => queueMicrotask(() => enhance(content)));
     enhance(content);
+    document.documentElement.removeAttribute("data-controls-loading");
+}
+
+// Start this small module before the rest of the application's module tree.
+if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", registerUiControls, {once: true});
+} else {
+    registerUiControls();
 }

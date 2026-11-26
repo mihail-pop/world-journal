@@ -182,7 +182,9 @@ class FeedWarmer:
         state = self.states.get(self.jobs[job], {})
         metadata = state.get("metadata", {})
         attempted = parse_datetime(metadata.get("last_attempt_at"))
-        if self.refresh_started_at and attempted and attempted >= self.refresh_started_at and not metadata.get("archive_pending"):
+        fresh_at_start = (job[0] != "google" and attempted and self.refresh_started_at and not self.manual_refresh
+                          and next_refresh(attempted, self.interval) > self.refresh_started_at and not metadata.get("last_error"))
+        if self.refresh_started_at and attempted and (attempted >= self.refresh_started_at or fresh_at_start) and not metadata.get("archive_pending"):
             if metadata.get("last_error"):
                 return "failed"
             if metadata.get("last_success_at") == state.get("archive_stamp"):
@@ -213,7 +215,7 @@ class FeedWarmer:
             now = datetime.now(UTC)
             deadlines = [self._due_at(job, now) for job in self.jobs
                          if job not in self.running and job not in self.normal and job not in self.urgent]
-            if self.next_refresh_at:
+            if self.next_refresh_at and self.cycle_finished_at:
                 deadlines.append(self.next_refresh_at)
             next_update = min(deadlines) if deadlines else self.next_refresh_at
         providers = {provider.id: provider for provider in registry.providers} if registry else {}
@@ -377,6 +379,10 @@ class FeedWarmer:
         manual |= self.manual_refresh and not self.cycle_finished_at and not attempted_this_round
         if metadata.get("last_error") and not manual:
             due = parse_datetime(metadata.get("retry_after_at")) or (attempted or now) + timedelta(seconds=settings.NEWS_FAILURE_BACKOFF_SECONDS)
+        elif job[0] != "google":
+            # A slow or paused Google sweep must not delay other publishers.
+            # Saved attempt times keep their cadence stable across restarts.
+            due = now if manual or not attempted else next_refresh(attempted, self.interval)
         elif new_cycle or not attempted_this_round:
             due = now
         else:
@@ -413,7 +419,7 @@ class FeedWarmer:
                             continue
                         deadline = self._due_at(job, now)
                         if deadline <= now:
-                            self._enqueue(job, force=True)
+                            self._enqueue(job, urgent=job[0] != "google", force=True)
                         else:
                             deadlines.append(deadline)
                 self._finish_cycle()
@@ -434,12 +440,22 @@ class FeedWarmer:
                 close_old_connections()
             self.scan_requested.wait(delay)
 
+    def _next_job(self, priority_only):
+        google_running = any(job[0] == "google" for job in self.running)
+        queues = (self.urgent,) if priority_only else (self.urgent, self.normal)
+        for queue in queues:
+            for job in queue:
+                # Only one worker needs Google's serialized request slot.
+                # Leave the other workers available for independent feeds.
+                if job[0] != "google" or not google_running:
+                    return queue, job
+        return None
+
     def _worker(self, priority_only):
         while True:
             with self.condition:
-                self.condition.wait_for(lambda: self.ready and (bool(self.urgent) or not priority_only and bool(self.normal)))
-                queue = self.urgent if self.urgent else self.normal
-                job, retry = queue.popitem(last=False)
+                queue, job = self.condition.wait_for(lambda: self.ready and self._next_job(priority_only))
+                retry = queue.pop(job)
                 self.running.add(job)
                 force = job in self.force_jobs
                 self.force_jobs.discard(job)
@@ -457,6 +473,7 @@ class FeedWarmer:
                     self.running.discard(job)
                     if not (self.urgent or self.normal or self.running):
                         self.maintenance_requested = True
+                    self.condition.notify_all()
                 self.scan_requested.set()
 
     def _run(self, job, retry, force=False):

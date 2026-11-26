@@ -1,4 +1,5 @@
 import { confirmAction, dismissNotice, notify } from "../notifications.js";
+import { initializeJournalDates } from "./journal_dates.js";
 
 let registered = false;
 let active = null;
@@ -24,31 +25,44 @@ function syncControls(state) {
         if (button.dataset.journalSelectCollection === selected) button.setAttribute("aria-current", "page");
         else button.removeAttribute("aria-current");
     }
-    for (const [name, attribute] of [["year", "journalYear"], ["month", "journalMonth"]]) {
-        for (const button of form.querySelectorAll(`[data-journal-${name}]`)) {
-            button.setAttribute("aria-pressed", String(button.dataset[attribute] === form.elements.namedItem(name).value));
-        }
-    }
+    state.dates?.sync();
+    const exclude = form.elements.namedItem("filter_mode").value === "exclude";
+    const mode = form.querySelector("[data-journal-filter-mode]");
+    mode.textContent = exclude ? "Exclude" : "Include";
+    mode.setAttribute("aria-pressed", String(exclude));
     page.querySelector("[data-journal-collection-edit]").hidden = !collections[selected];
     const link = page.querySelector("[data-journal-new]");
     const url = new URL(link.href);
     if (selected) url.searchParams.set("collection", selected);
     else url.searchParams.delete("collection");
     link.href = url.pathname + url.search;
-    form.querySelector("[data-journal-clear-filters]").hidden = ![...new FormData(form)]
-        .some(([name, value]) => !["collection", "sort", "order"].includes(name) && String(value).trim());
+}
+
+function removeFilter(state, token) {
+    const {filterName, filterValue} = token.dataset;
+    if (filterName === "collection") state.form.elements.namedItem("collection").value = "";
+    else for (const input of state.form.querySelectorAll("[data-journal-extra-filter]")) {
+        if (input.name === filterName && input.value === filterValue) input.remove();
+    }
+    const search = token.closest(".journal-search-control");
+    token.remove();
+    if (search) state.form.elements.namedItem("q").focus({preventScroll: true});
+    submit(state);
 }
 
 function submit(state) {
     clearTimeout(searchTimer);
     searchTimer = null;
     if (!state?.form.isConnected) return;
+    state.dates?.stop();
+    if (state.dates && !state.dates.prepare()) return;
     syncControls(state);
     state.form.requestSubmit();
 }
 
 function openCollection(edit, opener) {
     if (!active || active.dialog.open) return;
+    active.dates?.stop();
     const {form: filters, dialog, collections} = active;
     const data = edit ? collections[filters.elements.namedItem("collection").value] : null;
     if (edit && !data) return;
@@ -83,6 +97,10 @@ function initialize() {
     const state = {page, dialog, form: page.querySelector("[data-journal-filters]"),
         collections: JSON.parse(page.querySelector("#journal-collection-data").textContent), events: new AbortController()};
     active = state;
+    state.dates = initializeJournalDates(state, () => submit(state), () => {
+        clearTimeout(searchTimer);
+        searchTimer = null;
+    });
     dialog.addEventListener("close", () => {
         document.documentElement.classList.remove("journal-modal-open");
         if (state.opener?.isConnected) state.opener.focus({preventScroll: true});
@@ -93,6 +111,7 @@ function initialize() {
         if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) closeCollection();
     }, {signal: state.events.signal});
     syncControls(state);
+    if (state.dates.restoredBasis && state.dates.hasDate) submit(state);
     if (page.dataset.collectionModal) {
         openCollection(page.dataset.collectionModal === "edit", page.querySelector("[data-journal-collection-new]"));
         page.dataset.collectionModal = "";
@@ -111,6 +130,7 @@ export function registerJournalList() {
     document.addEventListener("world-journal:page-cleanup", cleanup);
     document.addEventListener("input", event => {
         if (!active || !event.target.matches("[data-journal-search]") || event.isComposing) return;
+        active.dates.stop();
         clearTimeout(searchTimer);
         const state = active;
         searchTimer = setTimeout(() => submit(state), 300);
@@ -119,6 +139,10 @@ export function registerJournalList() {
         if (event.target.matches("[data-journal-search]")) event.target.dispatchEvent(new Event("input", {bubbles: true}));
     });
     document.addEventListener("keydown", event => {
+        if (event.key === "Backspace" && !event.isComposing && active && event.target.matches("[data-journal-search]") && !event.target.value) {
+            const token = active.form.querySelector(".journal-search-control [data-journal-filter-token]:last-of-type");
+            if (token) { event.preventDefault(); removeFilter(active, token); return; }
+        }
         if (event.key === "Enter" && !event.isComposing && event.target.matches("[data-journal-search]")) {
             event.preventDefault();
             submit(active);
@@ -126,16 +150,13 @@ export function registerJournalList() {
     });
     document.addEventListener("change", event => {
         if (!active || !event.target.matches("[data-journal-filters] select")) return;
-        if (event.target.name === "sort") {
-            for (const input of active.form.querySelectorAll('[data-journal-extra-filter][name="date_basis"]')) input.remove();
-        }
         submit(active);
     });
     document.addEventListener("submit", event => {
         if (!event.target.matches("[data-journal-filters]")) return;
         clearTimeout(searchTimer);
         searchTimer = null;
-        if (active) syncControls(active);
+        if (active) { active.dates.stop(); active.dates.prepare(); syncControls(active); }
     }, true);
     document.addEventListener("invalid", event => {
         if (event.target.closest("[data-journal-collection-form]")) notify({id: "collection-validation", kind: "warning", title: "Check the collection details"});
@@ -143,6 +164,8 @@ export function registerJournalList() {
     document.addEventListener("click", async event => {
         if (!active) return;
         const {form} = active;
+        const token = event.target.closest("[data-journal-filter-token]");
+        if (token) { removeFilter(active, token); return; }
         const add = event.target.closest("[data-journal-collection-new]");
         const edit = event.target.closest("[data-journal-collection-edit]");
         if (add || edit) { openCollection(Boolean(edit), add || edit); return; }
@@ -161,14 +184,10 @@ export function registerJournalList() {
         }
         const collection = event.target.closest("[data-journal-select-collection]");
         if (collection) form.elements.namedItem("collection").value = collection.dataset.journalSelectCollection;
-        const year = event.target.closest("[data-journal-year]");
-        const month = event.target.closest("[data-journal-month]");
-        if (year || month) {
-            const name = year ? "year" : "month";
-            const field = form.elements.namedItem(name);
-            const value = year ? year.dataset.journalYear : month.dataset.journalMonth;
-            field.value = field.value === value ? "" : value;
-            for (const input of form.querySelectorAll('[data-journal-extra-filter][name="date"], [data-journal-extra-filter][name="date_basis"]')) input.remove();
+        const mode = event.target.closest("[data-journal-filter-mode]");
+        if (mode) {
+            const field = form.elements.namedItem("filter_mode");
+            field.value = field.value === "exclude" ? "include" : "exclude";
         }
         const order = event.target.closest("[data-journal-sort-order]");
         if (order) {
@@ -177,16 +196,7 @@ export function registerJournalList() {
             order.dataset.order = field.value;
             order.setAttribute("aria-label", `Sort ${field.value === "asc" ? "ascending" : "descending"}`);
         }
-        const clear = event.target.closest("[data-journal-clear-filters]");
-        if (clear) {
-            for (const name of ["q", "type", "year", "month"]) {
-                const field = form.elements.namedItem(name);
-                field.value = "";
-                field.dispatchEvent(new Event("change"));
-            }
-            for (const input of form.querySelectorAll("[data-journal-extra-filter]")) input.remove();
-        }
-        if (collection || year || month || order || clear) submit(active);
+        if (collection || mode || order) submit(active);
     });
     document.body.addEventListener("htmx:afterSettle", event => {
         if (event.detail.target?.id === "journal-results") document.dispatchEvent(new CustomEvent("world-journal:location-change"));

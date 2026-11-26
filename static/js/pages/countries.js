@@ -313,7 +313,7 @@ function initialize() {
         const tab = event.target.closest("[data-directory-tab]");
         if ((row || tab) && !event.ctrlKey && !event.metaKey && !event.shiftKey && !event.altKey && event.button === 0) {
             event.preventDefault(); select(state,row?.dataset.directoryCountry || state.code,tab?.dataset.directoryTab || state.tab);
-            if (row) page.querySelector("[data-directory-detail]").scrollIntoView({block:"start",behavior:"instant"});
+            if (row && window.matchMedia("(max-width: 46rem)").matches) page.querySelector("[data-directory-detail]").scrollIntoView({block:"start",behavior:"instant"});
         }
         const filter = event.target.closest("[data-news-filter]");
         if (filter) applyArticleFilter(state,filter.dataset.newsFilter);

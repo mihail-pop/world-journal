@@ -21,6 +21,7 @@
                 segoe: [],
             };
             const root = document.documentElement;
+            root.setAttribute("data-controls-loading", "");
             for (const href of files[root.dataset.font]) {
                 const link = document.createElement("link");
                 link.rel = "preload";
@@ -40,6 +41,7 @@
     <link rel="stylesheet" href="{% static 'css/notifications.css' %}">
     <link rel="stylesheet" href="{% static 'css/search.css' %}">
     <link rel="stylesheet" href="{% static 'css/player.css' %}">
+    <script type="module" src="{% get_static_prefix %}js/ui_controls.js" onerror="document.documentElement.removeAttribute('data-controls-loading')"></script>
     <script src="{% static 'vendor/htmx/htmx-2.0.8.min.js' %}" defer></script>
     {% if active_page == 'map' %}
     <link rel="preload" href="{% static 'data/countries.geojson' %}" as="fetch" crossorigin="anonymous">
@@ -74,7 +76,6 @@
     {% include 'countries/partials/note_picker.html' %}
 
     {% include 'core/partials/player.html' %}
-    <template data-control-icon="down">{% include 'core/partials/icon.html' with name='down' %}</template>
     <template data-control-icon="close">{% include 'core/partials/icon.html' with name='close' %}</template>
     <template data-control-icon="plus">{% include 'core/partials/icon.html' with name='plus' %}</template>
     <template data-control-icon="plus-small">{% include 'core/partials/icon.html' with name='plus-small' %}</template>

@@ -20,6 +20,6 @@
             </ol>
             {% include 'news/partials/load_more.html' %}
         {% elif not enabled_count %}<p class="country-news-message">No video channels are enabled.</p>
-        {% elif not pending %}<p class="country-news-message">No videos for this country yet.</p>{% endif %}
+        {% else %}<p class="country-news-message">No videos for this country yet.</p>{% endif %}
     </div>
 </div>
