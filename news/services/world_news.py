@@ -11,13 +11,13 @@ from django.utils.timezone import localtime
 
 from news.adapters.rss import clean_article_text, is_google_news_link
 from news.adapters.youtube import build_embed_url, build_thumbnail_url, build_watch_url
-from news.models import ArchivedNews, ArchivedNewsSource
+from news.models import ArchivedNews, ArchivedNewsCountry, ArchivedNewsSource
 from news.preferences import freshness_seconds
 from news.paging import archive_page, cursor_date, decode_cursor, encode_cursor, NewsCursorError, paging_time, result_version, search_archive, search_query, search_terms
 from news.types import NewsItem, SourceKind, VideoItem
 from journal.bookmarks import bookmark_states
 
-from .archive import identities, restrict_origins, revision
+from .archive import country_revisions, identities, restrict_origins, revision
 from .cache import fixed_feed_cache_key, google_cache_key, google_pause_until, youtube_cache_key
 from .country_news import _countries_by_code, get_country_news, get_world_news
 from .regional_news import get_fixed_feed
@@ -98,8 +98,9 @@ def _balanced(items):
 
 
 class CachedNews:
-    def __init__(self, options, registry):
+    def __init__(self, options, registry, *, country_scoped=False):
         self.options, self.registry = options, registry
+        self.country_scoped = country_scoped
         self.interval, self.now = freshness_seconds(), options["at"]
         self.google = registry.get("google_news_country")
         selected = options["source"]
@@ -108,6 +109,11 @@ class CachedNews:
                       and (not selected or feed.provider_id in selected)]
         self.channels = [source for source in registry.sources if source.enabled_by_default and source.kind is SourceKind.YOUTUBE
                          and options["tab"] == "videos" and (not selected or source.id in selected)]
+        if country_scoped:
+            from .country_news import _country_for_code
+            from .region_routing import eligible_youtube_sources
+            eligible = {source.id for source in eligible_youtube_sources(_country_for_code(options["country"]), registry)}
+            self.channels = [source for source in self.channels if source.id in eligible]
         self.keys = [fixed_feed_cache_key(feed) for feed in self.feeds] + [youtube_cache_key(source) for source in self.channels]
         self.origin_ids = [feed.id for feed in self.feeds] + [source.id for source in self.channels]
         if self.google_enabled:
@@ -117,6 +123,12 @@ class CachedNews:
 
     def get(self, key, default=None):
         return self.snapshots.get(key, default)
+
+    def page_url(self, **changes):
+        if not self.country_scoped:
+            return news_url(self.options, **changes)
+        path = reverse("news:country_videos", kwargs={"iso2": self.options["country"]})
+        return path + "?" + urlencode(changes) if changes else path
 
     def context(self):
         google_items, regional_items, video_items, errors = [], [], [], []
@@ -139,6 +151,15 @@ class CachedNews:
             video_items += [replace(item, is_stale=result.is_stale) for item in result.items]
             if result.refresh_failed:
                 errors.append((source.display_name, "Showing cached videos." if result.items else result.error or "Channel temporarily unavailable."))
+
+        if self.country_scoped:
+            from .country_matcher import match_title
+            matched = []
+            for item in video_items:
+                codes = tuple(sorted({match.country_code for match in match_title(item.title)}))
+                if self.options["country"] in codes:
+                    matched.append(replace(item, matched_country_codes=codes))
+            video_items = matched
 
         unknown_views = [item for item in video_items if item.view_count is None]
         if unknown_views:
@@ -170,10 +191,12 @@ class CachedNews:
             items = list({item.video_id: item for item in video_items}.values())
         query_signature = result_version([
             {key: self.options[key] for key in ("tab", "source", "country", "period", "sort", "q")}, self.keys,
+            "country-day-first" if self.country_scoped else False,
         ])
         cursor = decode_cursor(self.options["cursor"], query_signature)
         items, next_position = self._page(items, current_items, cutoff, cursor)
-        version = result_version([query_signature, revision(), [
+        archive_stamp = country_revisions([self.options["country"]])[self.options["country"]] if self.country_scoped else revision()
+        version = result_version([query_signature, archive_stamp, [
             (item.video_id if self.options["tab"] == "videos" else item.link, item.published_at, getattr(item, "view_count", None))
             for item in google_items + regional_items + video_items
         ]])
@@ -189,7 +212,7 @@ class CachedNews:
             initial["video" if video else "url"] = item.video_id if video else item.link
             if item.published_at:
                 initial["published"] = item.published_at.isoformat()
-            if not video and item.provider_id == self.google.id and self.options["country"] != "WORLD":
+            if self.country_scoped or (not video and item.provider_id == self.google.id and self.options["country"] != "WORLD"):
                 initial["country"] = [self.options["country"]]
             elif item.matched_country_codes:
                 initial["country"] = item.matched_country_codes
@@ -201,9 +224,9 @@ class CachedNews:
         return {
             "cards": cards, "tab": self.options["tab"], "pending": pending,
             "query": self.options["q"], "paging_version": version, "query_signature": query_signature,
-            "refresh_url": news_url(self.options),
+            "refresh_url": self.page_url(),
             "errors": errors, "enabled_count": len(self.keys),
-            "next_url": news_url(self.options, cursor=encode_cursor(next_position, query_signature), v=version, at=self.now.isoformat()) if next_position else "",
+            "next_url": self.page_url(cursor=encode_cursor(next_position, query_signature), v=version, at=self.now.isoformat()) if next_position else "",
         }
 
     def _page(self, current, excluded, cutoff, cursor):
@@ -211,6 +234,8 @@ class CachedNews:
         kind, sort = self.options["tab"], self.options["sort"]
         origins = ArchivedNewsSource.objects.filter(feed_id__in=self.origin_ids)
         rows = ArchivedNews.objects.filter(kind=kind, first_seen_at__lte=self.now).exclude(published_at__gt=self.now)
+        if self.country_scoped:
+            rows = rows.filter(pk__in=ArchivedNewsCountry.objects.filter(country_code=self.options["country"]).values("item_id"))
         if 0 < len(self.options["source"]) < len(self.options["sources"]):
             rows = restrict_origins(rows, origins)
         else:
@@ -242,17 +267,22 @@ class CachedNews:
         else:
             videos = kind == "videos"
             ascending = sort == "least_views"
+            recent_cutoff = self.now - timedelta(days=1) if videos and self.country_scoped else None
 
             def rank(identity, published, views):
                 date = published or datetime.min.replace(tzinfo=UTC)
                 key = (published is None, datetime.max.replace(tzinfo=UTC)-date, identity)
-                return (views is None, (views or 0)*(1 if ascending else -1), *key) if videos else key
+                if videos:
+                    key = (views is None, (views or 0)*(1 if ascending else -1), *key)
+                return (not bool(published and published >= recent_cutoff), *key) if recent_cutoff else key
 
             boundary = None
+            recent_cursor = True
             if cursor:
                 if cursor.get("stage") != "ranked":
                     raise NewsCursorError("Invalid news cursor.")
                 published = cursor_date(cursor.get("published"), cursor.get("identity"))
+                recent_cursor = bool(recent_cutoff and published and published >= recent_cutoff)
                 views = cursor.get("views")
                 if views is not None and (type(views) is not int or not 0 <= views <= 9223372036854775807):
                     raise NewsCursorError("Invalid news cursor.")
@@ -266,7 +296,14 @@ class CachedNews:
                     pool.append((key, item, None, position(identity, item.published_at, views)))
             pool.sort(key=lambda row: row[0])
             pool = pool[:31]
-            for identity, published, views in archive_page(rows, cursor, 31, sort=sort):
+            if recent_cutoff:
+                archive = archive_page(rows.filter(published_at__gte=recent_cutoff), cursor, 31, sort=sort) if recent_cursor else []
+                if len(archive) < 31:
+                    archive += archive_page(rows.filter(Q(published_at__lt=recent_cutoff) | Q(published_at__isnull=True)),
+                                            None if recent_cursor else cursor, 31-len(archive), sort=sort)
+            else:
+                archive = archive_page(rows, cursor, 31, sort=sort)
+            for identity, published, views in archive:
                 pool.append((rank(identity, published, views), None, identity, position(identity, published, views)))
             pool.sort(key=lambda row: row[0])
             selected = [(item, identity, after) for key, item, identity, after in pool[:31]]
@@ -294,3 +331,15 @@ class CachedNews:
                         published_at=record.published_at, provider_id=origin.source_id, provider_name=name, feed_id=origin.feed_id)
             result.append(item)
         return result, next_position
+
+
+def country_video_context(code, registry, query=None):
+    query = query or {}
+    options = page_options({
+        "tab": "videos", "country": code, "period": "all", "sort": "views",
+        "cursor": query.get("cursor", ""), "at": query.get("at", ""),
+    }, registry)
+    context = CachedNews(options, registry, country_scoped=True).context()
+    context.update(country_code=code, feed_pending=bool(context["pending"]),
+                   video_status="partial" if context["errors"] else "success" if context["cards"] else "empty")
+    return context

@@ -2,7 +2,7 @@
     <form method="post" class="preset-edit-form" data-preset-editor>
         {% csrf_token %}
         <header class="preset-edit-toolbar">
-            <a class="journal-icon-button" href="{% url 'countries:preset_list' %}" aria-label="Back to color presets" title="Back to color presets">{% include 'core/partials/icon.html' with name='arrow-left' %}</a>
+            <a class="journal-icon-button" href="{% url 'countries:preset_list' %}" aria-label="Back to color presets">{% include 'core/partials/icon.html' with name='arrow-left' %}</a>
             <div class="preset-edit-actions">
                 <button class="journal-button is-primary" type="submit">Save</button>
                 <button class="journal-button" type="submit" name="action" value="edit_map">Save &amp; select on map</button>
@@ -16,7 +16,7 @@
         <section class="preset-edit-groups" aria-labelledby="preset-groups-title">
             <div class="preset-edit-groups-heading">
                 <h2 id="preset-groups-title">Color groups</h2>
-                <button class="journal-icon-button" type="submit" name="action" value="add_group" data-preset-add-color aria-label="Add color group" title="Add color group">{% include 'core/partials/icon.html' with name='plus' %}</button>
+                <button class="journal-icon-button" type="submit" name="action" value="add_group" data-preset-add-color aria-label="Add color group">{% include 'core/partials/icon.html' with name='plus' %}</button>
             </div>
             {{ color_formset.management_form }}{{ color_formset.non_form_errors }}
             <div class="preset-edit-rows" data-preset-rows>{% for color_form in color_formset %}{% include 'countries/_color_row.html' %}{% endfor %}</div>

@@ -30,100 +30,119 @@
         <div class="adventure-map-frame" aria-hidden="true"></div>
         <canvas class="adventure-map-compass" data-adventure-compass width="256" height="256" aria-hidden="true"></canvas>
         <div class="map-toolbar" aria-label="Map controls">
-            <div class="map-toolbar-actions">
-                <button type="button" class="map-command" data-home-view disabled>{% include 'core/partials/icon.html' with name='home' %} Home</button>
-                <button type="button" class="map-command" data-world-view>{% include 'core/partials/icon.html' with name='globe' %} World</button>
-                <button
-                    type="button"
-                    class="map-command"
-                    data-map-controls-toggle
-                    aria-expanded="false"
-                    aria-controls="map-display-controls"
-                >{% include 'core/partials/icon.html' with name='layers' %} Display</button>
-            </div>
-            <div id="map-display-controls" class="map-display-controls" data-map-controls-panel hidden>
-                <fieldset>
-                    <legend>Map display</legend>
-                    <label for="map-type">Map type</label><select id="map-type" data-map-type disabled><option value="terrain">Terrain</option><option value="plain">Simple</option><option value="adventure">Adventure</option></select>
-                    <label><input type="checkbox" data-map-preference="countryNames"> Country names</label>
-                    <label><input type="checkbox" data-map-preference="capitalNames"> Capital names</label>
-                    <a class="map-settings-link" href="{% url 'core:settings' %}" hx-boost="true" hx-target="#app-content" hx-push-url="true">More map options {% include 'core/partials/icon.html' with name='settings' %}</a>
-                </fieldset>
-                <fieldset class="map-personal-controls">
-                    <legend>Your map</legend>
-                    <label for="map-favorites">Favorite country</label><select id="map-favorites" data-favorite-jump data-country-select disabled><option value="">No favorites yet</option></select>
-                    <label for="map-active-preset">Color preset</label><select id="map-active-preset" data-active-preset disabled><option value="">No preset</option></select>
-                    <a href="{% url 'countries:preset_list' %}" hx-boost="true" hx-target="#app-content" hx-push-url="true">Manage color presets</a>
-                    <a href="{% url 'core:map' %}?edit_preset=new" hx-boost="true" hx-target="#app-content" hx-push-url="true">Create preset on map</a>
-                    <p class="field-note" data-personal-map-status role="status">Loading saved map data…</p>
-                    <button class="map-command" type="button" data-personal-map-retry hidden>Retry saved map data</button>
-                </fieldset>
-                <p class="map-home-summary" data-home-summary></p>
+            <button type="button" class="map-menu-toggle map-glass" data-map-controls-toggle aria-label="Map controls" aria-expanded="false" aria-controls="map-display-controls">{% include 'core/partials/icon.html' with name='menu' %}</button>
+            <div id="map-display-controls" class="map-display-controls map-glass" data-map-controls-panel hidden>
+                <div class="map-menu-top">
+                    <button type="button" class="map-menu-close" data-map-controls-close aria-label="Close map controls">{% include 'core/partials/icon.html' with name='close' %}</button>
+                    <div class="map-menu-actions" role="group" aria-label="Map shortcuts">
+                        <button type="button" class="map-favorites-toggle" data-map-favorites-toggle aria-label="Show favorites as a list" aria-controls="map-favorites-panel" aria-expanded="false"><span data-favorites-icon="hearts">{% include 'core/partials/icon.html' with name='heart' %}</span><span data-favorites-icon="list" hidden>{% include 'core/partials/icon.html' with name='list' %}</span><span data-favorites-icon="none" hidden>{% include 'core/partials/icon.html' with name='eye-off' %}</span></button>
+                        <button type="button" data-home-view aria-label="Home view" hidden disabled>{% include 'core/partials/icon.html' with name='home' %}</button>
+                        <button type="button" data-world-view aria-label="World view">{% include 'core/partials/icon.html' with name='world' %}</button>
+                    </div>
+                </div>
+                <div class="map-menu-content">
+                <div class="map-type-choices" role="group" aria-label="Map type">
+                    <button type="button" data-map-type="terrain" aria-pressed="false"><span class="map-type-preview"><img src="{% static 'images/map-terrain.webp' %}" alt="" width="240" height="168" draggable="false"></span><span>Terrain</span></button>
+                    <button type="button" data-map-type="plain" aria-pressed="false"><span class="map-type-preview"><img src="{% static 'images/map-simple.webp' %}" alt="" width="240" height="168" draggable="false"></span><span>Simple</span></button>
+                    <button type="button" data-map-type="adventure" aria-pressed="false"><span class="map-type-preview"><img src="{% static 'images/map-adventure.webp' %}" alt="" width="240" height="168" draggable="false"></span><span>Adventure</span></button>
+                </div>
+                <div class="map-control-field"><div class="map-control-label"><label for="map-active-preset">Color preset</label><div class="map-control-shortcuts"><a href="{% url 'countries:preset_list' %}" aria-label="Manage color presets" hx-boost="true" hx-target="#app-content" hx-push-url="true">{% include 'core/partials/icon.html' with name='edit' %}</a><a href="{% url 'core:map' %}?edit_preset=new" aria-label="Create preset on map" hx-boost="true" hx-target="#app-content" hx-push-url="true">{% include 'core/partials/icon.html' with name='plus' %}</a></div></div><select id="map-active-preset" data-active-preset disabled><option value="">No preset</option></select></div>
+                <p class="map-personal-status" data-personal-map-status role="status"></p>
+                <button class="map-personal-retry" type="button" data-personal-map-retry hidden>Retry</button>
+                </div>
             </div>
         </div>
+        <aside id="map-favorites-panel" class="map-favorites-panel map-glass" data-map-favorites-panel aria-labelledby="map-favorites-title" hidden>
+            <header><h2 id="map-favorites-title">Favorites</h2><div class="map-favorites-search" data-map-favorites-search hidden><button type="button" data-map-favorites-search-toggle aria-label="Search favorite countries" aria-expanded="false" aria-controls="map-favorites-search">{% include 'core/partials/icon.html' with name='search' %}</button><input id="map-favorites-search" type="search" data-map-favorites-query placeholder="Search" aria-label="Search favorite countries" aria-hidden="true" autocomplete="off" spellcheck="false" disabled tabindex="-1"></div></header>
+            <div class="map-favorites-list" data-map-favorites-list></div>
+        </aside>
+        <div class="map-zoom-controls map-glass" aria-label="Map zoom"><button type="button" data-map-zoom="in" aria-label="Zoom in">{% include 'core/partials/icon.html' with name='plus' %}</button><button type="button" data-map-zoom="out" aria-label="Zoom out">{% include 'core/partials/icon.html' with name='minimize' %}</button></div>
         <div class="map-status" data-map-status role="status" aria-live="polite" hidden></div>
         <p class="map-notice" data-map-notice role="status" aria-live="polite" hidden></p>
 
-        <aside class="map-preset-legend" data-map-preset-legend aria-labelledby="map-preset-legend-title" hidden>
+        <aside class="map-preset-legend map-glass" data-map-preset-legend aria-labelledby="map-preset-legend-title" hidden>
             <details open>
-                <summary id="map-preset-legend-title" data-map-preset-legend-title>Color preset</summary>
+                <summary><span id="map-preset-legend-title" data-map-preset-legend-title>Color preset</span>{% include 'core/partials/icon.html' with name='down' %}</summary>
                 <ul data-map-preset-legend-rows></ul>
             </details>
         </aside>
 
-        <aside class="country-drawer" data-country-drawer aria-labelledby="country-name" tabindex="-1" hidden>
-            <button class="country-drawer-close" type="button" data-country-close aria-label="Close country details" title="Close country details">{% include 'core/partials/icon.html' with name='close' %}</button>
-            <div class="country-hero">
+        <aside class="country-drawer map-glass" data-country-drawer aria-labelledby="country-name" tabindex="-1" hidden>
+            <header class="country-hero">
                 <span class="country-flag" aria-hidden="true">
                     <img data-country-flag alt="" referrerpolicy="no-referrer" hidden>
                     <span data-country-flag-fallback></span>
                 </span>
+                <div class="country-hero-actions">
+                    <button class="country-favorite-button" type="button" data-country-favorite aria-pressed="false" aria-label="Add country to favorites" disabled>{% include 'core/partials/icon.html' with name='heart' %}</button>
+                    <button class="country-drawer-close" type="button" data-country-close aria-label="Close country details">{% include 'core/partials/icon.html' with name='close' %}</button>
+                </div>
                 <div class="country-hero-content">
-                    <div class="country-title-row">
-                        <h2 id="country-name"><a data-country-name data-country-journal-link href="{% url 'core:journal' %}" hx-boost="true" hx-target="#app-content" hx-push-url="true" title="View saved entries for this country"></a></h2>
-                        <div class="country-personal-actions"><button class="country-favorite-button" type="button" data-country-favorite aria-pressed="false" aria-label="Add country to favorites" title="Add to favorites" disabled>{% include 'core/partials/icon.html' with name='heart' %}</button></div>
-                    </div>
+                    <h2 id="country-name"><a data-country-name data-country-journal-link href="{% url 'core:journal' %}" hx-boost="true" hx-target="#app-content" hx-push-url="true"></a></h2>
                     <div class="country-identity"><span data-country-region></span><span data-country-subregion></span></div>
-                    <div class="country-content-tabs" role="tablist" aria-label="Country details">
-                        <button type="button" role="tab" id="country-overview-tab" aria-controls="country-overview-panel" aria-selected="false" tabindex="-1" data-country-section="overview">Overview</button>
-                        <button type="button" role="tab" id="country-articles-tab" aria-controls="country-articles-panel" aria-selected="true" tabindex="0" data-country-section="articles">Articles</button>
-                        <button type="button" role="tab" id="country-videos-tab" aria-controls="country-videos-panel" aria-selected="false" tabindex="-1" data-country-section="videos">Videos</button>
-                        <button type="button" role="tab" id="country-notes-tab" aria-controls="country-notes-panel" aria-selected="false" tabindex="-1" data-country-section="notes">Notes</button>
-                    </div>
                 </div>
+            </header>
+            <div class="country-content-tabs" role="tablist" aria-label="Country details">
+                <button type="button" role="tab" id="country-overview-tab" aria-controls="country-overview-panel" aria-selected="false" tabindex="-1" data-country-section="overview">Overview</button>
+                <button type="button" role="tab" id="country-articles-tab" aria-controls="country-articles-panel" aria-selected="true" tabindex="0" data-country-section="articles">Articles</button>
+                <button type="button" role="tab" id="country-videos-tab" aria-controls="country-videos-panel" aria-selected="false" tabindex="-1" data-country-section="videos">Videos</button>
+                <button type="button" role="tab" id="country-notes-tab" aria-controls="country-notes-panel" aria-selected="false" tabindex="-1" data-country-section="notes">Notes</button>
             </div>
-            <p class="field-note country-personal-status" data-country-favorite-status role="status"></p>
-            <section class="country-news" aria-labelledby="country-news-title">
-                <h3 id="country-news-title" class="visually-hidden">Country details</h3>
-                <div id="country-overview-panel" role="tabpanel" aria-labelledby="country-overview-tab" data-country-section-panel="overview" hidden><div data-country-overview-content aria-live="polite" aria-busy="false"></div></div>
-                <div id="country-articles-panel" role="tabpanel" aria-labelledby="country-articles-tab" data-country-section-panel="articles">
-                    <div data-country-news-content aria-live="polite" aria-busy="true">
-                        <p class="country-news-message">Loading current English-language headlines…</p>
+            <div class="country-drawer-content" data-country-scroll>
+                <p class="country-personal-status" data-country-favorite-status role="status"></p>
+                <section class="country-news" aria-labelledby="country-news-title">
+                    <h3 id="country-news-title" class="visually-hidden">Country details</h3>
+                    <div id="country-overview-panel" role="tabpanel" aria-labelledby="country-overview-tab" data-country-section-panel="overview" hidden><div data-country-overview-content aria-live="polite" aria-busy="false"></div></div>
+                    <div id="country-articles-panel" role="tabpanel" aria-labelledby="country-articles-tab" data-country-section-panel="articles">
+                        <div data-country-news-content aria-live="polite" aria-busy="false"></div>
                     </div>
-                </div>
-                <div id="country-videos-panel" role="tabpanel" aria-labelledby="country-videos-tab" data-country-section-panel="videos" hidden>
-                    <div data-country-videos-content aria-live="polite" aria-busy="false"></div>
-                </div>
-                <div id="country-notes-panel" role="tabpanel" aria-labelledby="country-notes-tab" data-country-section-panel="notes" hidden><div data-country-notes-content aria-live="polite" aria-busy="false"></div></div>
-            </section>
+                    <div id="country-videos-panel" role="tabpanel" aria-labelledby="country-videos-tab" data-country-section-panel="videos" hidden>
+                        <div data-country-videos-content aria-live="polite" aria-busy="false"></div>
+                    </div>
+                    <div id="country-notes-panel" role="tabpanel" aria-labelledby="country-notes-tab" data-country-section-panel="notes" hidden><div data-country-notes-content aria-live="polite" aria-busy="false"></div></div>
+                </section>
+            </div>
+            <template data-country-play-icon>{% include 'core/partials/icon.html' with name='play' %}</template>
         </aside>
 
-        <aside class="country-drawer preset-map-drawer" data-preset-map-drawer aria-labelledby="preset-map-title" tabindex="-1" hidden>
-            <button class="country-drawer-close" type="button" data-preset-map-exit aria-label="Return to ordinary map">{% include 'core/partials/icon.html' with name='close' %}</button>
-            <h2 id="preset-map-title">Color preset</h2>
-            <p class="field-note">Click countries to add them to the selected color. Click a colored country to switch to its group.</p>
-            <p data-preset-map-status role="status" aria-live="polite"></p>
-            <button type="button" class="journal-button" data-preset-map-retry hidden>Retry loading</button>
+        <aside class="country-drawer preset-map-drawer map-glass" data-preset-map-drawer aria-labelledby="preset-map-title" tabindex="-1" hidden>
+            <header class="preset-map-top">
+                <span id="preset-map-title">Color preset</span>
+                <button class="preset-map-icon-button" type="button" data-preset-map-exit aria-label="Close preset editor">{% include 'core/partials/icon.html' with name='close' %}</button>
+            </header>
             <form data-preset-map-form>
                 <fieldset data-preset-map-fields disabled>
-                    <div class="journal-field"><label for="preset-map-name">Name</label><input id="preset-map-name" name="name" maxlength="160" required></div>
-                    <details class="preset-map-options"><summary>Preset options</summary><div class="journal-field"><label for="preset-map-description">Description</label><textarea id="preset-map-description" name="description" rows="2"></textarea></div><div class="journal-field"><label for="preset-map-default">Color for other countries</label><input id="preset-map-default" name="default_color" placeholder="No default color" pattern="#[0-9a-fA-F]{6}" maxlength="7"></div></details>
-                    <div class="preset-map-groups" data-preset-map-groups></div>
-                    <button class="journal-button" type="button" data-preset-map-add>{% include 'core/partials/icon.html' with name='plus' %} Add color</button>
-                    <div class="journal-field preset-map-countries"><label for="preset-map-countries">Countries in selected color</label><select id="preset-map-countries" data-preset-map-countries data-country-select multiple></select><p class="field-note">Countries in other groups are disabled. Remove a country from its group before moving it.</p></div>
-                    <div class="journal-save-bar"><button type="submit" class="journal-button is-primary">Save &amp; use colors</button><button type="button" class="journal-button" data-preset-map-discard>Discard changes</button></div>
+                    <div class="preset-map-intro">
+                        <input id="preset-map-name" name="name" placeholder="Preset name" aria-label="Preset name" maxlength="160" required>
+                        <textarea id="preset-map-description" name="description" placeholder="Description" aria-label="Description" rows="2"></textarea>
+                    </div>
+                    <section aria-labelledby="preset-map-groups-title">
+                        <div class="preset-map-section-heading"><h2 id="preset-map-groups-title">Color groups</h2><button class="preset-map-icon-button" type="button" data-preset-map-add aria-label="Add color group">{% include 'core/partials/icon.html' with name='plus' %}</button></div>
+                        <div class="preset-map-groups" data-preset-map-groups></div>
+                        <div class="preset-map-countries" data-preset-map-countries-field hidden>
+                            <div class="preset-map-country-heading"><span data-preset-map-count>0 countries</span><select id="preset-map-countries" aria-label="Countries in selected group" data-preset-map-countries data-country-select data-select-summary="Add countries" multiple></select></div>
+                            <div class="preset-map-country-chips" data-preset-map-country-chips></div>
+                        </div>
+                    </section>
+                    <section class="preset-map-default" aria-labelledby="preset-map-default-title">
+                        <div class="preset-map-section-heading"><h2 id="preset-map-default-title">Ungrouped countries</h2></div>
+                        <div data-preset-map-default></div>
+                    </section>
                 </fieldset>
+                <footer class="preset-map-footer">
+                    <p data-preset-map-status role="status" aria-live="polite"></p>
+                    <div class="preset-map-footer-actions"><button type="button" data-preset-map-retry hidden>Retry</button><button type="button" data-preset-map-discard>Discard</button><button type="submit" class="preset-map-save" data-preset-map-save disabled>Save</button></div>
+                </footer>
             </form>
+            <template data-preset-map-color-template>
+                <div class="preset-map-palette">
+                    <div class="preset-map-swatches" role="group" aria-label="Color">
+                        {% for name, color in map_preset_palette %}<button type="button" style="--swatch-color: {{ color }}" data-map-color-choice="{{ color }}" aria-label="{{ name }}" aria-pressed="false">{% include 'core/partials/icon.html' with name='check' %}</button>{% endfor %}
+                    </div>
+                    <div class="preset-map-custom-color"><input type="color" data-map-color-native aria-label="Choose custom color"><input type="text" data-map-color-value maxlength="40" placeholder="Hex / RGB" aria-label="Hex or RGB color" spellcheck="false" autocomplete="off"></div>
+                    <button type="button" class="preset-map-clear-color" data-map-color-clear aria-pressed="false" hidden>Map color</button>
+                </div>
+            </template>
         </aside>
 
         <noscript>

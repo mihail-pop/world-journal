@@ -67,6 +67,8 @@ class SelectControl {
         this.wrapper.append(this.trigger, this.tags, this.error);
         this.menu = document.createElement("div");
         this.menu.className = "select-menu";
+        if (select.closest("[data-map-controls-panel], [data-preset-map-drawer]")) this.menu.classList.add("map-select-menu");
+        if (select.closest("[data-preset-map-drawer]")) this.menu.classList.add("preset-map-select-menu");
         this.menu.hidden = true;
         this.search = document.createElement("input");
         this.search.type = "search";
@@ -162,11 +164,10 @@ class SelectControl {
         const text = this.select.dataset.selectSummary || (selected.length ? selected.map(option => option.textContent.trim()).join(", ")
             : this.select.dataset.selectPlaceholder || (this.country ? "Choose countries" : "Choose an option"));
         if (this.value.textContent !== text) this.value.textContent = text;
-        this.trigger.title = text;
+        this.trigger.removeAttribute("title");
         if (this.inline) {
             this.wrapper.classList.toggle("has-items", selected.length > 0);
             this.trigger.setAttribute("aria-label", `${selected.length ? "Clear" : "Open"} ${this.label.toLowerCase()}`);
-            this.trigger.title = this.trigger.getAttribute("aria-label");
             this.search.placeholder = selected.length ? "" : this.menu.hidden ? this.select.dataset.selectPlaceholder || this.label : "Search";
         }
         this.tags.replaceChildren();
@@ -272,14 +273,15 @@ class SelectControl {
     position() {
         const rect = (this.inline ? this.wrapper : this.trigger).getBoundingClientRect();
         const viewport = window.visualViewport;
-        const viewportTop = viewport?.offsetTop || 0;
+        const viewportTop = Math.max(viewport?.offsetTop || 0, this.menu.classList.contains("map-select-menu")
+            ? document.querySelector(".app-header")?.getBoundingClientRect().bottom || 0 : 0);
         const viewportHeight = viewport?.height || window.innerHeight;
-        const viewportBottom = viewportTop + viewportHeight;
+        const viewportBottom = (viewport?.offsetTop || 0) + viewportHeight;
         const below = viewportBottom - rect.bottom - 12;
         const above = rect.top - viewportTop - 12;
         const upwards = below < 240 && above > below;
         const viewportWidth = document.documentElement.clientWidth;
-        const width = Math.min(Math.max(rect.width, 260), viewportWidth - 24);
+        const width = Math.min(rect.width, viewportWidth - 24);
         this.menu.style.width = `${width}px`;
         this.menu.style.maxHeight = `${Math.max(80, Math.min(400, upwards ? above : below))}px`;
         this.menu.style.left = `${Math.max(12, Math.min(rect.left, viewportWidth - width - 12))}px`;

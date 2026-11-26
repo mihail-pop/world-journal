@@ -1,8 +1,8 @@
 <section class="page page-standard journal-page preset-list-page" data-page="settings" hx-boost="true" hx-target="#app-content" hx-push-url="true" aria-labelledby="presets-title">
     <header class="preset-list-heading">
-        <a class="journal-icon-button" href="{% url 'core:map' %}" aria-label="Back to map" title="Back to map">{% include 'core/partials/icon.html' with name='arrow-left' %}</a>
+        <a class="journal-icon-button" href="{% url 'core:map' %}" aria-label="Back to map">{% include 'core/partials/icon.html' with name='arrow-left' %}</a>
         <h1 id="presets-title">Color presets</h1>
-        <a class="journal-icon-button preset-list-new" href="{% url 'countries:preset_new' %}" aria-label="New preset" title="New preset">{% include 'core/partials/icon.html' with name='plus' %}</a>
+        <a class="journal-icon-button preset-list-new" href="{% url 'countries:preset_new' %}" aria-label="New preset">{% include 'core/partials/icon.html' with name='plus' %}</a>
     </header>
     <div class="preset-list">
         {% for preset in presets %}

@@ -59,7 +59,7 @@ function syncSectionNav(editor) {
         button.type = "button";
         button.dataset.journalPage = item.key;
         button.textContent = item.title;
-        button.title = item.deleted ? `${item.title} (marked for removal)` : item.title;
+        button.setAttribute("aria-label", item.deleted ? `${item.title} (marked for removal)` : item.title);
         button.classList.toggle("is-deleted", Boolean(item.deleted));
         return button;
     }));

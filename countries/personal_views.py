@@ -4,6 +4,7 @@ from django.contrib import messages
 from django.db import OperationalError
 from django.http import JsonResponse, QueryDict
 from django.shortcuts import get_object_or_404, render
+from django.template.loader import render_to_string
 from django.urls import reverse
 from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_http_methods
@@ -233,7 +234,7 @@ def country_notes(request, iso2):
     return render(request, "countries/partials/notes.html", country_notes_context(country))
 
 
-def country_notes_context(country):
+def country_overview_context(country):
     profile = CountryProfile.objects.select_related("entry").filter(country=country).first()
     entry = profile.entry if profile else None
     images = list(entry.attachments.filter(section__isnull=True)[:3]) if entry and entry.body_format != "richtext" else []
@@ -246,10 +247,15 @@ def country_notes_context(country):
         "country": country, "overview": entry, "overview_images": images,
         "overview_preview": render_body(entry.body, entry.body_format, limit=1600) if entry else "",
         "overview_truncated": bool(entry and len(entry.body_text) > 1600),
-        "recent_entries": Entry.objects.filter(countries=country).only("id", "title", "entry_type", "created_at")[:6],
     }
 
 
+def country_notes_context(country):
+    return {"country": country,
+            "recent_entries": Entry.objects.filter(countries=country).only("id", "title", "entry_type", "created_at")[:6]}
+
+
+@never_cache
 @require_http_methods(["GET", "POST"])
 def profile_edit(request, iso2):
     country = get_object_or_404(Country, pk=iso2.upper())
@@ -260,9 +266,11 @@ def profile_edit(request, iso2):
             profile = form.save()
             if profile.entry_id:
                 profile.entry.countries.add(country)
-        messages.success(request, "Country overview updated.")
-        return navigate(request, reverse("core:map") + f"?country={country.pk}&section=notes")
-    return render_page(request, "journal", page_template="countries/profile_edit.html", context={"form": form, "country": country})
+        from .views import overview_context
+        return JsonResponse({"country": country.pk, "markup": render_to_string(
+            "countries/partials/overview.html", overview_context(country), request=request)})
+    return render(request, "countries/profile_edit.html", {"form": form, "country": country},
+                  status=400 if request.method == "POST" else 200)
 
 
 @require_http_methods(["POST"])

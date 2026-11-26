@@ -1,6 +1,7 @@
 import { countryFillColors } from "./country_paint.js";
 import { notify } from "../notifications.js";
 import { acceptAppPreferences } from "../app_preferences.js";
+import { presetColorValue } from "../preset_colors.js";
 
 const FAVORITE_LAYER = "world-journal-country-favorites";
 const COUNTRY_NAMES_LAYER = "world-journal-country-names";
@@ -45,34 +46,12 @@ function updatePresetLegend(controller) {
             list.append(item);
         }
     }
-    positionPresetLegend(controller);
-}
-
-function positionPresetLegend(controller) {
-    if (controller.suspended || !controller.page.isConnected) return;
-    const legend = controller.page.querySelector("[data-map-preset-legend]");
-    if (!legend || legend.hidden) return;
-    const workspace = controller.page.querySelector(".map-workspace").getBoundingClientRect();
-    const rect = legend.getBoundingClientRect();
-    let bottom = 12;
-    const blockers = [controller.page.querySelector("[data-country-drawer]"), document.querySelector("#persistent-player")];
-    for (const blocker of blockers) {
-        if (!blocker || blocker.hidden || (blocker.id === "persistent-player" && blocker.dataset.playerState !== "playing")) continue;
-        const block = blocker.getBoundingClientRect();
-        if (block.width && rect.left < block.right && rect.right > block.left && block.top < workspace.bottom && block.bottom > workspace.top) {
-            bottom = Math.max(bottom, workspace.bottom - block.top + 12);
-        }
-    }
-    legend.style.bottom = `${bottom}px`;
-    const headerBottom = document.querySelector(".app-header")?.getBoundingClientRect().bottom ?? 0;
-    const space = workspace.height - bottom - 76 - Math.max(0, headerBottom - workspace.top);
-    legend.classList.toggle("is-obscured", space < 40);
-    legend.style.maxHeight = `${Math.max(40, space)}px`;
 }
 
 export function applyPersonalLayers(controller) {
     const {map, personal} = controller;
     updatePresetLegend(controller);
+    controller.mapMenu?.refresh();
     if (!map || !personal || !controller.layersInstalled || !controller.countryPaintTheme) return;
     const preview = controller.presetEditor?.active ? controller.presetEditor.preview : null;
     const palette = preview || personal;
@@ -102,6 +81,8 @@ export function applyPersonalLayers(controller) {
     }
     controller.palettePaintKey = controller.paintThemeKey;
     if (map.getLayer(FAVORITE_LAYER)) {
+        const visibility = controller.preferences.favoritesDisplay === "hearts" ? "visible" : "none";
+        if (map.getLayoutProperty(FAVORITE_LAYER, "visibility") !== visibility) map.setLayoutProperty(FAVORITE_LAYER, "visibility", visibility);
         const favorites = [...personal.favorites].sort();
         const signature = favorites.join(",");
         if (controller.appliedFavorites !== signature) {
@@ -114,7 +95,7 @@ export function applyPersonalLayers(controller) {
 
 export function updateFavoriteMarkerVisibility(controller) {
     const {map, personal} = controller;
-    if (!personal?.favorites.size || controller.suspended || !controller.layersInstalled
+    if (controller.preferences.favoritesDisplay !== "hearts" || !personal?.favorites.size || controller.suspended || !controller.layersInstalled
         || !map?.getLayer(FAVORITE_LAYER) || !map.getSource(CENTROID_SOURCE)) return;
     // Use actual symbol placement, including zoom limits and collisions. Hover
     // replaces a placed name's paint, so its normal symbol still counts here.
@@ -136,12 +117,6 @@ export function updateFavoriteMarkerVisibility(controller) {
 function updatePersonalControls(controller) {
     const state = controller.personal;
     if (!isAlive(controller)) return;
-    const jump = controller.page.querySelector("[data-favorite-jump]");
-    jump.replaceChildren(new Option(state.favorites.size ? "Jump to a favorite…" : "No favorites yet", ""));
-    for (const country of [...controller.countriesByCode.values()].filter(country => state.favorites.has(country.iso_a2)).sort((a, b) => a.name.localeCompare(b.name))) {
-        jump.add(new Option(country.name, country.iso_a2));
-    }
-    jump.disabled = !state.ready || !state.favorites.size;
     const select = controller.page.querySelector("[data-active-preset]");
     select.replaceChildren(new Option("No preset", ""));
     for (const preset of state.presets) select.add(new Option(preset.name, preset.id));
@@ -150,7 +125,6 @@ function updatePersonalControls(controller) {
     const button = controller.page.querySelector("[data-country-favorite]");
     const favored = state.favorites.has(controller.selectedCode);
     button.setAttribute("aria-label", favored ? "Remove country from favorites" : "Add country to favorites");
-    button.title = favored ? "Remove from favorites" : "Add to favorites";
     button.setAttribute("aria-pressed", String(favored));
     button.disabled = !state.ready || !controller.selectedCode || state.favoritePending.has(controller.selectedCode);
     applyPersonalLayers(controller);
@@ -168,7 +142,7 @@ async function post(controller, url, params) {
 export async function loadPersonalData(controller) {
     const state = controller.personal;
     const id = ++state.loadId;
-    state.status.textContent = "Loading saved map data…";
+    state.status.textContent = "";
     state.retry.hidden = true;
     try {
         const response = await fetch(controller.page.dataset.mapPersonalUrl, {signal: controller.abortController.signal, cache: "no-store"});
@@ -184,7 +158,7 @@ export async function loadPersonalData(controller) {
         acceptAppPreferences(snapshot.preferences);
         state.colors = validColors(snapshot);
         state.ready = true;
-        state.status.textContent = state.activePreset ? "Preset colors are active." : "";
+        state.status.textContent = "";
         updatePersonalControls(controller);
         controller.map?.triggerRepaint();
     } catch (error) {
@@ -217,7 +191,7 @@ export async function loadCountryNotes(controller, {retry = false} = {}) {
     state.notesAbort = abort;
     const id = ++state.notesId;
     const content = state.notesContent;
-    content.textContent = "Loading your saved country notes…";
+    content.replaceChildren();
     content.setAttribute("aria-busy", "true");
     try {
         const response = await fetch(controller.page.dataset.countryNotesUrlTemplate.replace("COUNTRY_CODE", encodeURIComponent(code)), {signal: abort.signal, cache: "no-store"});
@@ -248,7 +222,7 @@ export async function loadCountryNotes(controller, {retry = false} = {}) {
     }
 }
 
-export function initializePersonalMap(controller, selectCountry) {
+export function initializePersonalMap(controller) {
     const {page} = controller;
     const signal = controller.abortController.signal;
     const state = controller.personal = {
@@ -263,24 +237,7 @@ export function initializePersonalMap(controller, selectCountry) {
         else loadPersonalData(controller);
     }, {signal});
     signal.addEventListener("abort", () => {state.notesId += 1; state.notesAbort?.abort();}, {once: true});
-    const workspace = page.querySelector(".map-workspace");
-    const drawer = page.querySelector("[data-country-drawer]");
-    const player = document.querySelector("#persistent-player");
-    const position = () => positionPresetLegend(controller);
-    const resize = new ResizeObserver(position);
-    for (const element of [workspace, drawer, player]) if (element) resize.observe(element);
-    const visibility = new MutationObserver(position);
-    visibility.observe(drawer, {attributes: true, attributeFilter: ["hidden"]});
-    if (player) visibility.observe(player, {attributes: true, attributeFilter: ["data-player-state", "class"]});
-    window.addEventListener("resize", position, {signal});
-    document.addEventListener("world-journal:player-moved", position, {signal});
-    window.addEventListener("scroll", position, {signal, passive: true});
-    signal.addEventListener("abort", () => {resize.disconnect(); visibility.disconnect();}, {once: true});
     state.retry.addEventListener("click", () => loadPersonalData(controller), {signal});
-    page.querySelector("[data-favorite-jump]").addEventListener("change", event => {
-        if (event.target.value) selectCountry(controller, event.target.value, {focusDrawer: true});
-        event.target.value = "";
-    }, {signal});
     state.notesContent.addEventListener("click", event => {
         if (event.target.closest("[data-country-notes-retry]")) loadCountryNotes(controller, {retry: true});
     }, {signal});
@@ -310,7 +267,7 @@ export function initializePersonalMap(controller, selectCountry) {
     page.querySelector("[data-active-preset]").addEventListener("change", async event => {
         const id = event.target.value;
         state.activating = true;
-        state.status.textContent = "Saving active preset…";
+        state.status.textContent = "";
         updatePersonalControls(controller);
         try {
             const url = id ? page.dataset.presetActivateUrlTemplate.replace("00000000-0000-0000-0000-000000000000", id) : page.dataset.presetClearUrl;
@@ -323,7 +280,7 @@ export function initializePersonalMap(controller, selectCountry) {
             state.colors = validColors(snapshot);
             state.defaultColor = snapshot.default_color;
             acceptAppPreferences(snapshot.preferences);
-            state.status.textContent = id ? "Preset colors are active." : "Preset colors are off.";
+            state.status.textContent = "";
         } catch (error) {
             if (error.name !== "AbortError") {
                 notify({id: "preset-error", kind: "error", title: "Preset could not be changed", message: "Try again when the server is available."});
@@ -335,17 +292,6 @@ export function initializePersonalMap(controller, selectCountry) {
         }
     }, {signal});
     loadPersonalData(controller);
-}
-
-function presetColorValue(value) {
-    const text = value.trim().toLowerCase();
-    if (!text || COLOR.test(text)) return text;
-    if (/^#[0-9a-f]{3}$/.test(text)) return `#${[...text.slice(1)].map(char => char + char).join("")}`;
-    const rgb = text.match(/^(?:rgb\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})\s*\)|(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3}))$/);
-    if (!rgb) return null;
-    const channels = rgb.slice(1).filter(channel => channel !== undefined).map(Number);
-    return channels.every(channel => channel <= 255)
-        ? `#${channels.map(channel => channel.toString(16).padStart(2, "0")).join("")}` : null;
 }
 
 function syncPresetColor(control, normalize = false) {

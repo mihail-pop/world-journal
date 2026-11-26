@@ -67,7 +67,7 @@ def index(request):
     if selected:
         code, tab = options["country"], options["tab"]
         if tab == "overview":
-            content = render_to_string("countries/partials/overview.html", {"facts": bundled_facts(code)}, request=request)
+            content = render_to_string("countries/partials/overview.html", overview_context(get_object_or_404(Country, pk=code)), request=request)
         elif tab == "notes":
             from .personal_views import country_notes_context
             content = render_to_string("countries/partials/notes.html", country_notes_context(get_object_or_404(Country, pk=code)), request=request)
@@ -99,7 +99,13 @@ def country_metadata(request: HttpRequest) -> HttpResponse:
 
 
 @require_http_methods(["GET"])
+@never_cache
 def country_overview(request, iso2):
     country = get_object_or_404(Country, pk=iso2.upper())
-    return render(request, "countries/partials/overview.html", {"facts": bundled_facts(country.pk)})
+    return render(request, "countries/partials/overview.html", overview_context(country))
+
+
+def overview_context(country):
+    from .personal_views import country_overview_context
+    return {"facts": bundled_facts(country.pk), **country_overview_context(country)}
 

@@ -25,10 +25,18 @@ class AppSettings(models.Model):
         PLAIN = "plain", "Simple"
         ADVENTURE = "adventure", "Adventure"
 
+    class FavoritesDisplay(models.TextChoices):
+        HEARTS = "hearts", "Map hearts"
+        LIST = "list", "Favorites list"
+        NONE = "none", "Hidden"
+
     id = models.PositiveSmallIntegerField(primary_key=True, default=1, editable=False)
     theme = models.CharField(max_length=8, choices=Theme.choices, default=Theme.DARK)
     font = models.CharField(max_length=16, choices=Font.choices, default=Font.INTER)
     map_type = models.CharField(max_length=12, choices=MapType.choices, default=MapType.TERRAIN)
+    map_favorites_display = models.CharField(max_length=8, choices=FavoritesDisplay.choices, default=FavoritesDisplay.HEARTS)
+    map_menu_position = models.JSONField(null=True, blank=True, default=None)
+    map_menu_open = models.BooleanField(default=False)
     home_country = models.ForeignKey("countries.Country", null=True, blank=True, on_delete=models.SET_NULL, related_name="home_settings")
     active_preset = models.ForeignKey("countries.MapPreset", null=True, blank=True, on_delete=models.SET_NULL, related_name="active_settings")
     country_names = models.BooleanField(default=True)

@@ -1,65 +1,25 @@
-<div
-    class="country-videos-result"
-    data-country-videos-result
-    data-video-country="{{ video_page.country_code }}"
-    data-video-status="{{ video_page.status }}"
-    data-feed-pending="{{ feed_pending|yesno:'true,false' }}"
->
-    {% if video_page.warning %}
-        <div class="country-news-message {% if video_page.status == 'unavailable' %}is-error{% else %}is-warning{% endif %}" {% if video_page.status == 'unavailable' %}role="alert"{% else %}role="status"{% endif %}>
-            <p>{{ video_page.warning }}</p>
-            {% if video_page.sources %}
-                <ul class="regional-source-status">
-                    {% for result in video_page.sources %}
-                        {% if result.status != "available" %}
-                            <li>{{ result.source.display_name }}: {% if result.status == "stale" %}cached{% else %}unavailable{% endif %}</li>
-                        {% endif %}
-                    {% endfor %}
-                </ul>
-            {% endif %}
-            <button type="button" class="news-retry" data-video-retry>Retry unavailable channels</button>
-        </div>
-    {% endif %}
-
-    {% if video_page.items %}
-        <ol class="country-video-list">
-            {% for item in video_page.items %}
-                <li class="country-video-item" data-video-source="{{ item.source_id }}">
-                    <div class="video-thumbnail-frame">
-                        <img
-                            src="{{ item.thumbnail_url }}"
-                            alt=""
-                            width="480"
-                            height="360"
-                            loading="lazy"
-                            decoding="async"
-                            referrerpolicy="no-referrer"
-                            data-video-thumbnail
-                        >
+<div class="country-videos-result" data-country-videos-result data-video-country="{{ country_code }}" data-video-status="{{ video_status }}" data-feed-pending="{{ feed_pending|yesno:'true,false' }}">
+    <div data-news-collection data-news-version="{{ paging_version }}" data-news-query="{{ query_signature }}" data-news-refresh-url="{{ refresh_url }}">
+        {% if errors %}<details class="country-news-message is-warning"><summary>Source notices</summary><ul>{% for name, message in errors %}<li>{{ name }}: {{ message }}</li>{% endfor %}</ul><button type="button" class="news-retry" data-video-retry>Retry</button></details>{% endif %}
+        {% if cards %}
+            <ol class="country-video-list" data-news-items>
+                {% for card in cards %}{% with item=card.item %}
+                <li class="country-video-item" data-news-item="{{ item.video_id }}" data-video-views="{{ item.view_count|default_if_none:'' }}">
+                    <button class="video-thumbnail-frame country-thumbnail-play" type="button" data-video-play data-video-id="{{ item.video_id }}" data-video-title="{{ item.title }}" data-video-channel="{{ item.channel_name }}" aria-label="Play {{ item.title }}">
+                        <img src="{{ item.thumbnail_url }}" alt="" width="480" height="360" loading="lazy" decoding="async" referrerpolicy="no-referrer" data-video-thumbnail>
                         <span class="video-thumbnail-fallback" aria-hidden="true">Video</span>
-                    </div>
+                        <span class="country-thumbnail-symbol" aria-hidden="true">{% include 'core/partials/icon.html' with name='play' %}</span>
+                    </button>
                     <div class="video-card-copy">
                         <h4>{{ item.title }}</h4>
-                        <p class="country-news-byline">
-                            <span>{{ item.channel_name }}{% if item.is_stale %} · cached{% endif %}</span>
-                            {% if item.published_at %}<time datetime="{{ item.published_at|date:'c' }}">{{ item.published_at|date:'M j, H:i' }}</time>{% endif %}
-                        </p>
-                        <div class="video-card-actions">
-                            <button
-                                type="button"
-                                class="video-play-button"
-                                data-video-play
-                                data-video-id="{{ item.video_id }}"
-                                data-video-title="{{ item.title }}"
-                                data-video-channel="{{ item.channel_name }}"
-                            >Play</button>
-                            <a href="{{ item.watch_url }}" target="_blank" rel="noopener noreferrer">YouTube</a>
-                            <a href="{% url 'journal:new' %}?type=youtube&amp;title={{ item.title|urlencode }}&amp;video={{ item.video_id|urlencode }}&amp;source={{ item.channel_name|urlencode }}&amp;country={{ video_page.country_code }}{% if item.published_at %}&amp;published={{ item.published_at|date:'c'|urlencode }}{% endif %}" hx-boost="true" hx-target="#app-content" hx-push-url="true">Save</a>
-                        </div>
+                        <p class="country-news-byline"><span>{{ item.channel_name }}</span>{% if item.published_at %}<time datetime="{{ item.published_at|date:'c' }}">{{ item.published_at|date:'M j, H:i' }}</time>{% endif %}{% if item.view_count != None %}<span>{{ item.view_count|floatformat:'0g' }} views</span>{% endif %}</p>
+                        <div class="video-card-actions"><a href="{{ item.watch_url }}" target="_blank" rel="noopener noreferrer">YouTube</a>{% include 'news/partials/bookmark.html' %}</div>
                     </div>
                 </li>
-            {% endfor %}
-        </ol>
-    {% endif %}
-    {% include 'news/partials/coverage_tail.html' %}
+                {% endwith %}{% endfor %}
+            </ol>
+            {% include 'news/partials/load_more.html' %}
+        {% elif not enabled_count %}<p class="country-news-message">No video channels are enabled.</p>
+        {% elif not pending %}<p class="country-news-message">No videos for this country yet.</p>{% endif %}
+    </div>
 </div>

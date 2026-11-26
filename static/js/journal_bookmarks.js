@@ -25,6 +25,8 @@ function sync(wrapper) {
     const key = identity(link.dataset.bookmarkUrl);
     const result = saved.has(key) ? saved.get(key) : renderedState(link);
     const button = wrapper.querySelector("[data-journal-quick-save]");
+    button.title = "Quick Save";
+    button.setAttribute("aria-label", "Quick Save");
     const busy = pending.has(key);
     button.hidden = Boolean(result);
     button.disabled = busy;
@@ -32,9 +34,14 @@ function sync(wrapper) {
     link.setAttribute("aria-busy", String(busy));
     link.setAttribute("aria-disabled", String(busy));
     link.classList.toggle("is-saved", Boolean(result));
-    link.title = result ? "Remove from Journal" : "Save with details";
-    if (result) link.setAttribute("role", "button");
-    else link.removeAttribute("role");
+    link.removeAttribute("title");
+    if (result) {
+        link.setAttribute("role", "button");
+        link.setAttribute("aria-label", "Remove from Journal");
+    } else {
+        link.removeAttribute("role");
+        link.removeAttribute("aria-label");
+    }
     if (link.dataset.bookmarkState !== String(Boolean(result))) {
         const icon = document.querySelector(`[data-control-icon="${result ? "check" : "bookmark"}"]`).content.cloneNode(true);
         link.replaceChildren(icon, document.createTextNode(result ? " Saved" : " Save"));
@@ -119,9 +126,9 @@ function enhance(root) {
             button.type = "button";
             button.className = "journal-quick-save";
             button.dataset.journalQuickSave = "";
-            button.title = "Quick save to Journal";
+            button.title = "Quick Save";
             button.setAttribute("aria-label", button.title);
-            button.append(document.querySelector('[data-control-icon="plus"]').content.cloneNode(true));
+            button.append(document.querySelector('[data-control-icon="plus-small"]').content.cloneNode(true));
             wrapper.append(button);
         }
         link.dataset.bookmarkUrl = url.href;

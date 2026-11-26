@@ -10,7 +10,7 @@
                 <input type="hidden" name="order" value="{{ order }}">
                 {% for name,value in extra_filters %}<input type="hidden" name="{{ name }}" value="{{ value }}" data-journal-extra-filter>{% endfor %}
                 <section class="journal-collections" aria-labelledby="journal-collections-title">
-                    <div class="journal-sidebar-heading"><h2 id="journal-collections-title">Collections</h2><button class="journal-collection-add" type="button" data-journal-collection-new aria-label="New collection" title="New collection">{% include 'core/partials/icon.html' with name='plus' %}</button></div>
+                    <div class="journal-sidebar-heading"><h2 id="journal-collections-title">Collections</h2><button class="journal-collection-add" type="button" data-journal-collection-new aria-label="New collection">{% include 'core/partials/icon.html' with name='plus' %}</button></div>
                     <div class="journal-collection-choices">
                         <button type="button" data-journal-select-collection="" {% if not filters.collection %}aria-current="page"{% endif %}><span>All items</span><span class="journal-collection-count">{{ total_entries }}</span></button>
                         {% for collection in collections %}<button type="button" data-journal-select-collection="{{ collection.pk }}" {% if filters.collection == collection.pk|stringformat:'s' %}aria-current="page"{% endif %}><span>{{ collection.name }}</span><span class="journal-collection-count">{{ collection.entry_count }}</span></button>{% endfor %}
@@ -21,7 +21,7 @@
                     <div class="journal-sort-controls">
                         <label class="visually-hidden" for="journal-sort">Sort by</label>
                         <select name="sort" id="journal-sort"><option value="activity" {% if sort == 'activity' %}selected{% endif %}>Activity Date</option><option value="release" {% if sort == 'release' %}selected{% endif %}>Release Date</option><option value="title" {% if sort == 'title' %}selected{% endif %}>Title</option></select>
-                        <button class="news-sort-order journal-sort-order" type="button" data-journal-sort-order data-order="{{ order }}" title="{% if order == 'asc' %}Ascending{% else %}Descending{% endif %}" aria-label="Sort {% if order == 'asc' %}ascending{% else %}descending{% endif %}"></button>
+                        <button class="news-sort-order journal-sort-order" type="button" data-journal-sort-order data-order="{{ order }}" aria-label="Sort {% if order == 'asc' %}ascending{% else %}descending{% endif %}"></button>
                     </div>
                 </section>
                 <section class="journal-filter-section" aria-labelledby="journal-filter-title">
@@ -29,7 +29,7 @@
                     <label class="visually-hidden" for="journal-type">Type</label>
                     <select id="journal-type" name="type"><option value="">All types</option>{% for value,label in entry_types %}<option value="{{ value }}" {% if filters.type == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select>
                     <div class="journal-year-filters" aria-label="Year">{% for year in years %}<button type="button" data-journal-year="{{ year }}" aria-pressed="{% if filters.year == year|stringformat:'s' %}true{% else %}false{% endif %}">{{ year }}</button>{% endfor %}</div>
-                    <div class="journal-month-filters" aria-label="Month">{% for value,label in months %}<button type="button" data-journal-month="{{ value }}" aria-pressed="{% if filters.month == value %}true{% else %}false{% endif %}" title="{{ label }}">{{ label }}</button>{% endfor %}</div>
+                    <div class="journal-month-filters" aria-label="Month">{% for value,label in months %}<button type="button" data-journal-month="{{ value }}" aria-pressed="{% if filters.month == value %}true{% else %}false{% endif %}">{{ label }}</button>{% endfor %}</div>
                     <button class="journal-clear-filters" type="button" data-journal-clear-filters hidden>Clear filters</button>
                 </section>
                 <noscript><button class="journal-button" type="submit">Apply</button></noscript>
@@ -37,9 +37,9 @@
         </aside>
         <div class="journal-main">
             <div class="journal-list-actions">
-                <button class="journal-icon-button" type="button" data-journal-collection-edit {% if not selected_collection or selected_collection.is_builtin %}hidden{% endif %} aria-label="Edit collection" title="Edit collection">{% include 'core/partials/icon.html' with name='edit' %}</button>
-                <a class="journal-icon-button" href="{% url 'journal:statistics' %}" aria-label="Statistics" title="Statistics">{% include 'core/partials/icon.html' with name='chart' %}</a>
-                <a class="journal-icon-button journal-new-button" href="{% url 'journal:new' %}{% if selected_collection %}?collection={{ selected_collection.pk }}{% endif %}" data-journal-new aria-label="New item" title="New item">{% include 'core/partials/icon.html' with name='plus' %}</a>
+                <button class="journal-icon-button" type="button" data-journal-collection-edit {% if not selected_collection or selected_collection.is_builtin %}hidden{% endif %} aria-label="Edit collection">{% include 'core/partials/icon.html' with name='edit' %}</button>
+                <a class="journal-icon-button" href="{% url 'journal:statistics' %}" aria-label="Statistics">{% include 'core/partials/icon.html' with name='chart' %}</a>
+                <a class="journal-icon-button journal-new-button" href="{% url 'journal:new' %}{% if selected_collection %}?collection={{ selected_collection.pk }}{% endif %}" data-journal-new aria-label="New item">{% include 'core/partials/icon.html' with name='plus' %}</a>
             </div>
             <div id="journal-results">{% include 'journal/partials/entry_results.html' %}</div>
         </div>

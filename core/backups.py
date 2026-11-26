@@ -24,10 +24,11 @@ from countries.models import Country, CountryFavorite, CountryProfile, MapPreset
 from journal.models import Attachment, Collection, Entry, EntrySection
 from news.models import CustomSource, NewsPreferences, SourcePreference
 from .models import AppSettings
+from .preferences import validate_preferences
 
 
 FORMAT = "world-journal-backup"
-VERSION = 8
+VERSION = 10
 MANIFEST_LIMIT = 32 * 1024 * 1024
 RECORD_LIMIT = 100_000
 IMAGE_TYPES = {"image/jpeg": (".jpg", "JPEG"), "image/png": (".png", "PNG"), "image/webp": (".webp", "WEBP"), "image/gif": (".gif", "GIF")}
@@ -62,6 +63,8 @@ LABELS = {
 # Version 6 consolidates all Preferences, including the active preset, in AppSettings.
 # Version 7 adds rich-text JSON bodies; searchable text is rebuilt on import.
 # Version 8 adds the news archive storage allocation.
+# Version 9 adds the map menu position and favorites display choice.
+# Version 10 adds the saved open/closed map menu choice.
 # New backup versions must retain a reader for older archive versions.
 CONTENT_FIELDS = "title body body_format entry_type source_url source_name source_published_at youtube_video_id youtube_start_seconds"
 SCHEMA_FIELDS = {
@@ -77,7 +80,7 @@ SCHEMA_FIELDS = {
     TerritoryDetails: "country_id name population area capital languages currency government notes updated_at",
     SourcePreference: "source_id enabled updated_at",
     NewsPreferences: "id freshness_minutes archive_storage_mb updated_at",
-    AppSettings: "id theme font map_type home_country_id active_preset_id country_names capital_names city_names region_names small_country_markers protected_areas vegetation relief water transport buildings land_use administrative_borders points_of_interest all_other_text",
+    AppSettings: "id theme font map_type map_favorites_display map_menu_position map_menu_open home_country_id active_preset_id country_names capital_names city_names region_names small_country_markers protected_areas vegetation relief water transport buildings land_use administrative_borders points_of_interest all_other_text",
     CustomSource: "id parent_id kind name url feed_format channel_id verified_at last_checked_at last_error created_at updated_at",
 }
 
@@ -162,7 +165,7 @@ def _read_archive(archive):
         raise BackupError("The expanded backup exceeds the configured size limit.")
     manifest = json.loads(archive.read("manifest.json"))
     if not isinstance(manifest, dict) or manifest.get("format") != FORMAT or type(manifest.get("version")) is not int or manifest["version"] not in range(1, VERSION + 1):
-        raise BackupError("Unsupported backup format or version. Use a World Journal version 1–8 archive.")
+        raise BackupError(f"Unsupported backup format or version. Use a World Journal version 1–{VERSION} archive.")
     records, media = manifest.get("records"), manifest.get("media")
     expected_datasets = set(DATASETS) - ({"preset_groups"} if manifest["version"] == 1 else set()) - ({"custom_sources"} if manifest["version"] < 3 else set()) - ({"territory_details"} if manifest["version"] < 5 else set())
     if manifest["version"] < 6:
@@ -194,6 +197,16 @@ def _read_archive(archive):
             if not isinstance(record, dict) or "archive_storage_mb" in record:
                 raise BackupError("The news preference fields do not match the backup version.")
             record["archive_storage_mb"] = 2000
+    if 6 <= manifest["version"] < 9:
+        for record in records["app_settings"]:
+            if not isinstance(record, dict) or {"map_favorites_display", "map_menu_position"} & record.keys():
+                raise BackupError("The map preference fields do not match the backup version.")
+            record.update(map_favorites_display="hearts", map_menu_position=None)
+    if 6 <= manifest["version"] < 10:
+        for record in records["app_settings"]:
+            if not isinstance(record, dict) or "map_menu_open" in record:
+                raise BackupError("The map menu fields do not match the backup version.")
+            record["map_menu_open"] = False
     return records, media
 
 
@@ -216,7 +229,7 @@ def _decode_records(records):
                     raise BackupError(f"{LABELS[name]} contain an invalid checkbox value.")
                 if isinstance(field, (models.IntegerField, models.BigIntegerField)) and raw is not None and type(raw) is not int:
                     raise BackupError(f"{LABELS[name]} contain an invalid number.")
-                if not isinstance(field, (models.BooleanField, models.IntegerField, models.BigIntegerField)) and raw is not None and not isinstance(raw, str):
+                if not isinstance(field, (models.BooleanField, models.IntegerField, models.BigIntegerField, models.JSONField)) and raw is not None and not isinstance(raw, str):
                     raise BackupError(f"{LABELS[name]} contain an invalid field value.")
                 values[field.attname] = field.to_python(raw)
                 if isinstance(field, models.DateTimeField) and values[field.attname] is not None and timezone.is_naive(values[field.attname]):
@@ -227,6 +240,8 @@ def _decode_records(records):
                 # Older backups retain their source choices with the new cadence.
                 values["freshness_minutes"] = 360
             obj = model(**values)
+            if model is AppSettings:
+                validate_preferences({"mapMenuPosition": obj.map_menu_position})
             foreign_keys = [field.name for field in fields if isinstance(field, models.ForeignKey)]
             obj.clean_fields(exclude=foreign_keys)
             if model is not Attachment:

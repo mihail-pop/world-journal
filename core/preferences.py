@@ -9,6 +9,8 @@ from .models import AppSettings
 
 PREFERENCE_FIELDS = {
     "theme": "theme", "font": "font", "mapType": "map_type",
+    "favoritesDisplay": "map_favorites_display", "mapMenuPosition": "map_menu_position",
+    "mapMenuOpen": "map_menu_open",
     "homeCountry": "home_country_id", "activePreset": "active_preset_id",
     "countryNames": "country_names", "capitalNames": "capital_names",
     "cityNames": "city_names", "regionNames": "region_names",
@@ -32,11 +34,16 @@ def validate_preferences(payload):
     if not isinstance(payload, dict) or not payload or payload.keys() - PREFERENCE_FIELDS.keys():
         raise ValueError("Choose available Preferences settings.")
     values = {}
-    choices = {"theme": AppSettings.Theme.values, "font": AppSettings.Font.values, "mapType": AppSettings.MapType.values}
+    choices = {"theme": AppSettings.Theme.values, "font": AppSettings.Font.values, "mapType": AppSettings.MapType.values,
+               "favoritesDisplay": AppSettings.FavoritesDisplay.values}
     for key, value in payload.items():
         if key in choices:
             if not isinstance(value, str) or value not in choices[key]:
                 raise ValueError(f"Choose an available {key}.")
+        elif key == "mapMenuPosition":
+            if value is not None and (not isinstance(value, dict) or set(value) != {"x", "y"}
+                    or any(type(coordinate) not in (int, float) or not 0 <= coordinate <= 1 for coordinate in value.values())):
+                raise ValueError("Choose a valid map menu position.")
         elif key == "homeCountry":
             if value is not None and (not isinstance(value, str) or len(value) != 2 or not Country.objects.filter(pk=value).exists()):
                 raise ValueError("Choose an available home country.")

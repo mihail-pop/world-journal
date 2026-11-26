@@ -1,1 +1,11 @@
-<section class="page page-standard journal-page" data-page="journal" hx-boost="true" hx-target="#app-content" hx-push-url="true" aria-labelledby="country-profile-title"><a class="journal-back-link" href="{% url 'core:map' %}?country={{ country.pk }}&amp;section=notes">← {{ country.name }}</a><div class="page-copy"><p class="eyebrow">Country overview</p><h1 id="country-profile-title">{{ country.name }}</h1><p>Feature a Journal entry in this country's Notes tab. Edit its text and upload pictures through the Journal.</p></div><form method="post" class="journal-editor">{% csrf_token %}{{ form.non_field_errors }}{% for field in form %}{% include 'journal/_field.html' %}{% endfor %}<button class="journal-button is-primary" type="submit">Save selection</button></form><form method="post" action="{% url 'countries:profile_create' country.pk %}" class="country-create-overview">{% csrf_token %}<button class="journal-button" type="submit">{% if form.instance.entry_id %}Edit overview note{% else %}Create overview note{% endif %}</button></form></section>
+<form method="post" action="{% url 'countries:profile_edit' country.pk %}" data-country-note-form>
+    {% csrf_token %}
+    <header class="source-modal-heading"><div><h2 id="country-note-dialog-title">{% if form.instance.entry_id %}Swap note{% else %}Choose note{% endif %}</h2><p>{{ country.name }}</p></div><button class="source-remove-button" type="button" data-country-note-close aria-label="Close">{% include 'core/partials/icon.html' with name='close' %}</button></header>
+    {{ form.non_field_errors }}{{ form.entry.errors }}
+    <input class="country-note-search" type="search" placeholder="Search" aria-label="Search notes" data-country-note-search autocomplete="off">
+    <div class="country-note-options" role="group" aria-label="Overview note">
+        {% for choice in form.entry %}<label class="country-note-option" data-country-note-option>{{ choice.tag }}<span>{{ choice.choice_label }}</span>{% include 'core/partials/icon.html' with name='check' %}</label>{% endfor %}
+        <p class="country-note-empty" data-country-note-empty hidden>No matching notes</p>
+    </div>
+    <footer class="source-modal-actions"><button class="journal-button" type="button" data-country-note-close>Cancel</button><button class="journal-button is-primary" type="submit">Save</button></footer>
+</form>

@@ -25,7 +25,7 @@
     <section class="settings-card sources-library" aria-labelledby="news-sources-title">
         <div class="source-library-heading">
             <h2 id="news-sources-title">News sources</h2>
-            <button class="journal-icon-button" type="button" data-source-modal-open="rss" aria-label="Add news source" title="Add news source" aria-haspopup="dialog" aria-controls="add-source-dialog">{% include 'core/partials/icon.html' with name='plus' %}</button>
+            <button class="journal-icon-button" type="button" data-source-modal-open="rss" aria-label="Add news source" aria-haspopup="dialog" aria-controls="add-source-dialog">{% include 'core/partials/icon.html' with name='plus' %}</button>
         </div>
         <div class="source-library-list">
             {% for row in google_sources %}{% include 'news/partials/source_item.html' with subtitle='Worldwide headlines' %}{% endfor %}
@@ -36,7 +36,7 @@
     <section class="settings-card sources-library" aria-labelledby="video-sources-title">
         <div class="source-library-heading">
             <h2 id="video-sources-title">YouTube channels</h2>
-            <button class="journal-icon-button" type="button" data-source-modal-open="youtube" aria-label="Add YouTube channel" title="Add YouTube channel" aria-haspopup="dialog" aria-controls="add-source-dialog">{% include 'core/partials/icon.html' with name='plus' %}</button>
+            <button class="journal-icon-button" type="button" data-source-modal-open="youtube" aria-label="Add YouTube channel" aria-haspopup="dialog" aria-controls="add-source-dialog">{% include 'core/partials/icon.html' with name='plus' %}</button>
         </div>
         <div class="source-library-list">
             {% for row in youtube_sources %}{% include 'news/partials/source_item.html' %}{% endfor %}

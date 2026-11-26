@@ -161,11 +161,9 @@ export function initializePlayer() {
         }
         wrapper.style.setProperty("--mp-controls-height", `${Math.ceil(controls.getBoundingClientRect().height)}px`);
         byId("expand").innerHTML = layout.medium ? iconTheater : iconSmall;
-        byId("expand").title = layout.medium ? "Small Mode" : "Medium Mode";
-        byId("expand").setAttribute("aria-label", byId("expand").title);
+        byId("expand").setAttribute("aria-label", layout.medium ? "Small Mode" : "Medium Mode");
         byId("fullscreen").innerHTML = fullscreen ? iconFsExit : iconFsEnter;
-        byId("fullscreen").title = fullscreen ? "Exit Fullscreen" : "Fullscreen";
-        byId("fullscreen").setAttribute("aria-label", byId("fullscreen").title);
+        byId("fullscreen").setAttribute("aria-label", fullscreen ? "Exit Fullscreen" : "Fullscreen");
         byId("toggle-hist").setAttribute("aria-pressed", String(Boolean(layout.history)));
         updateOffsets();
     }
@@ -173,8 +171,7 @@ export function initializePlayer() {
     function saveLayout() { write(LAYOUT, layout); size(); }
     function setPlaying(playing) {
         playback.innerHTML = playing ? iconPause : iconPlay;
-        playback.title = playing ? "Pause" : "Play";
-        playback.setAttribute("aria-label", playback.title);
+        playback.setAttribute("aria-label", playing ? "Pause" : "Play");
     }
     function showNotice(message) { notice.querySelector("span").textContent = message; notice.hidden = false; }
     function destroy() {
@@ -197,7 +194,7 @@ export function initializePlayer() {
         favorite = Boolean(result.favorite);
         heart.innerHTML = iconHeart(favorite);
         heart.setAttribute("aria-pressed", String(favorite));
-        heart.title = favorite ? "Remove from Journal favorites" : "Favorite in Journal";
+        heart.setAttribute("aria-label", favorite ? "Remove from Journal favorites" : "Favorite in Journal");
         info.href = result.edit_url || journalUrl(current());
         window.htmx?.process(info);
     }

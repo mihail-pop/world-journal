@@ -59,10 +59,15 @@ def player_page(request: HttpRequest) -> HttpResponse:
 
 
 def map_page(request: HttpRequest) -> HttpResponse:
+    from countries.forms import PresetColorField
+
     from .place_search import map_search_target
 
     target = map_search_target(request.GET.get("place", ""), request.GET.get("country", ""))
-    return render_page(request, "map", context={"map_search_target": target})
+    return render_page(request, "map", context={
+        "map_search_target": target,
+        "map_preset_palette": PresetColorField.palette,
+    })
 
 
 @require_GET

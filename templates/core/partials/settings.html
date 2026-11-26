@@ -12,7 +12,7 @@
                         <h3>{{ preset.name }}</h3>
                         <ul class="settings-preset-colors" aria-label="Preset colors" role="list">
                             {% for color in preset.colors %}
-                            <li style="--preset-swatch: {{ color }}" title="{{ color }}"><span class="visually-hidden">{{ color }}</span></li>
+                            <li style="--preset-swatch: {{ color }}"><span class="visually-hidden">{{ color }}</span></li>
                             {% endfor %}
                         </ul>
                     </a>
@@ -40,9 +40,9 @@
             <div class="settings-toggle-list settings-toggle-list-stack">
                 <label><span>Country names</span><input type="checkbox" disabled data-settings-map-preference="countryNames"></label>
                 <label><span>Capital names</span><input type="checkbox" disabled data-settings-map-preference="capitalNames"></label>
-                <label title="Cities, towns and villages in every map mode"><span>City &amp; town names</span><input type="checkbox" disabled data-settings-map-preference="cityNames"></label>
-                <label title="States, provinces, oblasts and other administrative regions in every map mode"><span>Region names</span><input type="checkbox" disabled data-settings-map-preference="regionNames"></label>
-                <label title="Show dots for tiny countries; enlarged click targets remain available when hidden"><span>Small-country markers</span><input type="checkbox" disabled data-settings-map-preference="smallCountryMarkers"></label>
+                <label><span>City &amp; town names</span><input type="checkbox" disabled data-settings-map-preference="cityNames"></label>
+                <label><span>Region names</span><input type="checkbox" disabled data-settings-map-preference="regionNames"></label>
+                <label><span>Small-country markers</span><input type="checkbox" disabled data-settings-map-preference="smallCountryMarkers"></label>
             </div>
         </section>
         <section class="settings-card settings-card-wide settings-terrain-card" aria-labelledby="terrain-settings-title">
@@ -51,10 +51,10 @@
                 <fieldset>
                     <legend>Landscape</legend>
                     <div class="settings-toggle-list settings-toggle-list-stack">
-                        <label title="Park and nature-reserve shading and outlines"><span>Protected areas</span><input type="checkbox" disabled data-settings-map-preference="protectedAreas"></label>
-                        <label title="Mapped forests, grassland and wetlands; the relief image retains its own colors"><span>Vegetation &amp; wetlands</span><input type="checkbox" disabled data-settings-map-preference="vegetation"></label>
+                        <label><span>Protected areas</span><input type="checkbox" disabled data-settings-map-preference="protectedAreas"></label>
+                        <label><span>Vegetation &amp; wetlands</span><input type="checkbox" disabled data-settings-map-preference="vegetation"></label>
                         <label><span>Relief shading</span><input type="checkbox" disabled data-settings-map-preference="relief"></label>
-                        <label title="Water shapes, rivers and water labels; the relief image retains its own colors"><span>Water features</span><input type="checkbox" disabled data-settings-map-preference="water"></label>
+                        <label><span>Water features</span><input type="checkbox" disabled data-settings-map-preference="water"></label>
                     </div>
                 </fieldset>
                 <fieldset>
@@ -63,7 +63,7 @@
                         <label><span>Roads, railways &amp; airports</span><input type="checkbox" disabled data-settings-map-preference="transport"></label>
                         <label><span>Buildings</span><input type="checkbox" disabled data-settings-map-preference="buildings"></label>
                         <label><span>Land-use shading</span><input type="checkbox" disabled data-settings-map-preference="landUse"></label>
-                        <label title="Borders supplied by the Terrain map"><span>Administrative borders</span><input type="checkbox" disabled data-settings-map-preference="administrativeBorders"></label>
+                        <label><span>Administrative borders</span><input type="checkbox" disabled data-settings-map-preference="administrativeBorders"></label>
                         <label><span>Places of interest</span><input type="checkbox" disabled data-settings-map-preference="pointsOfInterest"></label>
                         <label><span>Other labels</span><input type="checkbox" disabled data-settings-map-preference="allOtherText"></label>
                     </div>

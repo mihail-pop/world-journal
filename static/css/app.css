@@ -342,7 +342,6 @@ h1 {
     user-select: none;
 }
 
-.map-toolbar,
 .map-status,
 .map-notice,
 .map-fallback {
@@ -355,69 +354,10 @@ h1 {
     color: var(--text-secondary);
 }
 
-.map-toolbar {
-    top: calc(var(--header-height) + 1rem);
-    left: 1rem;
-    padding: 0.35rem;
-}
-
-.map-toolbar-actions {
-    display: flex;
-    gap: 0.35rem;
-}
-
-.map-display-controls {
-    width: min(18rem, calc(100vw - 2rem));
-    max-height: min(22rem, calc(100svh - var(--header-height) - 8rem));
-    overflow: auto;
-    padding: 0.75rem;
-}
-
-.map-display-controls fieldset {
-    display: grid;
-    gap: 0.55rem;
-    padding: 0;
-    border: 0;
-}
-
-.map-display-controls legend {
-    width: 100%;
-    margin-bottom: 0.55rem;
-    color: var(--text-secondary);
-    font-weight: 700;
-}
-
-.map-display-controls label {
-    display: flex;
-    min-height: 2rem;
-    align-items: center;
-    gap: 0.55rem;
-    cursor: pointer;
-}
-
-.map-display-controls input {
-    width: 1.05rem;
-    height: 1.05rem;
-    accent-color: var(--special-color);
-}
-
-.map-display-controls label:has(input:disabled) {
-    cursor: not-allowed;
-    opacity: 0.7;
-}
-
 .control-note {
     margin-left: auto;
     color: var(--text-primary);
     font-size: 0.72rem;
-}
-
-.map-home-summary {
-    margin: 0.75rem 0 0;
-    padding-top: 0.65rem;
-    border-top: 1px solid var(--overview-border);
-    color: var(--text-primary);
-    font-size: 0.78rem;
 }
 
 body:has(.persistent-player[data-player-state="playing"]) .country-drawer {
@@ -1001,14 +941,6 @@ body:has(.persistent-player[data-player-state="playing"]) #app-content:not(:has(
     .map-notice {
         top: calc(var(--header-height) + 4.4rem);
         max-width: calc(100% - 1.5rem);
-    }
-
-    .map-toolbar {
-        max-width: calc(100% - 4rem);
-    }
-
-    .map-display-controls {
-        max-height: min(18rem, 48svh);
     }
 
     .country-drawer {

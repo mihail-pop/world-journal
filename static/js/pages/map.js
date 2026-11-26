@@ -3,6 +3,7 @@ import { localMapStyle, mapFontStack, updateMapFonts } from "./map_fonts.js";
 import { terrainCountrySize, updateMapLabels } from "./map_labels.js";
 import { ensurePlaceLabels } from "./place_labels.js";
 import { monitorProviderResources } from "./map_provider_status.js";
+import { initializeMapControls } from "./map_controls.js";
 import { adventurePalette, prepareAdventure, updateAdventure } from "./adventure_map.js";
 import { getCountryFeed, rememberCountryFeed } from "../news_cache.js";
 import { applyCountryNewsFilter, replaceCountryMarkup } from "../news_archive.js";
@@ -15,11 +16,9 @@ import { WORLD_CAMERA, readViewport, saveViewport } from "../map_camera.js";
 import { connectMapPreview } from "../map_preview.js";
 import {
     Map as MapLibreMap,
-    NavigationControl,
 } from "../../vendor/maplibre-gl/maplibre-gl.mjs";
 import {
     clearSavedMapViewport,
-    MAP_BOOLEAN_PREFERENCES,
     readMapPreferences,
     writeMapPreferences,
 } from "../map_preferences.js";
@@ -72,7 +71,7 @@ function updateLayerTheme(controller) {
     const theme = {fill: countryFill, accent: hover, opacity: adventure ? 1 : terrain ? 0 : .72, adventure: art};
     updateAdventure(controller, adventure, art || undefined);
     const key = JSON.stringify([theme, terrain, background, countryOutline, selected, getThemeColor("--bg-tertiary")]);
-    if (controller.paintThemeKey === key) return;
+    if (controller.paintThemeKey === key) { applyPersonalLayers(controller); return; }
     controller.paintThemeKey = key;
     controller.countryPaintTheme = theme;
     const hovered = ["boolean", ["feature-state", "hover"], false];
@@ -365,9 +364,7 @@ function loadCountryNews(controller, code, countryName, { retryFailed = false } 
         if (!retryFailed) return;
     }
     controller.newsContent.setAttribute("aria-busy", "true");
-    if (!cached) showNewsMessage(controller, controller.newsAbortController
-        ? `Loading headlines for ${countryName}; waiting for the previous news request to finish…`
-        : `Loading current English-language headlines for ${countryName}…`);
+    if (!cached) showNewsMessage(controller, "");
     controller.pendingNews = { code, countryName, retryFailed, requestId: controller.newsRequestId };
     // Coalesce quick clicks before contacting the server. A pending selection
     // replaces the previous one, so there is never a queue of country requests.
@@ -423,7 +420,7 @@ async function fetchCountryNews(controller, { code, countryName, retryFailed, re
     controller.newsAbortController = abortController;
     controller.newsLoadingCode = code;
     controller.newsContent.setAttribute("aria-busy", "true");
-    if (!getCountryFeed(code, "articles")) showNewsMessage(controller, `Preparing headlines for ${countryName}…`);
+    if (!getCountryFeed(code, "articles")) showNewsMessage(controller, "");
     const url = new URL(
         controller.newsUrlTemplate.replace("COUNTRY_CODE", encodeURIComponent(code)),
         window.location.origin,
@@ -496,7 +493,7 @@ async function loadCountryVideos(controller, code, countryName, { retryFailed = 
     const abortController = new AbortController();
     controller.videoAbortController = abortController;
     controller.videoContent.setAttribute("aria-busy", "true");
-    if (!cached) showVideoMessage(controller, `Preparing recent videos for ${countryName}…`);
+    if (!cached) showVideoMessage(controller, "");
     const url = new URL(
         controller.videoUrlTemplate.replace("COUNTRY_CODE", encodeURIComponent(code)),
         window.location.origin,
@@ -540,6 +537,8 @@ async function loadCountryVideos(controller, code, countryName, { retryFailed = 
 }
 
 function selectCountrySection(controller, section, { focus = false } = {}) {
+    const previousSection = controller.page.querySelector('[data-country-section][aria-selected="true"]')?.dataset.countrySection;
+    if (section !== previousSection) controller.page.querySelector("[data-country-scroll]").scrollTop = 0;
     if (section === "notes") loadCountryNotes(controller);
     if (section === "overview") loadCountryOverview(controller);
     for (const button of controller.page.querySelectorAll("[data-country-section]")) {
@@ -639,7 +638,7 @@ function renderSelection(controller, code, { fit = true, focusDrawer = false } =
     controller.newsContent.setAttribute("aria-busy", "false");
     const requestedSection = new URL(window.location.href).searchParams.get("section");
     selectCountrySection(controller, COUNTRY_SECTIONS.includes(requestedSection) ? requestedSection : selectedSection);
-    drawer.scrollTop = 0;
+    controller.page.querySelector("[data-country-scroll]").scrollTop = 0;
     if (fit) {
         focusCountry(controller, country);
     }
@@ -725,15 +724,10 @@ function setLayerVisibility(map, layerId, visible) {
 }
 
 function updateControls(controller) {
-    const type = controller.page.querySelector("select[data-map-type]");
-    type.disabled = false;
-    type.value = controller.preferences.mapType;
-    type.dispatchEvent(new Event("change"));
-    controller.page.dataset.mapType = controller.preferences.mapType;
-    for (const input of controller.page.querySelectorAll("[data-map-preference]")) {
-        const key = input.dataset.mapPreference;
-        input.checked = Boolean(controller.preferences[key]);
+    for (const button of controller.page.querySelectorAll("button[data-map-type]")) {
+        button.setAttribute("aria-pressed", String(button.dataset.mapType === controller.preferences.mapType));
     }
+    controller.page.dataset.mapType = controller.preferences.mapType;
 }
 
 function applyPreferences(controller) {
@@ -1046,7 +1040,7 @@ function createMap(controller, styleUrl) {
         attributionControl: false,
     });
     controller.map = map;
-    map.addControl(new NavigationControl({ showCompass: false }), "top-right");
+    controller.mapMenu?.attachMap(map);
     const stopDragging = () => controller.container.classList.remove("is-dragging");
     map.on("dragstart", () => controller.container.classList.add("is-dragging"));
     map.on("dragend", stopDragging);
@@ -1111,15 +1105,8 @@ function createMap(controller, styleUrl) {
     controller.preview = connectMapPreview(controller);
 }
 
-function closeControlsPanel(controller, { restoreFocus = false } = {}) {
-    if (controller.controlsPanel.hidden) {
-        return;
-    }
-    controller.controlsPanel.hidden = true;
-    controller.controlsToggle.setAttribute("aria-expanded", "false");
-    if (restoreFocus) {
-        controller.controlsToggle.focus();
-    }
+function closeControlsPanel(controller, options = {}) {
+    controller.mapMenu?.close(options);
 }
 
 function updateHomeControls(controller) {
@@ -1127,42 +1114,22 @@ function updateHomeControls(controller) {
         ? controller.countriesByCode.get(controller.preferences.homeCountry)
         : null;
     controller.homeButton.disabled = !homeCountry;
-    controller.homeButton.title = homeCountry
+    controller.homeButton.hidden = !homeCountry;
+    controller.homeButton.setAttribute("aria-label", homeCountry
         ? `View ${homeCountry.name}`
-        : "Choose a home country in Settings";
-    controller.homeSummary.textContent = homeCountry
-        ? `Home country: ${homeCountry.name}`
-        : "Home country is not configured.";
+        : "Home view");
     updateControls(controller);
+    controller.mapMenu?.refresh();
 }
 
 function initializeControls(controller) {
     updateHomeControls(controller);
-
-    controller.controlsToggle.addEventListener("click", () => {
-        const willOpen = controller.controlsPanel.hidden;
-        controller.controlsPanel.hidden = !willOpen;
-        controller.controlsToggle.setAttribute("aria-expanded", String(willOpen));
-        if (willOpen) {
-            controller.controlsPanel.querySelector(".select-trigger:not(:disabled), input:not(:disabled)")?.focus();
+    controller.mapMenu = initializeMapControls(controller, selectCountry);
+    controller.toolbar.addEventListener("click", (event) => {
+        const type = event.target.closest("button[data-map-type]");
+        if (type && ["terrain", "plain", "adventure"].includes(type.dataset.mapType)) {
+            controller.preferences = writeMapPreferences({...controller.preferences, mapType: type.dataset.mapType}, controller.countryCodes);
         }
-    }, { signal: controller.abortController.signal });
-    controller.toolbar.addEventListener("change", (event) => {
-        const type = event.target.closest("select[data-map-type]");
-        if (type) {
-            if (["terrain", "plain", "adventure"].includes(type.value)) controller.preferences = writeMapPreferences({...controller.preferences, mapType: type.value}, controller.countryCodes);
-            return;
-        }
-        const input = event.target.closest("[data-map-preference]");
-        if (!input || input.disabled) {
-            return;
-        }
-        const key = input.dataset.mapPreference;
-        if (!MAP_BOOLEAN_PREFERENCES.includes(key)) return;
-        controller.preferences = writeMapPreferences(
-            { ...controller.preferences, [key]: input.checked },
-            controller.countryCodes,
-        );
     }, { signal: controller.abortController.signal });
     controller.homeButton.addEventListener("click", () => {
         const homeCountry = controller.countriesByCode.get(controller.preferences.homeCountry);
@@ -1178,12 +1145,6 @@ function initializeControls(controller) {
         clearSavedMapViewport();
         const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
         controller.map?.easeTo({ ...WORLD_CAMERA, padding: {top: 0, right: 0, bottom: 0, left: 0}, duration: reducedMotion ? 0 : 650 });
-    }, { signal: controller.abortController.signal });
-    document.addEventListener("pointerdown", (event) => {
-        if (controller.suspended) return;
-        if (!controller.toolbar.contains(event.target)) {
-            closeControlsPanel(controller);
-        }
     }, { signal: controller.abortController.signal });
 }
 
@@ -1276,7 +1237,6 @@ async function initializeMapPage() {
         controlsPanel: page.querySelector("[data-map-controls-panel]"),
         homeButton: page.querySelector("[data-home-view]"),
         worldButton: page.querySelector("[data-world-view]"),
-        homeSummary: page.querySelector("[data-home-summary]"),
         newsContent: page.querySelector("[data-country-news-content]"),
         newsUrlTemplate: page.dataset.countryNewsUrlTemplate,
         newsAbortController: null,
@@ -1394,6 +1354,10 @@ async function initializeMapPage() {
     document.addEventListener("world-journal:data-changed", event => {
         const path = event.detail.path;
         if (path.startsWith("/journal/") || path.startsWith("/countries/") || path.startsWith("/settings/backups/")) controller.notesDirty = true;
+        if (controller.facts && (path.startsWith("/journal/") || path.includes("/overview/") || path.startsWith("/settings/backups/"))) {
+            factsSelectionChanged(controller);
+            if (!controller.suspended && controller.page.querySelector('[data-country-section="overview"]').getAttribute("aria-selected") === "true") loadCountryOverview(controller);
+        }
         if (path.startsWith("/settings/news/") || path.startsWith("/settings/backups/")) controller.feedsDirty = true;
         if (path.startsWith("/countries/") || path.startsWith("/map-presets/") || path.startsWith("/settings/backups/")) controller.personalDirty = true;
     }, {signal: abortController.signal});
@@ -1443,7 +1407,7 @@ async function initializeMapPage() {
         controller.capitals = capitals;
         controller.favoriteIcon = favoriteIcon;
         initializeCountryFacts(controller);
-        initializePersonalMap(controller, selectCountry);
+        initializePersonalMap(controller);
         initializePresetMap(controller, {
             closeCountry: () => closeCountry(controller, {pushHistory: false, focusMap: false}),
             apply: () => applyPersonalLayers(controller),

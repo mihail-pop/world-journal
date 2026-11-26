@@ -17,6 +17,7 @@ import { registerNotifications } from "./notifications.js";
 import { registerCountryMetadata } from "./country_metadata.js";
 import { initializePlaceSearch } from "./search.js";
 import { initializeAppPreferences } from "./app_preferences.js";
+import { initializeCountryNotePicker } from "./country_note_picker.js";
 
 function initializeApplication() {
     initializeAppPreferences();
@@ -25,6 +26,7 @@ function initializeApplication() {
     registerCountryMetadata();
     registerUiControls();
     initializePlaceSearch();
+    initializeCountryNotePicker();
     initializePlayer();
     registerJournalBookmarks();
     initializeNewsCache();

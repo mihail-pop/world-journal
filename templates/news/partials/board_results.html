@@ -16,7 +16,7 @@
                     <h2><a href="{{ item.link }}" target="_blank" rel="noopener noreferrer">{{ item.title }}</a></h2>
                     <p class="news-board-byline"><span>{{ item.publisher }}</span>{% if item.published_at %}<time datetime="{{ item.published_at|date:'c' }}">{{ item.published_at|date:'M j, H:i' }}</time>{% endif %}</p>
                     {% if item.summary %}<details class="news-board-summary-text"><summary>Summary</summary><p>{{ item.summary }}</p></details>{% endif %}
-                    <div class="news-board-card-actions">{% include 'news/partials/bookmark.html' %}<a class="news-board-open" href="{{ item.link }}" target="_blank" rel="noopener noreferrer">Read {% include 'core/partials/icon.html' with name='external' %}</a></div>
+                    <div class="news-board-card-actions"><a class="news-board-open" href="{{ item.link }}" target="_blank" rel="noopener noreferrer">Read {% include 'core/partials/icon.html' with name='external' %}</a>{% include 'news/partials/bookmark.html' %}</div>
                 </div>
             {% endif %}
             </li>

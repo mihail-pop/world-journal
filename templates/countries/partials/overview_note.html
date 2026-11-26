@@ -1,0 +1,12 @@
+<section class="country-overview-note" data-country-overview-note="{{ country.pk }}">
+    <div class="country-notes-heading"><h4>Overview note</h4><div class="country-notes-actions">
+        <button class="journal-button" type="button" data-country-note-picker="{% url 'countries:profile_edit' country.pk %}" aria-haspopup="dialog">{% if overview %}Swap note{% else %}Choose note{% endif %}</button>
+        {% if overview %}<a class="journal-button" href="{% url 'journal:edit' overview.pk %}">Edit</a>{% else %}<form method="post" action="{% url 'countries:profile_create' country.pk %}">{% csrf_token %}<button class="journal-button" type="submit">Create</button></form>{% endif %}
+    </div></div>
+    {% if overview %}
+        <h4 class="country-overview-title"><a href="{{ overview.get_absolute_url }}">{{ overview.title }}</a></h4>
+        <div class="journal-rendered country-overview-preview">{{ overview_preview }}</div>
+        <div class="country-overview-images">{% for image in overview_images %}<figure><img src="{{ image.file.url }}" alt="{{ image.caption|default:image.original_name }}" loading="lazy">{% if image.caption %}<figcaption>{{ image.caption }}</figcaption>{% endif %}</figure>{% endfor %}</div>
+        {% if overview_truncated %}<div class="country-notes-actions"><a class="journal-button" href="{{ overview.get_absolute_url }}">Read more</a></div>{% endif %}
+    {% endif %}
+</section>

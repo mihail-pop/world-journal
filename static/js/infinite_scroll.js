@@ -129,6 +129,7 @@ export function registerInfiniteScroll(config) {
     if (registered) return;
     registered = true;
     document.addEventListener("world-journal:page-ready", mount);
+    document.addEventListener("world-journal:news-content-ready", mount);
     document.addEventListener("world-journal:page-cleanup", () => {
         for (const collection of [...states.keys()]) stop(collection);
     });

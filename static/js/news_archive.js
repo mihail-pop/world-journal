@@ -47,6 +47,7 @@ export function replaceCountryMarkup(container, markup) {
     template.innerHTML = markup;
     container.replaceChildren(template.content);
     observeInline(container);
+    document.dispatchEvent(new CustomEvent("world-journal:news-content-ready"));
 }
 
 export function registerNewsArchive() {

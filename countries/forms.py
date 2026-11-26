@@ -122,4 +122,5 @@ class CountryProfileForm(forms.ModelForm):
             entries = Entry.objects.filter(pk=self.instance.entry_id) | entries
         self.fields["entry"].queryset = entries.only("id", "title").order_by("title", "id").distinct()
         self.fields["entry"].empty_label = "No overview note"
-        self.fields["entry"].help_text = "Choose an entry tagged with this country. Clearing the selection keeps the Journal entry."
+        self.fields["entry"].widget = forms.RadioSelect()
+        self.fields["entry"].widget.choices = self.fields["entry"].choices

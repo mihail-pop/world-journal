@@ -14,5 +14,6 @@
     </dl>
     {% if facts.notes %}<p class="custom-territory-notes">{{ facts.notes|linebreaksbr }}</p>{% endif %}
     {% if not facts.identity_verified and not facts.country.is_custom %}<p class="country-news-message">Country facts are unavailable: the source identity could not be verified.</p>{% endif %}
+    {% include 'countries/partials/overview_note.html' %}
     {% if facts.wikipedia_url %}<a class="wikipedia-link" href="{{ facts.wikipedia_url }}" target="_blank" rel="noopener noreferrer">Read on Wikipedia {% include 'core/partials/icon.html' with name='external' %}</a>{% endif %}
 </div>

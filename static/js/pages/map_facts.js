@@ -21,7 +21,7 @@ export async function loadCountryOverview(controller, {retry = false} = {}) {
     const abort = new AbortController();
     state.overviewAbort = abort;
     const id = ++state.requestId;
-    state.content.textContent = "Loading saved country facts…";
+    state.content.replaceChildren();
     state.content.setAttribute("aria-busy", "true");
     try {
         const url = controller.page.dataset.countryFactsUrlTemplate.replace("COUNTRY_CODE", encodeURIComponent(code));
@@ -58,5 +58,17 @@ export function initializeCountryFacts(controller) {
     signal.addEventListener("abort", () => factsSelectionChanged(controller), {once: true});
     state.content.addEventListener("click", event => {
         if (event.target.closest("[data-overview-retry]")) loadCountryOverview(controller, {retry: true});
+    }, {signal});
+    document.addEventListener("world-journal:country-overview-changed", event => {
+        if (controller.selectedCode !== event.detail.country) return;
+        state.requestId++;
+        state.overviewAbort?.abort();
+        state.overviewAbort = null;
+        const template = document.createElement("template");
+        template.innerHTML = event.detail.markup;
+        state.content.replaceChildren(template.content);
+        state.content.dataset.loadedCountry = event.detail.country;
+        state.content.setAttribute("aria-busy", "false");
+        window.htmx?.process(state.content);
     }, {signal});
 }

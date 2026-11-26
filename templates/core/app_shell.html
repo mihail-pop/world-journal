@@ -34,6 +34,8 @@
     <link rel="stylesheet" href="{% static 'vendor/maplibre-gl/maplibre-gl.css' %}">
     <link rel="stylesheet" href="{% static 'css/app.css' %}">
     <link rel="stylesheet" href="{% static 'css/ui.css' %}">
+    <link rel="stylesheet" href="{% static 'css/map_controls.css' %}">
+    <link rel="stylesheet" href="{% static 'css/country_drawer.css' %}">
     <link rel="stylesheet" href="{% static 'css/journal_document.css' %}">
     <link rel="stylesheet" href="{% static 'css/notifications.css' %}">
     <link rel="stylesheet" href="{% static 'css/search.css' %}">
@@ -57,7 +59,7 @@
             <a data-nav-page="countries" href="{% url 'countries:index' %}"{% if active_page == 'countries' %} aria-current="page"{% endif %}>Countries</a>
         </nav>
         <div class="header-actions">
-            <button class="search-icon-button" type="button" data-search-open aria-label="Search places" title="Search" aria-haspopup="dialog" aria-controls="place-search-overlay">{% include 'core/partials/search_icon.html' %}</button>
+            <button class="search-icon-button" type="button" data-search-open aria-label="Search places" aria-haspopup="dialog" aria-controls="place-search-overlay">{% include 'core/partials/search_icon.html' %}</button>
             <a class="settings-link" data-nav-page="settings" href="{% url 'core:settings' %}"{% if active_page == 'settings' %} aria-current="page"{% endif %} hx-boost="true" hx-target="#app-content" hx-push-url="true" hx-swap="innerHTML show:top">Settings</a>
             {% if request.user.is_authenticated %}<form class="logout-form" method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="logout-button" type="submit">Logout</button></form>{% endif %}
         </div>
@@ -69,11 +71,13 @@
     </main>
 
     {% include 'core/partials/place_search.html' %}
+    {% include 'countries/partials/note_picker.html' %}
 
     {% include 'core/partials/player.html' %}
     <template data-control-icon="down">{% include 'core/partials/icon.html' with name='down' %}</template>
     <template data-control-icon="close">{% include 'core/partials/icon.html' with name='close' %}</template>
     <template data-control-icon="plus">{% include 'core/partials/icon.html' with name='plus' %}</template>
+    <template data-control-icon="plus-small">{% include 'core/partials/icon.html' with name='plus-small' %}</template>
     <template data-control-icon="check">{% include 'core/partials/icon.html' with name='check' %}</template>
     <template data-control-icon="bookmark">{% include 'core/partials/icon.html' with name='bookmark' %}</template>
     <template data-control-icon="info">{% include 'core/partials/icon.html' with name='info' %}</template>

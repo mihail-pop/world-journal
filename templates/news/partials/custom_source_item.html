@@ -2,7 +2,7 @@
     {% include 'news/partials/source_switch.html' with source_link=row.homepage|default:row.record.url subtitle='Your source' %}
     <form class="source-card-remove" method="post" action="{% url 'news:custom_action' row.record.pk 'remove' %}" hx-disabled-elt="find button">
         {% csrf_token %}<input type="hidden" name="country" value="{{ country.pk }}">
-        <button class="source-remove-button" type="submit" aria-label="Remove {{ row.name }}" title="Remove source">{% include 'core/partials/icon.html' with name='close' %}</button>
+        <button class="source-remove-button" type="submit" aria-label="Remove {{ row.name }}">{% include 'core/partials/icon.html' with name='close' %}</button>
     </form>
     {% if row.check_error or not row.available %}
     <div class="source-needs-attention">
@@ -21,7 +21,7 @@
             {% if feed.record.parent_id %}
             <form class="source-card-remove" method="post" action="{% url 'news:custom_action' feed.record.pk 'remove' %}" hx-disabled-elt="find button">
                 {% csrf_token %}<input type="hidden" name="country" value="{{ country.pk }}">
-                <button class="source-remove-button" type="submit" aria-label="Remove {{ feed.name }}" title="Remove feed">{% include 'core/partials/icon.html' with name='close' %}</button>
+                <button class="source-remove-button" type="submit" aria-label="Remove {{ feed.name }}">{% include 'core/partials/icon.html' with name='close' %}</button>
             </form>
             {% endif %}
             {% if feed.check_error %}<p class="source-warning">{{ feed.check_error }}</p>{% endif %}

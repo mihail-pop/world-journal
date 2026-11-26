@@ -10,7 +10,6 @@ from news.preferences import effective_registry, freshness_seconds
 from .cache import fixed_feed_cache_key, google_cache_key, youtube_cache_key
 from .country_news import _country_for_code, get_country_news_page
 from .region_routing import eligible_youtube_sources
-from .youtube_news import get_country_videos
 
 
 def country_article_cards(page):
@@ -76,6 +75,6 @@ class CachedDrawers:
             context["google_pending"] = bool(google_key and self._pending(google_key))
             template = "news/partials/country_news.html"
         else:
-            context["video_page"] = get_country_videos(code, **options)
-            template = "news/partials/country_videos.html"
+            from .world_news import country_video_context
+            return render_to_string("news/partials/country_videos.html", country_video_context(code, self.registry))
         return render_to_string(template, context)

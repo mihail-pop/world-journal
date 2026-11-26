@@ -81,7 +81,6 @@ function favoriteControl(state) {
     const button = state.page.querySelector("[data-directory-favorite]");
     button.setAttribute("aria-pressed",String(favored));
     button.setAttribute("aria-label",favored ? "Remove country from favorites" : "Add country to favorites");
-    button.title = favored ? "Remove from favorites" : "Add to favorites";
     button.disabled = !state.code || state.favoritePending.has(state.code);
     state.favoriteForm.elements.favorite.value = favored ? "0" : "1";
 }
@@ -118,7 +117,6 @@ function sortOrder(state) {
     const order = state.form.elements.order.value;
     const button = state.form.querySelector("[data-directory-sort-order]");
     button.dataset.order = order;
-    button.title = order === "asc" ? "Ascending" : "Descending";
     button.setAttribute("aria-label", `Sort ${order === "asc" ? "ascending" : "descending"}`);
 }
 
@@ -354,7 +352,19 @@ function initialize() {
             if (alive(state) && state.tab === "notes") loadContent(state);
         }
         if (path.endsWith("/favorite/") || path.startsWith("/settings/backups/")) refreshFavorites(state);
+        if (path.startsWith("/journal/") || path.includes("/overview/") || path.startsWith("/settings/backups/")) {
+            for (const key of state.cache.keys()) if (key.endsWith(":overview")) state.cache.delete(key);
+            if (alive(state) && state.tab === "overview") loadContent(state);
+        }
     },{signal});
+    document.addEventListener("world-journal:country-overview-changed", event => {
+        const entry = {markup: event.detail.markup};
+        state.cache.set(`${event.detail.country}:overview`, entry);
+        if (alive(state) && state.tab === "overview" && state.code === event.detail.country) {
+            cancelLoad(state);
+            renderContent(state, entry);
+        }
+    }, {signal});
     document.addEventListener("world-journal:country-metadata-changed", event => {
         for (const country of event.detail.countries) {
             const row = state.byCode.get(country.iso_a2);

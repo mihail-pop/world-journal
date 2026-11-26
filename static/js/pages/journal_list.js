@@ -175,7 +175,6 @@ export function registerJournalList() {
             const field = form.elements.namedItem("order");
             field.value = field.value === "asc" ? "desc" : "asc";
             order.dataset.order = field.value;
-            order.title = field.value === "asc" ? "Ascending" : "Descending";
             order.setAttribute("aria-label", `Sort ${field.value === "asc" ? "ascending" : "descending"}`);
         }
         const clear = event.target.closest("[data-journal-clear-filters]");
