@@ -134,10 +134,10 @@ export function registerPageMemory() {
                     && currentCollection.dataset.newsVersion === previousCollection.dataset.newsVersion
                     && currentCollection.dataset.newsQuery === previousCollection.dataset.newsQuery;
                 if (results && previousResults && !sameResults) {
-                    const openItems = new Set([...previousResults.querySelectorAll("[data-news-item] details[open]")]
-                        .map(details => details.closest("[data-news-item]").dataset.newsItem));
+                    const openItems = new Set([...previousResults.querySelectorAll("[data-news-summary-toggle][aria-expanded=true]")]
+                        .map(toggle => toggle.closest("[data-news-item]").dataset.newsItem));
                     for (const card of results.querySelectorAll("[data-news-item]")) {
-                        if (openItems.has(card.dataset.newsItem)) card.querySelector("details")?.setAttribute("open", "");
+                        if (openItems.has(card.dataset.newsItem)) card.querySelector("[data-news-summary-toggle]")?.setAttribute("aria-expanded", "true");
                     }
                     if (previousResults.querySelector(".news-board-status[open]")) results.querySelector(".news-board-status")?.setAttribute("open", "");
                     previousResults.replaceWith(results);
@@ -176,7 +176,7 @@ export function registerPageMemory() {
         resumeJournal = navPage === "journal" && !resetPage;
         resumeNews = navPage === "news" && !resetPage;
         resumeCountries = navPage === "countries" && !resetPage;
-        event.detail.swapOverride = "workspace show:top";
+        event.detail.swapOverride = "workspace show:window:top";
     });
     for (const name of ["htmx:historyCacheHit", "htmx:historyCacheMissLoad"]) {
         document.body.addEventListener(name, event => {

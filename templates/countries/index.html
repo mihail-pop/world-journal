@@ -21,7 +21,6 @@
                         <button class="news-sort-order journal-sort-order" type="button" data-directory-sort-order data-order="{{ options.order }}" aria-label="Sort {% if options.order == 'asc' %}ascending{% else %}descending{% endif %}"></button>
                     </div>
                 </div>
-                <button class="journal-button" type="submit" data-directory-apply>Apply</button>
             </form>
             <div class="directory-country-lists" data-directory-lists>
                 <section data-directory-favorites{% if not has_favorites %} hidden{% endif %} aria-labelledby="directory-favorites-title">
@@ -57,7 +56,6 @@
             </nav>
             <div class="directory-content" data-directory-content aria-live="polite" aria-busy="false">{{ country_content }}</div>
         </section>
-        <div class="directory-welcome" data-directory-welcome{% if selected_country %} hidden{% endif %}><p>Select a country</p></div>
     </div>
     <template data-directory-row-template><li><a class="country-directory-row" data-directory-country><span class="directory-flag" aria-hidden="true"><img alt="" width="40" height="30" loading="lazy" decoding="async" referrerpolicy="no-referrer"><span data-flag-fallback hidden></span></span><span class="directory-row-copy"><span data-row-name></span><small data-row-value></small></span></a></li></template>
 </section>

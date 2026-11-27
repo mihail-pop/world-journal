@@ -94,7 +94,7 @@ def _get_google_news(
     current_time = now or datetime.now(UTC)
     cache_key = google_cache_key(source, country["iso_a2"])
     if fresh_seconds is None:
-        fresh_seconds = freshness_seconds() if registry is None else settings.NEWS_REFRESH_SECONDS
+        fresh_seconds = settings.NEWS_GOOGLE_REFRESH_SECONDS
     backend = cache_backend or cache
 
     if cache_only:
@@ -137,8 +137,9 @@ def _refresh_google_news(country, source, snapshot, backend, fetcher, request, *
         response = fetcher(
             build_feed_url(source, country),
             allowed_hosts={source.feed_host},
-            etag=snapshot.get("etag"),
-            last_modified=snapshot.get("last_modified"),
+            # Older snapshots retained only part of the downloaded feed.
+            etag=snapshot.get("etag") if snapshot.get("complete_feed") else None,
+            last_modified=snapshot.get("last_modified") if snapshot.get("complete_feed") else None,
         )
         checked_at = now or datetime.now(UTC)
         if response.not_modified:
@@ -155,9 +156,9 @@ def _refresh_google_news(country, source, snapshot, backend, fetcher, request, *
                 "retry_after_at": None,
             })
         else:
-            limit = settings.NEWS_WORLD_MAX_ITEMS if country["iso_a2"] == "WORLD" else settings.NEWS_MAX_ITEMS
-            normalized = normalize_feed(response.body, source, limit)
+            normalized = normalize_feed(response.body, source)
             snapshot = {
+                "complete_feed": True,
                 "items": [item.as_cache_value() for item in normalized.items],
                 "fetched_at": checked_at.isoformat(),
                 "last_success_at": checked_at.isoformat(),
@@ -224,7 +225,7 @@ def get_country_news_page(
         fetcher=fetcher,
         now=now,
         retry_failed=retry_failed,
-        fresh_seconds=fresh_seconds,
+        fresh_seconds=settings.NEWS_GOOGLE_REFRESH_SECONDS,
         cache_only=cache_only,
     )
     fixed_feeds = eligible_fixed_feeds(country, source_registry)

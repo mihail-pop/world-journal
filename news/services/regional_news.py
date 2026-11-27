@@ -106,8 +106,8 @@ def get_fixed_feed(
             response = fetcher(
                 feed.feed_url,
                 allowed_hosts=set(feed.allowed_hosts),
-                etag=snapshot.get("etag"),
-                last_modified=snapshot.get("last_modified"),
+                etag=snapshot.get("etag") if snapshot.get("complete_feed") else None,
+                last_modified=snapshot.get("last_modified") if snapshot.get("complete_feed") else None,
                 **redirect_options,
             )
             if response.not_modified:
@@ -127,11 +127,11 @@ def get_fixed_feed(
                 normalized = normalize_feed(
                     response.body,
                     provider,
-                    settings.NEWS_FIXED_FEED_CACHE_ITEMS,
                     feed=feed,
                     base_url=response.final_url,
                 )
                 snapshot = {
+                    "complete_feed": True,
                     "items": [item.as_cache_value() for item in normalized.items],
                     "fetched_at": current_time.isoformat(),
                     "last_success_at": current_time.isoformat(),

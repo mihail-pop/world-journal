@@ -218,8 +218,8 @@ class FeedWarmer:
         state = self.states.get(self.jobs[job], {})
         metadata = state.get("metadata", {})
         attempted = parse_datetime(metadata.get("last_attempt_at"))
-        fresh_at_start = (job[0] != "google" and attempted and self.refresh_started_at and not self.manual_refresh
-                          and next_refresh(attempted, self.interval) > self.refresh_started_at and not metadata.get("last_error"))
+        fresh_at_start = (attempted and self.refresh_started_at and not self.manual_refresh
+                          and next_refresh(attempted, self._interval_for(job)) > self.refresh_started_at and not metadata.get("last_error"))
         if self.refresh_started_at and attempted and (attempted >= self.refresh_started_at or fresh_at_start) and not metadata.get("archive_pending"):
             if metadata.get("last_error"):
                 return "failed"
@@ -403,7 +403,7 @@ class FeedWarmer:
                 self.cycle_started_at, self.cycle_finished_at = now.isoformat(), None
                 self.manual_refresh, self.batch_full = manual, True
                 for job in self.jobs:
-                    if self._due_at(job, now, new_cycle=True, manual=manual) <= now:
+                    if self._due_at(job, now, manual=manual) <= now:
                         self._enqueue(job, retry=manual, force=True)
                 self.force_requested = False
 
@@ -424,7 +424,10 @@ class FeedWarmer:
                     self.maintenance_requested = self.full_cleanup = True
                     self.batch_full = False
 
-    def _due_at(self, job, now, *, new_cycle=False, manual=False):
+    def _interval_for(self, job):
+        return settings.NEWS_GOOGLE_REFRESH_SECONDS if job[0] == "google" else self.interval
+
+    def _due_at(self, job, now, *, manual=False):
         metadata = self.states.get(self.jobs[job], {}).get("metadata", {})
         attempted = parse_datetime(metadata.get("last_attempt_at"))
         attempted_this_round = attempted and self.refresh_started_at and attempted >= self.refresh_started_at
@@ -434,18 +437,10 @@ class FeedWarmer:
         elif metadata.get("last_error") and not manual:
             base = settings.NEWS_GOOGLE_FAILURE_BACKOFF_SECONDS if job[0] == "google" else settings.NEWS_FAILURE_BACKOFF_SECONDS
             due = parse_datetime(metadata.get("retry_after_at")) or (attempted or now) + timedelta(seconds=base)
-        elif job[0] != "google":
-            # A slow or paused Google sweep must not delay other publishers.
-            # Saved attempt times keep their cadence stable across restarts.
-            due = now if manual or not attempted else next_refresh(attempted, self.interval)
-        elif new_cycle or not attempted_this_round:
-            due = now
         else:
-            due = self.next_refresh_at or now
-            if not self.cycle_finished_at and due <= now:
-                # A deliberately slow Google sweep may outlast the interval.
-                # Finish it before downloading already-completed feeds again.
-                due = datetime.max.replace(tzinfo=UTC)
+            # Each feed keeps its cadence across rounds and server restarts.
+            # Slower Google sweeps cannot delay or repeat other publishers.
+            due = now if manual or not attempted else next_refresh(attempted, self._interval_for(job))
         if job[0] == "google" and self.google_until and self.google_until > due:
             due = self.google_until
         return due
@@ -533,7 +528,7 @@ class FeedWarmer:
 
     def _run(self, job, retry, force=False):
         with self.condition:
-            registry, interval = self.registry, self.interval
+            registry, interval = self.registry, self._interval_for(job)
             if job not in self.jobs:
                 return None
             key = self.jobs[job]

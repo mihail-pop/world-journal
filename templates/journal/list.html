@@ -9,7 +9,6 @@
                 </div>
                 <input type="hidden" name="collection" value="{{ filters.collection }}">
                 <input type="hidden" name="month" value="{{ date_parts.month }}">
-                <input type="hidden" name="date_basis" value="{{ date_basis }}">
                 <input type="hidden" name="filter_mode" value="{{ filter_mode }}">
                 <input type="hidden" name="order" value="{{ order }}">
                 {% for name,value in extra_filters %}<input type="hidden" name="{{ name }}" value="{{ value }}" data-journal-extra-filter>{% endfor %}
@@ -35,7 +34,7 @@
                     <div class="journal-linked-filters">{% for filter in linked_filters %}{% include 'journal/partials/filter_token.html' %}{% endfor %}</div>
                 </section>
                 <section class="journal-date-section" aria-labelledby="journal-date-title">
-                    <div class="journal-sidebar-heading"><h2 id="journal-date-title">Date</h2><div class="journal-date-actions"><button class="journal-filter-pill" type="button" data-journal-date-basis aria-label="{% if date_basis == 'updated' %}Filter by updated date{% else %}Filter by saved date{% endif %}">{% if date_basis == 'updated' %}Updated{% else %}Saved{% endif %}</button><button class="journal-filter-pill" type="button" data-journal-rewind aria-pressed="false">Rewind</button></div></div>
+                    <div class="journal-sidebar-heading"><h2 id="journal-date-title">Activity Date</h2><button class="journal-filter-pill" type="button" data-journal-rewind aria-pressed="false">Rewind</button></div>
                     <div class="journal-date-inputs">
                         <input type="text" name="day" value="{{ date_parts.day }}" placeholder="Day" aria-label="Day" inputmode="numeric" maxlength="2" autocomplete="off" data-journal-date-part="day">
                         <input type="text" value="{{ date_parts.month }}" placeholder="Month" aria-label="Month" inputmode="text" maxlength="9" autocomplete="off" spellcheck="false" data-journal-date-part="month">
@@ -47,9 +46,8 @@
         </aside>
         <div class="journal-main">
             <div class="journal-list-actions">
-                <button class="journal-icon-button" type="button" data-journal-collection-edit {% if not selected_collection or selected_collection.is_builtin %}hidden{% endif %} aria-label="Edit collection">{% include 'core/partials/icon.html' with name='edit' %}</button>
-                <a class="journal-icon-button" href="{% url 'journal:statistics' %}" aria-label="Statistics">{% include 'core/partials/icon.html' with name='chart' %}</a>
                 <a class="journal-icon-button journal-new-button" href="{% url 'journal:new' %}{% if selected_collection %}?collection={{ selected_collection.pk }}{% endif %}" data-journal-new aria-label="New item">{% include 'core/partials/icon.html' with name='plus' %}</a>
+                <button class="journal-icon-button" type="button" data-journal-collection-edit {% if not selected_collection or selected_collection.is_builtin %}hidden{% endif %} aria-label="Edit collection">{% include 'core/partials/icon.html' with name='edit' %}</button>
             </div>
             <div id="journal-results">{% include 'journal/partials/entry_results.html' %}</div>
         </div>

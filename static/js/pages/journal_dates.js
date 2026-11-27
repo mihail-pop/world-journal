@@ -1,28 +1,15 @@
 import { notify } from "../notifications.js";
 
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-const BASIS_KEY = "world-journal:journal-date-basis";
 
 export function initializeJournalDates(state, changed, beforeRewind) {
     const {form, page} = state;
     const signal = state.events.signal;
     const fields = Object.fromEntries([...form.querySelectorAll("[data-journal-date-part]")].map(input => [input.dataset.journalDatePart, input]));
-    const basis = form.elements.namedItem("date_basis");
-    const basisButton = form.querySelector("[data-journal-date-basis]");
     const rewind = form.querySelector("[data-journal-rewind]");
     let dateTimer, rewindTimer, request;
     let running = false, generation = 0;
     let monthPrefix = "", monthTime = 0, monthIndex = -1;
-    let restoredBasis = false;
-    if (!new URL(location.href).searchParams.has("date_basis")) {
-        try {
-            const saved = localStorage.getItem(BASIS_KEY);
-            if (["created", "updated"].includes(saved)) {
-                restoredBasis = saved !== basis.value;
-                basis.value = saved;
-            }
-        } catch (_) { /* The default still works when browser storage is unavailable. */ }
-    }
     function monthValue() {
         const text = fields.month.value.trim();
         if (!text || /^\d+$/.test(text)) return text;
@@ -65,9 +52,6 @@ export function initializeJournalDates(state, changed, beforeRewind) {
         return valid;
     }
     function sync() {
-        const updated = basis.value === "updated";
-        basisButton.textContent = updated ? "Updated" : "Saved";
-        basisButton.setAttribute("aria-label", updated ? "Filter by updated date" : "Filter by saved date");
         rewind.textContent = running ? "Stop" : "Rewind";
         rewind.setAttribute("aria-pressed", String(running));
         rewind.setAttribute("aria-label", running ? "Stop rewind" : "Rewind through matching days");
@@ -170,12 +154,6 @@ export function initializeJournalDates(state, changed, beforeRewind) {
             else form.reportValidity();
         }, {signal});
     }
-    basisButton.addEventListener("click", () => {
-        stop();
-        basis.value = basis.value === "updated" ? "created" : "updated";
-        try { localStorage.setItem(BASIS_KEY, basis.value); } catch (_) { /* Use the selection for this page. */ }
-        sync(); changed();
-    }, {signal});
     rewind.addEventListener("click", () => {
         if (running) { stop(); return; }
         clearTimeout(dateTimer);
@@ -191,5 +169,5 @@ export function initializeJournalDates(state, changed, beforeRewind) {
     document.addEventListener("visibilitychange", () => { if (document.hidden && running) stop(); }, {signal});
     signal.addEventListener("abort", stop, {once: true});
     sync();
-    return {prepare, sync, stop, restoredBasis, hasDate: Object.values(fields).some(input => input.value)};
+    return {prepare, sync, stop};
 }

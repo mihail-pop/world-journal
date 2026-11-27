@@ -70,6 +70,11 @@ export function registerNewsPage() {
             submit(form);
             return;
         }
+        const summary = event.target.closest("[data-news-summary-toggle]");
+        if (summary) {
+            summary.setAttribute("aria-expanded", String(summary.getAttribute("aria-expanded") !== "true"));
+            return;
+        }
         const button = event.target.closest("[data-news-board] [data-video-play]");
         if (!button) return;
         const bookmark = button.closest("[data-news-item]").querySelector(".news-save-journal");

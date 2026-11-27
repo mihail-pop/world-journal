@@ -12,7 +12,6 @@ urlpatterns = [
     path("bookmark-status/", views.bookmark_status, name="bookmark_status"),
     path("player/<str:video_id>/", views.player_video, name="player_video"),
     path("images/<uuid:attachment_pk>/", views.image, name="image"),
-    path("statistics/", views.statistics, name="statistics"),
     path("collections/new/", views.collection_edit, name="collection_new"),
     path("collections/<uuid:pk>/edit/", views.collection_edit, name="collection_edit"),
     path("collections/<uuid:pk>/delete/", views.collection_delete, name="collection_delete"),

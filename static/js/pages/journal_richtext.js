@@ -1,4 +1,5 @@
 import { notify } from "../notifications.js";
+import { refreshSelectControl } from "../ui_controls.js";
 import { saveJournalEditor } from "./journal_autosave.js";
 
 const controllers = new Map();
@@ -57,7 +58,10 @@ function syncSelect(select, value, mixed = false) {
         extra.disabled = true;
         select.append(extra);
     }
-    select.value = wanted;
+    if (select.value !== wanted) {
+        select.value = wanted;
+        refreshSelectControl(select);
+    }
 }
 
 class JournalEditor {
@@ -240,9 +244,15 @@ class JournalEditor {
         syncSelect(style, formatting.style, formatting.mixedStyle);
         syncSelect(this.toolbar.querySelector("[data-rich-font]"), formatting.values.fontFamily, formatting.mixed.has("fontFamily"));
         syncSelect(this.toolbar.querySelector("[data-rich-size]"), formatting.values.fontSize, formatting.mixed.has("fontSize"));
-        for (const control of this.toolbar.querySelectorAll("select, [data-text-action]:not([data-rich-command])")) control.disabled = !editor.isEditable || isImage
-            || (control !== style && editor.isActive("codeBlock"));
-        for (const option of style.options) if (/^[1-3]$/.test(option.value)) option.disabled = !editor.can().setHeading({level: Number(option.value)});
+        for (const control of this.toolbar.querySelectorAll("select, [data-text-action]:not([data-rich-command])")) {
+            const disabled = !editor.isEditable || isImage || (control !== style && editor.isActive("codeBlock"));
+            if (control.disabled !== disabled) control.disabled = disabled;
+        }
+        for (const option of style.options) {
+            if (!/^[1-3]$/.test(option.value)) continue;
+            const disabled = !editor.can().setHeading({level: Number(option.value)});
+            if (option.disabled !== disabled) option.disabled = disabled;
+        }
         for (const menu of this.toolbar.querySelectorAll("[data-text-menu]")) {
             menu.inert = !editor.isEditable || isImage || (menu.hasAttribute("data-color-menu") && editor.isActive("codeBlock"));
             if (menu.inert) menu.open = false;

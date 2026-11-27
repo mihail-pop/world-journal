@@ -4,13 +4,11 @@
     <input type="hidden" name="return_query" value="{{ return_query }}">
     {{ collection_form.non_field_errors }}
     <div class="source-modal-fields">
-        <div class="settings-field"><label for="{{ collection_form.name.id_for_label }}">Name</label>{{ collection_form.name }}{{ collection_form.name.errors }}</div>
-        <div class="settings-field"><label for="{{ collection_form.position.id_for_label }}">Position</label>{{ collection_form.position }}{{ collection_form.position.errors }}</div>
+        <div class="settings-field source-modal-link"><label for="{{ collection_form.name.id_for_label }}">Name</label>{{ collection_form.name }}{{ collection_form.name.errors }}</div>
         <div class="settings-field source-modal-link"><label for="{{ collection_form.description.id_for_label }}">Description</label>{{ collection_form.description }}{{ collection_form.description.errors }}</div>
     </div>
     <div class="source-modal-actions">
         <button class="journal-button journal-collection-delete" type="button" data-journal-collection-delete {% if collection_id %}data-delete-url="{% url 'journal:collection_delete' collection.pk %}"{% else %}hidden{% endif %}>Delete</button>
-        <button class="journal-button" type="button" data-journal-collection-close>Cancel</button>
         <button class="journal-button is-primary" type="submit">Save</button>
     </div>
 </form>

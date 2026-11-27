@@ -162,7 +162,7 @@ def check_custom_source(record):
             if response.final_url:
                 if CustomSource.objects.exclude(pk=record.pk).filter(url=response.final_url).exists() or any(feed.feed_url == response.final_url for feed in curated.feeds):
                     raise FeedFetchError("This feed has already been added at its redirected address.")
-            normalized = normalize_feed(response.body, item, settings.NEWS_FIXED_FEED_CACHE_ITEMS, feed=feed, base_url=response.final_url)
+            normalized = normalize_feed(response.body, item, feed=feed, base_url=response.final_url)
             # Keep the submitted address on failure, so retry does not get stuck
             # on a publisher's temporary redirect to an error/landing page.
             record.url = response.final_url or location
@@ -178,12 +178,13 @@ def check_custom_source(record):
         # Normalize with the detected/overridden name before retaining attribution.
         item, feed = registry_items(record)
         if feed:
-            normalized = normalize_feed(response.body, item, settings.NEWS_FIXED_FEED_CACHE_ITEMS, feed=feed)
+            normalized = normalize_feed(response.body, item, feed=feed)
             key, ttl = fixed_feed_cache_key(feed), settings.NEWS_REGIONAL_STALE_SECONDS
         else:
             normalized = normalize_youtube_feed(response.body, item, settings.NEWS_YOUTUBE_FEED_CACHE_ITEMS)
             key, ttl = youtube_cache_key(item), settings.NEWS_YOUTUBE_STALE_SECONDS
         snapshot = {
+            "complete_feed": bool(feed),
             "items": [entry.as_cache_value() for entry in normalized.items],
             "fetched_at": now.isoformat(), "last_success_at": now.isoformat(),
             "last_attempt_at": now.isoformat(), "last_error": "", "last_error_detail": "",

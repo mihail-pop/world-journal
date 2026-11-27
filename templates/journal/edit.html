@@ -6,10 +6,8 @@
         {% if form.is_bound %}<input type="hidden" data-autosave-retry value="true">{% endif %}
         <aside class="journal-writing-rail" aria-label="Journal navigation">
             <nav class="journal-workspace-actions" aria-label="Journal views">
-                <a class="journal-icon-button" href="{% url 'journal:list' %}" aria-label="Browse journal">{% include 'core/partials/icon.html' with name='layers' %}</a>
-                <a class="journal-icon-button" href="{% url 'journal:new' %}" aria-label="New">{% include 'core/partials/icon.html' with name='plus' %}</a>
+                <a class="journal-icon-button journal-editor-back" href="{% url 'journal:list' %}" aria-label="Back to Journal">{% include 'core/partials/icon.html' with name='arrow-left' %}</a>
                 <a class="journal-icon-button" href="{{ entry.get_absolute_url }}" data-journal-reader aria-label="Reading view" {% if is_new %}hidden{% endif %}>{% include 'core/partials/icon.html' with name='book' %}</a>
-                <a class="journal-icon-button" href="{% url 'journal:statistics' %}" aria-label="Statistics">{% include 'core/partials/icon.html' with name='chart' %}</a>
             </nav>
             <h2>Sections</h2>
             <nav class="journal-sections-nav" data-journal-section-nav aria-label="Writing sections"><button type="button" data-journal-page="main" aria-current="page">Main text</button></nav>

@@ -4,6 +4,7 @@ from pathlib import Path
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator
 from django.db import models
+from django.db.models.functions import Lower
 from django.urls import reverse
 
 from .validators import MAX_TIMESTAMP, validate_source_url, validate_video_id
@@ -29,12 +30,11 @@ class Collection(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=160, unique=True)
     description = models.TextField(blank=True)
-    position = models.PositiveIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        ordering = ("position", "name", "id")
+        ordering = (Lower("name"), "name", "id")
 
     def __str__(self):
         return self.name
@@ -121,6 +121,7 @@ class Entry(ResearchContent):
         indexes = [
             models.Index(fields=["event_date", "id"], name="journal_event_idx"),
             models.Index(fields=["-created_at", "id"], name="journal_created_idx"),
+            models.Index(fields=["-updated_at", "id"], name="journal_activity_idx"),
             models.Index(fields=["collection", "-created_at"], name="journal_collection_idx"),
             models.Index(fields=["entry_type", "event_date"], name="journal_type_date_idx"),
         ]

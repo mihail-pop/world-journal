@@ -28,7 +28,7 @@ from .preferences import validate_preferences
 
 
 FORMAT = "world-journal-backup"
-VERSION = 10
+VERSION = 11
 MANIFEST_LIMIT = 32 * 1024 * 1024
 RECORD_LIMIT = 100_000
 IMAGE_TYPES = {"image/jpeg": (".jpg", "JPEG"), "image/png": (".png", "PNG"), "image/webp": (".webp", "WEBP"), "image/gif": (".gif", "GIF")}
@@ -65,10 +65,11 @@ LABELS = {
 # Version 8 adds the news archive storage allocation.
 # Version 9 adds the map menu position and favorites display choice.
 # Version 10 adds the saved open/closed map menu choice.
+# Version 11 removes manual collection positions.
 # New backup versions must retain a reader for older archive versions.
 CONTENT_FIELDS = "title body body_format entry_type source_url source_name source_published_at youtube_video_id youtube_start_seconds"
 SCHEMA_FIELDS = {
-    Collection: "id name description position created_at updated_at",
+    Collection: "id name description created_at updated_at",
     MapPreset: "id name description default_color created_at updated_at",
     Entry: f"id {CONTENT_FIELDS} collection_id event_date is_favorite is_pinned created_at updated_at",
     EntrySection: f"id {CONTENT_FIELDS} entry_id position created_at updated_at",
@@ -207,6 +208,11 @@ def _read_archive(archive):
             if not isinstance(record, dict) or "map_menu_open" in record:
                 raise BackupError("The map menu fields do not match the backup version.")
             record["map_menu_open"] = False
+    if manifest["version"] < 11:
+        for record in records["collections"]:
+            if not isinstance(record, dict) or "position" not in record:
+                raise BackupError("The collection fields do not match the backup version.")
+            record.pop("position")
     return records, media
 
 

@@ -50,15 +50,20 @@ def index(request):
             row[field] = float(Decimal(values[0]["amount"])) if values else None
             row[field + "_display"] = values[0]["display"] if values else ""
         rows.append(row)
-    matching = [row for row in rows if search_name(options["q"]).strip() in search_name(f"{row['name']} {row['iso_a2']} {row['iso_a3']}")]
-    matching.sort(key=lambda row: (row["name"].casefold(), row["iso_a2"]))
-    if options["sort"] == "name":
-        matching.sort(key=lambda row: row["name"].casefold(), reverse=options["order"] == "desc")
-    else:
-        known = [row for row in matching if row[options["sort"]] is not None]
-        unknown = [row for row in matching if row[options["sort"]] is None]
-        known.sort(key=lambda row: row[options["sort"]], reverse=options["order"] == "desc")
-        matching = known + unknown
+    sort = options["sort"]
+    descending = options["order"] == "desc"
+    rows.sort(key=lambda row: (search_name(row["name"]), row["iso_a2"]), reverse=sort == "name" and descending)
+    if sort != "name":
+        known = [row for row in rows if row[sort] is not None]
+        unknown = [row for row in rows if row[sort] is None]
+        known.sort(key=lambda row: row[sort], reverse=descending)
+        rows = known + unknown
+    query = search_name(options["q"]).strip()
+    matching = [row for row in rows if query in search_name(f"{row['name']} {row['iso_a2']} {row['iso_a3']}")]
+    candidates = matching or rows
+    if not options["country"] and candidates:
+        first = next((row for row in candidates if row["favorite"]), candidates[0])
+        options["country"] = first["iso_a2"]
     directory_path = reverse("countries:index")
     for row in matching:
         row["directory_url"] = directory_path + "?" + urlencode({**options, "country": row["iso_a2"]})

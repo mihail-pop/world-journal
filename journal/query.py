@@ -8,10 +8,6 @@ from django.utils import timezone
 from .models import Entry, EntryType
 
 
-def entry_date_field(params):
-    return {"updated": "updated_at", "event": "event_date"}.get(params.get("date_basis"), "created_at")
-
-
 def date_bounds(params):
     if value := params.get("date"):
         start = date.fromisoformat(value)
@@ -40,8 +36,8 @@ def date_bounds(params):
     return start, end
 
 
-def date_boundary(value, field):
-    return value if field == "event_date" else timezone.make_aware(datetime.combine(value, datetime.min.time()))
+def date_boundary(value):
+    return timezone.make_aware(datetime.combine(value, datetime.min.time()))
 
 
 def filtered_entries(params, *, for_display=True, apply_date=True):
@@ -85,11 +81,10 @@ def filtered_entries(params, *, for_display=True, apply_date=True):
     if apply_date:
         try:
             start, end = date_bounds(params)
-            field = entry_date_field(params)
             if start is not None:
-                entries = entries.filter(**{field + "__gte": date_boundary(start, field)})
+                entries = entries.filter(updated_at__gte=date_boundary(start))
             if end is not None:
-                entries = entries.filter(**{field + "__lt": date_boundary(end, field)})
+                entries = entries.filter(updated_at__lt=date_boundary(end))
         except ValueError:
             entries = entries.none()
     field = Lower("title") if sort == "title" else F("journal_release_date" if sort == "release" else "updated_at")

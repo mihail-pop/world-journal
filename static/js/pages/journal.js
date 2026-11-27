@@ -68,7 +68,7 @@ function syncSectionNav(editor) {
 }
 
 function updatePositions(editor) {
-    let position = 0;
+    const activeSections = [];
     for (const card of editor.querySelectorAll("[data-journal-section]")) {
         const deleted = card.querySelector('[name$="-DELETE"]').checked;
         card.classList.toggle("is-deleted", deleted);
@@ -84,8 +84,12 @@ function updatePositions(editor) {
                 delete input.dataset.sectionDisabled;
             }
         }
-        const input = card.querySelector('[name$="-position"]');
-        if (input && !deleted) input.value = position++;
+        if (!deleted) activeSections.push(card);
+    }
+    for (const [position, card] of activeSections.entries()) {
+        card.querySelector('[name$="-position"]').value = position;
+        card.querySelector('[data-section-move="up"]').hidden = position === 0;
+        card.querySelector('[data-section-move="down"]').hidden = position === activeSections.length - 1;
     }
     syncSectionNav(editor);
 }
@@ -204,14 +208,19 @@ export function registerJournalPage() {
             editor.dispatchEvent(new Event("world-journal:editor-changed"));
         } else if (event.target.closest("[data-section-move]")) {
             const button = event.target.closest("[data-section-move]");
+            if (button.hidden) return;
             const card = button.closest("[data-journal-section]");
-            const cards = [...editor.querySelectorAll("[data-journal-section]")];
+            const cards = [...editor.querySelectorAll("[data-journal-section]:not(.is-deleted)")];
             const index = cards.indexOf(card);
             const sibling = cards[index + (button.dataset.sectionMove === "up" ? -1 : 1)];
             if (sibling) {
                 if (button.dataset.sectionMove === "up") sibling.before(card);
                 else sibling.after(card);
                 updatePositions(editor);
+                if (event.detail === 0) {
+                    const nextButton = button.hidden ? card.querySelector("[data-section-move]:not([hidden])") : button;
+                    nextButton?.focus({preventScroll: true});
+                }
                 editor.dispatchEvent(new Event("world-journal:editor-changed"));
             }
         }

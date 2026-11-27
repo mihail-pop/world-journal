@@ -7,6 +7,7 @@ from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.core.paginator import Paginator
 from django.db.models import Count, Max
+from django.db.models.functions import Lower
 from django.http import FileResponse, Http404, HttpResponse, JsonResponse, QueryDict
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
@@ -23,8 +24,7 @@ from countries.models import Country
 from .formatting import country_aliases, referenced_countries
 from .forms import AttachmentForm, CollectionForm, EntryForm, SectionFormSet, default_collection
 from .models import Attachment, BUILTIN_COLLECTION_NAMES, Collection, Entry, EntryType
-from .query import date_boundary, date_bounds, entry_date_field, filtered_entries
-from .statistics import statistics_context
+from .query import date_boundary, date_bounds, filtered_entries
 from .validators import VIDEO_ID, parse_youtube_reference
 from .bookmarks import bookmark_details, bookmark_states
 
@@ -107,14 +107,13 @@ def list_entries(request):
                     end = today + timedelta(days=1) if today < date.max else None
         except ValueError:
             return JsonResponse({"error": "Enter a valid date."}, status=400)
-        field = entry_date_field(params)
         seek = filtered_entries(params, for_display=False, apply_date=False)
         if end is not None:
-            seek = seek.filter(**{field + "__lt": date_boundary(end, field)})
-        latest = seek.order_by("-" + field).values_list(field, flat=True).first()
+            seek = seek.filter(updated_at__lt=date_boundary(end))
+        latest = seek.order_by("-updated_at").values_list("updated_at", flat=True).first()
         if latest is None:
             return JsonResponse({"date": None, "exhausted": True})
-        rewind_date = timezone.localtime(latest).date() if field != "event_date" else latest
+        rewind_date = timezone.localtime(latest).date()
         for key in ("year", "month", "day"):
             params.pop(key, None)
         params["date"] = rewind_date.isoformat()
@@ -149,7 +148,7 @@ def list_entries(request):
     if is_paging or request.headers.get("X-Journal-Filtering") == "1":
         context["total_entries"] = summary["total"] or Entry.objects.exists()
         return render(request, "journal/partials/entry_results.html", context)
-    collections = list(Collection.objects.annotate(entry_count=Count("entries")).order_by("position", "name", "id"))
+    collections = list(Collection.objects.annotate(entry_count=Count("entries")).order_by(Lower("name"), "name", "id"))
     selected = next((item for item in collections if str(item.pk) == request.GET.get("collection")), None)
     date_parts = {key: params.get(key, "") for key in ("year", "month", "day")}
     if params.get("date"):
@@ -162,7 +161,7 @@ def list_entries(request):
     sort = sort if sort in {"activity", "release", "title"} else "activity"
     order = "asc" if request.GET.get("order") == "asc" else "desc"
     editor_data = {str(item.pk): {
-        "id": str(item.pk), "name": item.name, "description": item.description, "position": item.position,
+        "id": str(item.pk), "name": item.name, "description": item.description,
         "delete_url": reverse("journal:collection_delete", args=[item.pk]),
     } for item in collections if not item.is_builtin}
     selected_data = editor_data.get(str(selected.pk)) if selected else None
@@ -183,7 +182,6 @@ def list_entries(request):
         "collection_editor_data": editor_data, "collection_form": CollectionForm(),
         "collection_modal": "edit" if request.GET.get("edit_collection") and selected_data else "new" if request.GET.get("create_collection") else "",
         "sort": sort, "order": order, "date_parts": date_parts,
-        "date_basis": "updated" if params.get("date_basis") == "updated" else "created",
         "filter_mode": "exclude" if params.get("filter_mode") == "exclude" else "include",
         "selected_types": params.getlist("type"),
         "entry_types": EntryType.choices,
@@ -193,15 +191,6 @@ def list_entries(request):
         "total_entries": Entry.objects.count(),
     })
     return page(request, "core/partials/journal.html", context)
-
-
-@require_http_methods(["GET"])
-def statistics(request):
-    params = QueryDict(mutable=True)
-    params.update({"date_basis": "created", "period": "month", "stats_page": request.GET.get("stats_page", "1")})
-    context = statistics_context(params)
-    context["summary"][0]["label"] = "All entries"
-    return page(request, "journal/statistics.html", context)
 
 
 def initial_entry(request, parameters=None):
@@ -455,7 +444,7 @@ def collection_edit(request, pk=None):
         messages.success(request, "Collection saved.")
         params = QueryDict(request.POST.get("return_query", ""), mutable=True)
         for key in list(params):
-            if key not in {"q", "collection", "type", "filter_mode", "sort", "order", "year", "month", "day", "country", "date_basis", "date", "favorite", "pinned", "undated", "untagged"}:
+            if key not in {"q", "collection", "type", "filter_mode", "sort", "order", "year", "month", "day", "country", "date", "favorite", "pinned", "undated", "untagged"}:
                 params.pop(key)
         params["collection"] = str(collection.pk)
         return navigate(request, reverse("journal:list") + "?" + params.urlencode())

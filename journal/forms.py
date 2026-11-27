@@ -16,6 +16,7 @@ CONTENT_FIELDS = ("title", "entry_type", "body", "source_url", "source_name", "s
 
 class ContentForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
+        kwargs.setdefault("label_suffix", "")
         super().__init__(*args, **kwargs)
         self.fields["title"].widget.attrs["placeholder"] = "Title"
         self.fields["entry_type"].label = "Type"
@@ -120,6 +121,8 @@ class SectionForm(ContentForm):
 
 
 class SectionInlineFormSet(BaseInlineFormSet):
+    deletion_widget = forms.CheckboxInput(attrs={"hidden": True})
+
     def add_fields(self, form, index):
         # The editor allocates a stable UUID before its first autosave. Django's
         # inline formset otherwise clears a new parent's default primary key.
@@ -142,7 +145,7 @@ class CollectionForm(forms.ModelForm):
 
     class Meta:
         model = Collection
-        fields = ("name", "description", "position")
+        fields = ("name", "description")
         widgets = {"description": forms.Textarea(attrs={"rows": 4})}
 
 

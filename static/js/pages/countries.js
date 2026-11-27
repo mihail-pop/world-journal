@@ -6,8 +6,12 @@ let controller = null;
 let registered = false;
 const sections = ["overview", "articles", "videos", "notes"];
 const normalize = value => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase();
-const collator = new Intl.Collator(undefined, {sensitivity:"base", numeric:true});
 const alive = state => controller === state && !state.abort.signal.aborted && !state.suspended && state.page.isConnected;
+
+function compare(a, b) {
+    if (a === b) return 0;
+    return a < b ? -1 : 1;
+}
 
 function directoryUrl(state, code = state.code, tab = state.tab) {
     const url = new URL("/countries/", location.origin);
@@ -50,20 +54,24 @@ function countryRow(state, country, favorite) {
     return node;
 }
 
-function renderLists(state) {
-    const focused = document.activeElement;
-    const lists = state.page.querySelector("[data-directory-lists]");
-    const scrollTop = lists.scrollTop;
-    const query = normalize(state.form.elements.q.value.trim());
+function matchingCountries(state, query = normalize(state.form.elements.q.value.trim())) {
     const sort = state.form.elements.sort.value;
     const direction = state.form.elements.order.value === "desc" ? -1 : 1;
     const matching = state.catalog.filter(country => normalize(`${country.name} ${country.iso_a2} ${country.iso_a3}`).includes(query));
     matching.sort((a,b) => {
-        const names = collator.compare(a.name,b.name) || a.iso_a2.localeCompare(b.iso_a2);
+        const names = compare(normalize(a.name), normalize(b.name)) || compare(a.iso_a2, b.iso_a2);
         if (sort === "name") return names*direction;
         if (a[sort] === null || b[sort] === null) return a[sort] === b[sort] ? names : a[sort] === null ? 1 : -1;
         return (a[sort]-b[sort])*direction || names;
     });
+    return matching;
+}
+
+function renderLists(state) {
+    const focused = document.activeElement;
+    const lists = state.page.querySelector("[data-directory-lists]");
+    const scrollTop = lists.scrollTop;
+    const matching = matchingCountries(state);
     const favorites = matching.filter(country => state.favorites.has(country.iso_a2));
     state.page.querySelector("[data-directory-all-list]").replaceChildren(...matching.map(country => countryRow(state,country,false)));
     state.page.querySelector("[data-directory-favorite-list]").replaceChildren(...favorites.map(country => countryRow(state,country,true)));
@@ -186,7 +194,11 @@ function loadContent(state, retry = false) {
 }
 
 function select(state, code, tab = state.tab, {historyChange = true} = {}) {
-    if (code && !state.byCode.has(code)) code = "";
+    if (!state.byCode.has(code)) {
+        const matching = matchingCountries(state);
+        const candidates = matching.length ? matching : matchingCountries(state, "");
+        code = (candidates.find(country => state.favorites.has(country.iso_a2)) ?? candidates[0])?.iso_a2 ?? "";
+    }
     if (!sections.includes(tab)) tab = "overview";
     const changed = state.code !== code || state.tab !== tab;
     state.code = code;
@@ -196,7 +208,6 @@ function select(state, code, tab = state.tab, {historyChange = true} = {}) {
     state.form.elements.country.value = code;
     state.form.elements.tab.value = tab;
     state.page.querySelector("[data-directory-detail]").hidden = !code;
-    state.page.querySelector("[data-directory-welcome]").hidden = Boolean(code);
     for (const link of state.page.querySelectorAll("[data-directory-tab]")) {
         if (link.dataset.directoryTab === tab) link.setAttribute("aria-current","page");
         else link.removeAttribute("aria-current");
@@ -293,7 +304,6 @@ function initialize() {
         if (["articles","videos"].includes(state.tab)) rememberCountryFeed(state.code,state.tab,markup,{notify:false});
         else state.cache.set(`${state.code}:${state.tab}`,{markup});
     }
-    page.querySelector("[data-directory-apply]").hidden = true;
     const signal = state.abort.signal;
     // Boosted links must use the newly selected country's current URL.
     page.addEventListener("htmx:configRequest",event => {

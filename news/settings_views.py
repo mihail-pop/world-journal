@@ -1,6 +1,7 @@
 import json
 from urllib.parse import urlencode
 
+from django.conf import settings
 from django.contrib import messages
 from django.core.cache import cache
 from django.core.exceptions import ValidationError
@@ -343,6 +344,7 @@ def refresh_source(request, source_id):
             result = get_youtube_feed(item, **options)
             name = item.display_name
         elif item.kind is SourceKind.DYNAMIC_COUNTRY_RSS and country:
+            options["fresh_seconds"] = settings.NEWS_GOOGLE_REFRESH_SECONDS
             result = get_country_news(country.pk, registry=registry, **options)
             name = f"{item.display_name} — {country.name}"
         else:

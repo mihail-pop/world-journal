@@ -10,6 +10,9 @@ import feedparser
 from news.types import NewsFeed, NewsItem, NewsProvider, NewsSource, NormalizedFeed, SourceKind
 
 
+MAX_FEED_ARTICLES = 500
+
+
 class FeedParseError(ValueError):
     pass
 
@@ -130,7 +133,7 @@ def _deduplicate(items: list[NewsItem]) -> tuple[NewsItem, ...]:
 def normalize_feed(
     payload: bytes,
     source: NewsSource | NewsProvider,
-    max_items: int,
+    max_items: int | None = None,
     *,
     feed: NewsFeed | None = None,
     base_url: str | None = None,
@@ -173,9 +176,8 @@ def normalize_feed(
                 source_order=source_order,
             )
         )
-        if len(items) >= max_items * 2:
-            break
     if parsed.entries and not items:
         raise FeedParseError("The feed contains entries, but none have a usable title and HTTP(S) link")
-    return NormalizedFeed(items=_deduplicate(items)[:max_items], parser_warnings=warnings,
+    limit = MAX_FEED_ARTICLES if max_items is None else min(max_items, MAX_FEED_ARTICLES)
+    return NormalizedFeed(items=_deduplicate(items)[:limit], parser_warnings=warnings,
                           feed_format=parsed.version, title=_plain_text(parsed.feed.get("title")))

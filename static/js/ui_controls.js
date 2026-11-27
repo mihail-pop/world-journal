@@ -17,6 +17,7 @@ class SelectControl {
     constructor(select) {
         this.select = select;
         this.inline = select.multiple && select.hasAttribute("data-inline-select");
+        this.compact = select.hasAttribute("data-compact-select");
         // HTMX history snapshots can restore generated markup without its JS
         // controller. Rebuild around the native field instead of nesting menus.
         const restoredWrapper = select.closest(".select-control");
@@ -70,6 +71,7 @@ class SelectControl {
         this.wrapper.append(this.trigger, this.tags, this.error);
         this.menu = document.createElement("div");
         this.menu.className = "select-menu";
+        if (this.compact) this.menu.classList.add("select-menu-compact");
         if (select.closest("[data-map-controls-panel], [data-preset-map-drawer]")) this.menu.classList.add("map-select-menu");
         if (select.closest("[data-preset-map-drawer]")) this.menu.classList.add("preset-map-select-menu");
         this.menu.hidden = true;
@@ -133,7 +135,7 @@ class SelectControl {
                 event.preventDefault();
                 this.open(false);
                 this.focusOption(event.key === "End" || event.key === "ArrowUp" ? -1 : 0);
-            } else if (event.key.length === 1 && !event.ctrlKey && !event.metaKey && event.key !== " ") {
+            } else if (!this.compact && event.key.length === 1 && !event.ctrlKey && !event.metaKey && event.key !== " ") {
                 event.preventDefault();
                 this.open();
                 this.search.value = event.key;
@@ -167,7 +169,8 @@ class SelectControl {
         const text = this.select.dataset.selectSummary || (selected.length ? selected.map(option => option.textContent.trim()).join(", ")
             : this.select.dataset.selectPlaceholder || (this.country ? "Choose countries" : "Choose an option"));
         if (this.value.textContent !== text) this.value.textContent = text;
-        this.trigger.removeAttribute("title");
+        if (this.compact && this.select.title) this.trigger.title = this.select.title;
+        else this.trigger.removeAttribute("title");
         if (this.inline) {
             this.wrapper.classList.toggle("has-items", selected.length > 0);
             this.trigger.setAttribute("aria-label", `${selected.length ? "Clear" : "Open"} ${this.label.toLowerCase()}`);
@@ -247,7 +250,7 @@ class SelectControl {
         activeControl?.close();
         activeControl = this;
         this.search.value = "";
-        this.search.hidden = !this.inline && !(this.country || this.select.options.length > 7);
+        this.search.hidden = !this.inline && (this.compact || !(this.country || this.select.options.length > 7));
         this.menu.hidden = false;
         (this.select.closest("dialog") || document.body).append(this.menu);
         this.trigger.setAttribute("aria-expanded", "true");
@@ -322,6 +325,10 @@ class SelectControl {
             event.preventDefault(); this.search.focus(); this.search.value += event.key; this.renderOptions();
         }
     }
+}
+
+export function refreshSelectControl(select) {
+    controls.get(select)?.sync();
 }
 
 function enhance(root) {

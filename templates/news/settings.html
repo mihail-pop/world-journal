@@ -16,14 +16,14 @@
                     </li>{% endfor %}</ul>
                 </details>
             </div>
-            <p class="source-tile-description"><strong>Refresh news from your selected sources. You can keep reading while it updates.</strong></p>
+            <p class="source-tile-description">Refresh news from your selected sources. You can keep reading while it updates.</p>
         </article>
         <form id="news-preferences" class="settings-card source-preferences-form" method="post" action="{% url 'news:settings' %}">
             {% csrf_token %}<input type="hidden" name="country" value="{{ country.pk }}">
             <h2>News Settings</h2>{{ form.non_field_errors }}
             <div class="settings-field"><label for="{{ form.freshness_minutes.id_for_label }}">Refresh interval</label>{{ form.freshness_minutes }}{{ form.freshness_minutes.errors }}</div>
             <div class="settings-field"><label for="{{ form.archive_storage_mb.id_for_label }}">Archive storage</label>{{ form.archive_storage_mb }}{{ form.archive_storage_mb.errors }}</div>
-            <p class="source-tile-description"><strong>Estimated storage for 90 days: around 1.5 GB.</strong></p>
+            <p class="source-tile-description">Estimated storage for 90 days: around 1.5 GB.</p>
             <noscript><button type="submit" class="journal-button is-primary">Save source preferences</button></noscript>
         </form>
     </div>

@@ -4,6 +4,7 @@ from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from urllib.parse import urlencode
 
+from django.conf import settings
 from django.core.cache import cache
 from django.db.models import Exists, OuterRef, Prefetch, Q
 from django.urls import reverse
@@ -134,7 +135,8 @@ class CachedNews:
         google_items, regional_items, video_items, errors = [], [], [], []
         options = {"cache_backend": self, "cache_only": True, "fresh_seconds": self.interval, "now": self.now}
         if self.google_enabled:
-            result = get_world_news(registry=self.registry, **options) if self.options["country"] == "WORLD" else get_country_news(self.options["country"], registry=self.registry, **options)
+            google_options = {**options, "fresh_seconds": settings.NEWS_GOOGLE_REFRESH_SECONDS}
+            result = get_world_news(registry=self.registry, **google_options) if self.options["country"] == "WORLD" else get_country_news(self.options["country"], registry=self.registry, **google_options)
             google_items = [replace(item, is_stale=result.is_stale) for item in result.items]
             if result.warning or result.error:
                 errors.append(("Google News", result.warning or result.error))
@@ -218,6 +220,7 @@ class CachedNews:
                 initial["country"] = item.matched_country_codes
             cards.append({"item": item, "google": not video and item.provider_id == self.google.id,
                           "bookmark": bookmarks.get(f"video:{item.video_id}" if video else f"article:{item.link}"),
+                          "summary_id": f"article-summary-{result_version(item.link)}" if not video and item.summary else "",
                           "save_url": reverse("journal:new") + "?" + urlencode(initial, doseq=True)})
         pending = sum(not isinstance(snapshot := self.get(key), dict) or not isinstance(snapshot.get("items"), list)
                       or not (snapshot.get("last_success_at") or snapshot.get("last_attempt_at")) for key in self.keys)

@@ -16,7 +16,7 @@ class NewsPreferencesForm(forms.Form):
     freshness_minutes = forms.TypedChoiceField(
         label="Background refresh interval", coerce=int,
         choices=[(120, "Every 2 hours"), (240, "Every 4 hours"), (360, "Every 6 hours"), (480, "Every 8 hours"), (600, "Every 10 hours"), (720, "Every 12 hours")],
-        help_text="Refresh enabled feeds automatically while the Django server runs. Cached articles and videos remain available during refreshes.",
+        help_text="Refresh other article sources and YouTube channels. Google News refreshes every 24 hours.",
     )
     archive_storage_mb = forms.TypedChoiceField(label="Archive storage", coerce=int, choices=NewsPreferences.STORAGE_CHOICES)
 

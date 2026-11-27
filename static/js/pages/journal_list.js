@@ -76,7 +76,6 @@ function openCollection(edit, opener) {
     form.elements.namedItem("collection_id").value = data?.id || "";
     form.elements.namedItem("name").value = data?.name || "";
     form.elements.namedItem("description").value = data?.description || "";
-    form.elements.namedItem("position").value = data?.position ?? 0;
     form.elements.namedItem("return_query").value = new URLSearchParams(new FormData(filters)).toString();
     const remove = form.querySelector("[data-journal-collection-delete]");
     remove.hidden = !data;
@@ -111,7 +110,6 @@ function initialize() {
         if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) closeCollection();
     }, {signal: state.events.signal});
     syncControls(state);
-    if (state.dates.restoredBasis && state.dates.hasDate) submit(state);
     if (page.dataset.collectionModal) {
         openCollection(page.dataset.collectionModal === "edit", page.querySelector("[data-journal-collection-new]"));
         page.dataset.collectionModal = "";
