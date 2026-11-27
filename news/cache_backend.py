@@ -15,6 +15,14 @@ class CacheWriteError(DatabaseError):
 
 
 class FeedDatabaseCache(DatabaseCache):
+    def feed_failure_metadata(self, key):
+        metadata = FeedState.objects.filter(pk=key).values_list("metadata", flat=True).first() or {}
+        if not metadata.get("last_error"):
+            return None
+        return {field: metadata.get(field) for field in (
+            "last_error", "last_error_detail", "last_attempt_at", "retry_after_at", "consecutive_failures",
+        )}
+
     def google_request_deadline(self):
         from .services.cache import parse_datetime
 

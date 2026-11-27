@@ -58,7 +58,27 @@ function renderProgress(page, result) {
         list.replaceChildren();
         for (const error of result.errors) {
             const item = document.createElement("li");
-            item.textContent = `${error.name}: ${error.error}`;
+            const retry = document.createElement("button");
+            retry.type = "button";
+            retry.className = "source-retry-button";
+            retry.dataset.sourceRetry = "";
+            retry.dataset.retryKind = error.kind;
+            retry.dataset.retrySource = error.source_id;
+            retry.setAttribute("aria-label", `Retry ${error.category} from ${error.name}`);
+            retry.disabled = error.retry_disabled;
+            retry.textContent = error.retrying ? "Retrying…" : "Retry";
+            const text = document.createElement("div");
+            text.className = "source-refresh-error-text";
+            const name = document.createElement("strong");
+            name.textContent = `${error.category} · ${error.name}`;
+            const message = document.createElement("span");
+            message.textContent = error.error;
+            const next = document.createElement("small");
+            next.className = "source-refresh-retry-time";
+            next.hidden = !error.retry_text;
+            next.textContent = error.retry_text;
+            text.append(name, message, next);
+            item.append(retry, text);
             list.append(item);
         }
         list.dataset.errors = signature;
@@ -121,6 +141,33 @@ async function refreshAll(form, page) {
         notify({id: "feed-refresh", kind: "error", title: "Refresh could not start", message: error.message});
     } finally {
         finish();
+    }
+}
+
+async function retrySource(button, page) {
+    if (button.disabled) return;
+    button.disabled = true;
+    button.textContent = "Retrying…";
+    const body = new FormData();
+    body.set("csrfmiddlewaretoken", page.querySelector('[name="csrfmiddlewaretoken"]').value);
+    body.set("kind", button.dataset.retryKind);
+    body.set("source_id", button.dataset.retrySource);
+    const finish = beginTask("Retrying source…");
+    try {
+        const response = await fetch(page.dataset.sourceRetryUrl, {method: "POST", body});
+        const result = await response.json();
+        if (!response.ok) {
+            notify({id: "feed-retry", kind: response.status === 429 || response.status === 400 ? "warning" : "error", title: "Retry could not start", message: result.error || "Try again shortly."});
+        } else {
+            notify({id: "feed-retry", kind: "success", title: result.queued ? "Source retry started" : "This source no longer needs a retry"});
+        }
+    } catch {
+        notify({id: "feed-retry", kind: "error", title: "Retry could not start", message: "Check that the server is running and try again."});
+    } finally {
+        finish();
+        button.disabled = false;
+        button.textContent = "Retry";
+        if (progressController?.page === page) startProgress(page);
     }
 }
 
@@ -228,6 +275,8 @@ export function registerSourceSettings() {
     document.addEventListener("world-journal:page-ready", initialize);
     document.addEventListener("world-journal:page-cleanup", cleanupSources);
     document.addEventListener("click", event => {
+        const retry = event.target.closest("[data-source-retry]");
+        if (retry) retrySource(retry, retry.closest("[data-source-settings]"));
         const opener = event.target.closest("[data-source-modal-open]");
         if (opener) openSourceDialog(opener.closest("[data-source-settings]").querySelector("[data-source-modal]"), opener.dataset.sourceModalOpen);
         if (event.target.closest("[data-source-modal-close]")) closeSourceDialog();

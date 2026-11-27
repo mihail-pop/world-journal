@@ -120,7 +120,7 @@ def _get_google_news(
         success_age = _age(current_time, snapshot.get("fetched_at"))
         if not force_refresh and not retrying_failure and not snapshot.get("last_error") and snapshot.get("last_success_at") and success_age is not None and success_age.total_seconds() < fresh_seconds:
             return _result(country, source, snapshot)
-        if not force_refresh and not retrying_failure and failure_retry_pending(snapshot, current_time):
+        if not force_refresh and not retrying_failure and failure_retry_pending(snapshot, current_time, google=True):
             return _result(country, source, snapshot, is_stale=bool(snapshot.get("last_success_at")))
 
         with google_request_slot(backend, now=now) as request:
@@ -175,7 +175,7 @@ def _refresh_google_news(country, source, snapshot, backend, fetcher, request, *
         failed_at = now or datetime.now(UTC)
         if getattr(error, "status_code", None) == 429:
             pause_google(backend, failed_at, error)
-        failure_ttl = record_failure(snapshot, failed_at, error)
+        failure_ttl = record_failure(snapshot, failed_at, error, google=True)
         snapshot["last_error"] = "Google News is temporarily unavailable."
         snapshot["last_error_detail"] = str(error)[:240]
         snapshot["last_attempt_at"] = attempted_at.isoformat()

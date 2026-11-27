@@ -262,8 +262,16 @@ body:has(.settings-page) .select-menu .select-search:focus { outline: none; box-
 .source-refresh-current { margin: 0; color: var(--ui-muted); font-size: .85rem; line-height: 1.5; overflow-wrap: anywhere; }
 .source-refresh-current:empty { display: none; }
 .source-refresh-errors { width: 100%; margin-top: .3rem; font-size: .9rem; text-align: left; }
-.source-refresh-errors ul { padding-left: 1.2rem; max-height: 12rem; overflow-y: auto; }
-.source-refresh-errors li + li { margin-top: .55rem; }
+.source-refresh-errors ul { padding: 0; max-height: 16rem; overflow-y: auto; list-style: none; }
+.source-refresh-errors li { display: grid; grid-template-columns: 4.8rem minmax(0, 1fr); align-items: start; gap: .65rem; }
+.source-refresh-errors li + li { margin-top: .85rem; }
+.source-refresh-error-text { min-width: 0; line-height: 1.5; overflow-wrap: anywhere; }
+.source-refresh-error-text > :is(strong, span, small) { display: block; }
+.source-refresh-error-text > strong { margin-bottom: .15rem; color: var(--ui-text); }
+.source-refresh-retry-time { margin-top: .2rem; color: var(--ui-muted); font-size: .8rem; }
+.source-retry-button { width: 100%; min-height: 2rem; padding: .35rem .5rem; border: 0; border-radius: 7px; background: var(--bg-tertiary); color: var(--text-primary); font: inherit; font-size: .8rem; cursor: pointer; }
+.source-retry-button:hover:not(:disabled) { background: var(--bg-quaternary); }
+.source-retry-button:disabled { opacity: .5; cursor: default; }
 .source-tile-description { margin: 1rem 0 0; color: var(--text-primary); font-size: .95rem; font-weight: 700; line-height: 1.6; text-align: center; }
 .sources-library { margin-top: 1.4rem; }
 .settings-card > .source-library-heading { display: grid; grid-template-columns: 2.5rem minmax(0, 1fr) 2.5rem; }
@@ -353,7 +361,7 @@ html.source-modal-open { overflow: hidden; }
 .journal-sidebar { border: 0; }
 .journal-sidebar a { color: var(--ui-muted); border-radius: 4px; font-size: .95rem; }
 .journal-sidebar a[aria-current=page], .journal-sidebar a:hover { background: var(--ui-hover); color: var(--ui-text); }
-.journal-sidebar-form { width: 100%; }
+.journal-sidebar-form { width: 100%; --ui-text: var(--text-primary); }
 .page-standard .journal-sidebar #journal-search { width: 100%; padding: .6rem .8rem; border: 0; border-radius: 6px; background: var(--bg-tertiary); color: var(--ui-text); font-size: 1rem; }
 .journal-search-control { display: flex; align-items: center; flex-wrap: wrap; gap: .35rem; min-height: 2.65rem; padding: .35rem .5rem; border-radius: 6px; background: var(--bg-tertiary); }
 .page-standard .journal-sidebar .journal-search-control #journal-search { flex: 1 1 4rem; width: 0; min-width: 4rem; min-height: 1.8rem; padding: .15rem .2rem; background: transparent; }
@@ -376,6 +384,10 @@ html.source-modal-open { overflow: hidden; }
 .journal-sort-controls { display: grid; grid-template-columns: minmax(0, 1fr) 2.35rem; align-items: center; gap: .5rem; }
 .journal-sidebar-form .select-trigger { min-height: 2.65rem; padding: .5rem .6rem; border: 0; background: var(--bg-tertiary); font-size: .95rem; }
 .journal-sidebar-form :is(input, button):is(:focus, :focus-visible), body:has([data-journal-list]) .select-menu :is(input, button):is(:focus, :focus-visible) { outline: none; box-shadow: none; }
+body:has([data-journal-list]) .select-menu { --ui-text: var(--text-primary); gap: .25rem; padding: .4rem; border: 0; }
+body:has([data-journal-list]) .select-menu :is(.select-search, .select-option, .select-done) { border: 0; }
+body:has([data-journal-list]) .select-menu .select-option { min-height: 2.25rem; padding: .4rem .6rem; font-size: .95rem; }
+body:has([data-journal-list]) .select-menu .select-option + .select-option { margin-top: .125rem; }
 body:has([data-journal-list]) .select-menu .select-option[aria-selected=true] { border-color: transparent; background: var(--bg-quaternary); }
 .journal-sidebar-form .journal-filter-pill { flex: none; width: max-content; padding: .3rem .65rem; border: 0; border-radius: 12px; background: var(--bg-tertiary); color: var(--text-primary); font-size: .85rem; font-weight: 600; line-height: 1.4; cursor: pointer; }
 .journal-sidebar-form .journal-filter-pill:hover, .journal-sidebar-form [data-journal-rewind][aria-pressed=true] { background: var(--bg-quaternary); }

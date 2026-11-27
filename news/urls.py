@@ -12,6 +12,7 @@ urlpatterns = [
     path("settings/news/preference/", settings_views.save_preference, name="save_preference"),
     path("settings/news/status/", settings_views.refresh_status, name="refresh_status"),
     path("settings/news/refresh-all/", settings_views.refresh_all, name="refresh_all"),
+    path("settings/news/retry/", settings_views.retry_source, name="source_retry"),
     path("settings/news/custom/add/", settings_views.add_custom_source, name="custom_add"),
     path("settings/news/custom/<uuid:source_id>/feeds/add/", settings_views.add_publisher_feed, name="custom_feed_add"),
     path("settings/news/custom/<uuid:source_id>/<str:action>/", settings_views.custom_source_action, name="custom_action"),

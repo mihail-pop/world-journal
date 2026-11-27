@@ -1,4 +1,4 @@
-<section class="page page-standard source-settings-page settings-page" data-page="settings" data-source-settings data-save-url="{% url 'news:save_preference' %}" data-refresh-status-url="{% url 'news:refresh_status' %}" hx-boost="true" hx-target="#app-content" hx-push-url="true" aria-labelledby="sources-title">
+<section class="page page-standard source-settings-page settings-page" data-page="settings" data-source-settings data-save-url="{% url 'news:save_preference' %}" data-refresh-status-url="{% url 'news:refresh_status' %}" data-source-retry-url="{% url 'news:source_retry' %}" hx-boost="true" hx-target="#app-content" hx-push-url="true" aria-labelledby="sources-title">
     {% include 'core/partials/settings_nav.html' with section='sources' heading_id='sources-title' %}
     <div class="settings-grid source-overview-grid">
         <article class="settings-card source-refresh-card">
@@ -8,7 +8,13 @@
                 <p class="source-refresh-status" data-refresh-summary role="status" aria-live="polite">{{ refresh_status.summary }}</p>
                 <p class="source-refresh-current" data-refresh-current>{{ refresh_status.current_label }}</p>
                 <form method="post" action="{% url 'news:refresh_all' %}" data-refresh-all-form>{% csrf_token %}<input type="hidden" name="country" value="{{ country.pk }}"><button class="journal-button" type="submit" data-refresh-all {% if refresh_status.busy or not refresh_status.enabled %}disabled{% endif %}>Refresh now</button></form>
-                <details class="source-refresh-errors" data-refresh-errors {% if not refresh_status.errors %}hidden{% endif %}><summary data-refresh-error-summary>Sources needing attention</summary><ul data-refresh-error-list>{% for error in refresh_status.errors %}<li>{{ error.name }}: {{ error.error }}</li>{% endfor %}</ul></details>
+                <details class="source-refresh-errors" data-refresh-errors {% if not refresh_status.errors %}hidden{% endif %}>
+                    <summary data-refresh-error-summary>Sources needing attention</summary>
+                    <ul data-refresh-error-list>{% for error in refresh_status.errors %}<li>
+                        <button class="source-retry-button" type="button" data-source-retry data-retry-kind="{{ error.kind }}" data-retry-source="{{ error.source_id }}" aria-label="Retry {{ error.category }} from {{ error.name }}" {% if error.retry_disabled %}disabled{% endif %}>{% if error.retrying %}Retrying…{% else %}Retry{% endif %}</button>
+                        <div class="source-refresh-error-text"><strong>{{ error.category }} · {{ error.name }}</strong><span>{{ error.error }}</span><small class="source-refresh-retry-time" {% if not error.retry_text %}hidden{% endif %}>{{ error.retry_text }}</small></div>
+                    </li>{% endfor %}</ul>
+                </details>
             </div>
             <p class="source-tile-description"><strong>Refresh news from your selected sources. You can keep reading while it updates.</strong></p>
         </article>

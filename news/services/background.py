@@ -18,7 +18,7 @@ from news.preferences import effective_registry, freshness_seconds
 from news.types import SourceKind
 
 from .archive import capture_snapshot, maintain_archive
-from .cache import cache_lock, fixed_feed_cache_key, google_cache_key, google_pause_until, parse_datetime, refresh_jitter, youtube_cache_key
+from .cache import cache_lock, fixed_feed_cache_key, google_cache_key, google_pause_until, parse_datetime, record_failure, refresh_jitter, youtube_cache_key
 from .country_news import _countries_by_code, _country_for_code, get_country_news, get_world_news
 from .regional_news import get_fixed_feed
 from .region_routing import eligible_youtube_sources
@@ -178,6 +178,42 @@ class FeedWarmer:
                 self.force_requested = True
         self.scan_requested.set()
 
+    def retry_failed(self, kind, source_id):
+        self.start()
+        with self.condition:
+            providers = {feed.id: feed.provider_id for feed in self.registry.feeds}
+            matching = [job for job in self.jobs if job[0] == kind and (
+                kind == "google" and source_id == "google_news_country"
+                or kind == "rss" and providers.get(job[1]) == source_id
+                or kind == "youtube" and job[1] == source_id
+            )]
+            if not matching:
+                raise ValueError("This source is switched off or unavailable.")
+            active = set(self.running) | self.urgent.keys() | self.normal.keys()
+            keys = [self.jobs[job] for job in matching if job not in active
+                    and self.states.get(self.jobs[job], {}).get("metadata", {}).get("last_error")]
+            already_running = bool(active.intersection(matching))
+        if kind == "google":
+            paused = google_pause_until(cache, datetime.now(UTC))
+            if paused:
+                return {"queued": False, "paused_until": paused.isoformat()}
+        if not keys:
+            return {"queued": already_running}
+        queued = False
+        # Keep the request across a restart without changing the failure count
+        # or pretending another network attempt has already taken place.
+        with write_transaction():
+            for state in FeedState.objects.filter(cache_key__in=keys):
+                if not state.metadata.get("last_error"):
+                    continue
+                stamp = datetime.now(UTC).isoformat()
+                state.metadata = {**state.metadata, "retry_requested_at": stamp, "saved_at": stamp}
+                state.save(update_fields=["metadata"])
+                queued = True
+        if queued:
+            self.rescan()
+        return {"queued": queued or already_running}
+
     def _progress_state(self, job):
         state = self.states.get(self.jobs[job], {})
         metadata = state.get("metadata", {})
@@ -213,8 +249,9 @@ class FeedWarmer:
             progress = self.progress()
             registry, jobs, states, paused = self.registry, dict(self.jobs), dict(self.states), self.google_until
             now = datetime.now(UTC)
-            deadlines = [self._due_at(job, now) for job in self.jobs
-                         if job not in self.running and job not in self.normal and job not in self.urgent]
+            active = set(self.running) | self.normal.keys() | self.urgent.keys()
+            due_times = {job: self._due_at(job, now) for job in self.jobs}
+            deadlines = [deadline for job, deadline in due_times.items() if job not in active]
             if self.next_refresh_at and self.cycle_finished_at:
                 deadlines.append(self.next_refresh_at)
             next_update = min(deadlines) if deadlines else self.next_refresh_at
@@ -245,7 +282,9 @@ class FeedWarmer:
                 scope = feed.section_label
             else:
                 key, name, scope = job, label(job), ""
-            group = problems.setdefault(key, {"name": name, "pause": "", "messages": OrderedDict()})
+            group = problems.setdefault(key, {"name": name, "pause": "", "messages": OrderedDict(), "jobs": set(),
+                                              "kind": kind, "source_id": key[1]})
+            group["jobs"].add(job)
             return group, scope
 
         def add_problem(job, message):
@@ -283,7 +322,20 @@ class FeedWarmer:
                     messages.append(f"Rate-limited checks: {scope}.")
                 else:
                     messages.append(f"{scope + ': ' if scope else ''}{message.rstrip('. ')}.")
-            errors.append({"name": group["name"], "error": " ".join(messages)})
+            retrying = bool(active.intersection(group["jobs"])) or any(
+                states.get(jobs[job], {}).get("metadata", {}).get("retry_requested_at") for job in group["jobs"]
+            )
+            retry_at = min(due_times[job] for job in group["jobs"])
+            retry_text = ""
+            if group["kind"] != "google" and not retrying:
+                local_retry = localtime(retry_at)
+                when = local_retry.strftime("%H:%M" if local_retry.date() == localtime(now).date() else "%H:%M on %b %d")
+                retry_text = f"Automatic retry at {when}"
+            errors.append({"name": group["name"], "error": " ".join(messages),
+                           "kind": group["kind"], "source_id": group["source_id"],
+                           "category": "YouTube" if group["kind"] == "youtube" else "Articles",
+                           "retrying": retrying, "retry_disabled": bool(group["pause"]) or retrying,
+                           "retry_at": retry_at.isoformat(), "retry_text": retry_text})
         progress["current"] = [label(job) for job in progress.pop("running")]
         progress.pop("started_at")
         return {**progress, "errors": errors, "failed": len(errors), "enabled": len(jobs), "missing": missing,
@@ -377,8 +429,11 @@ class FeedWarmer:
         attempted = parse_datetime(metadata.get("last_attempt_at"))
         attempted_this_round = attempted and self.refresh_started_at and attempted >= self.refresh_started_at
         manual |= self.manual_refresh and not self.cycle_finished_at and not attempted_this_round
-        if metadata.get("last_error") and not manual:
-            due = parse_datetime(metadata.get("retry_after_at")) or (attempted or now) + timedelta(seconds=settings.NEWS_FAILURE_BACKOFF_SECONDS)
+        if metadata.get("retry_requested_at"):
+            due = now
+        elif metadata.get("last_error") and not manual:
+            base = settings.NEWS_GOOGLE_FAILURE_BACKOFF_SECONDS if job[0] == "google" else settings.NEWS_FAILURE_BACKOFF_SECONDS
+            due = parse_datetime(metadata.get("retry_after_at")) or (attempted or now) + timedelta(seconds=base)
         elif job[0] != "google":
             # A slow or paused Google sweep must not delay other publishers.
             # Saved attempt times keep their cadence stable across restarts.
@@ -532,7 +587,9 @@ class FeedWarmer:
             metadata = {**state.get("metadata", {}), "archive_pending": True,
                         "last_error": "Downloaded news could not be added to retained coverage.",
                         "last_error_detail": "",
-                        "retry_after_at": (datetime.now(UTC) + timedelta(seconds=settings.NEWS_FAILURE_BACKOFF_SECONDS)).isoformat()}
+                        "retry_after_at": (datetime.now(UTC) + timedelta(seconds=(settings.NEWS_GOOGLE_FAILURE_BACKOFF_SECONDS
+                            if job[0] == "google" else settings.NEWS_FAILURE_BACKOFF_SECONDS))).isoformat()}
+            metadata.pop("retry_requested_at", None)
             state["metadata"] = metadata
         try:
             with database_write():
@@ -550,8 +607,9 @@ class FeedWarmer:
                 return
             state = self.states.setdefault(key, {})
             metadata = {**state.get("metadata", {}), "last_error": "The last check could not be completed.",
-                        "last_error_detail": "", "last_attempt_at": now.isoformat(), "saved_at": now.isoformat(),
-                        "retry_after_at": (now + timedelta(seconds=settings.NEWS_FAILURE_BACKOFF_SECONDS)).isoformat()}
+                        "last_error_detail": "", "last_attempt_at": now.isoformat(), "saved_at": now.isoformat()}
+            metadata.pop("retry_requested_at", None)
+            record_failure(metadata, now, RuntimeError(), google=job[0] == "google")
             state["metadata"] = metadata
             expiry = state.get("expires_at") or now + timedelta(seconds=settings.NEWS_STALE_SECONDS)
         try:

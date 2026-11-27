@@ -6,7 +6,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from hashlib import blake2b
-from math import ceil
+from math import ceil, log2
 from random import uniform
 from threading import Lock
 
@@ -71,19 +71,32 @@ def refresh_jitter(job, snapshot):
     return minimum + int.from_bytes(blake2b(seed, digest_size=8).digest(), "big") % (settings.NEWS_REFRESH_JITTER_SECONDS - minimum + 1)
 
 
-def failure_retry_pending(snapshot, now):
+def feed_snapshot(backend, key):
+    snapshot = backend.get(key)
+    if isinstance(snapshot, dict):
+        return snapshot
+    restore = getattr(backend, "feed_failure_metadata", None)
+    # Response bodies may expire while the server is stopped. Their compact
+    # failure state still owns the retry deadline and consecutive-failure count.
+    return {"items": [], **(restore(key) or {})} if restore else {}
+
+
+def failure_retry_pending(snapshot, now, *, google=False):
     if not snapshot.get("last_error"):
         return False
     deadline = parse_datetime(snapshot.get("retry_after_at"))
     if deadline:
         return now < deadline
     attempted = age(now, snapshot.get("last_attempt_at"))
-    return attempted is not None and attempted.total_seconds() < settings.NEWS_FAILURE_BACKOFF_SECONDS
+    base = settings.NEWS_GOOGLE_FAILURE_BACKOFF_SECONDS if google else settings.NEWS_FAILURE_BACKOFF_SECONDS
+    return attempted is not None and attempted.total_seconds() < base
 
 
-def record_failure(snapshot, now, error):
-    count = min(6, int(snapshot.get("consecutive_failures", 0)) + 1)
-    delay = min(settings.NEWS_FAILURE_BACKOFF_MAX_SECONDS, settings.NEWS_FAILURE_BACKOFF_SECONDS * 2 ** (count - 1))
+def record_failure(snapshot, now, error, *, google=False):
+    base = settings.NEWS_GOOGLE_FAILURE_BACKOFF_SECONDS if google else settings.NEWS_FAILURE_BACKOFF_SECONDS
+    maximum = settings.NEWS_GOOGLE_FAILURE_BACKOFF_MAX_SECONDS if google else settings.NEWS_FAILURE_BACKOFF_MAX_SECONDS
+    count = min(1 + max(0, ceil(log2(maximum / base))), int(snapshot.get("consecutive_failures") or 0) + 1)
+    delay = min(maximum, base * 2 ** (count - 1))
     delay = max(delay, getattr(error, "retry_after_seconds", 0) or 0)
     snapshot.update(consecutive_failures=count, retry_after_at=(now + timedelta(seconds=delay)).isoformat())
     return delay + 60  # Keep empty failure records until the next eligible scan.
@@ -188,7 +201,7 @@ def pause_google(backend, now, error):
             deadline = max(deadline, now + timedelta(seconds=getattr(error, "retry_after_seconds", 0) or 0))
             state["retry_after_at"] = deadline.isoformat()
         else:
-            record_failure(state, now, error)
+            record_failure(state, now, error, google=True)
         state["last_rate_limit_at"] = now.isoformat()
         state["request_spacing_seconds"] = spacing + (settings.NEWS_GOOGLE_REQUEST_SPACING_STEP_SECONDS if advance else 0)
         minimum, maximum = google_request_spacing_range(state)

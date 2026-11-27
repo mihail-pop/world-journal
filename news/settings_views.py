@@ -227,6 +227,18 @@ def refresh_all(request):
 
 @never_cache
 @require_http_methods(["POST"])
+def retry_source(request):
+    try:
+        result = feed_warmer.retry_failed(request.POST.get("kind"), request.POST.get("source_id"))
+    except ValueError as error:
+        return JsonResponse({"error": str(error)}, status=400)
+    if result.get("paused_until"):
+        return JsonResponse({**result, "error": "Google News is still paused. Its automatic retry time is unchanged."}, status=429)
+    return JsonResponse(result)
+
+
+@never_cache
+@require_http_methods(["POST"])
 def add_publisher_feed(request, source_id):
     publisher = get_object_or_404(CustomSource, pk=source_id, kind=CustomSource.Kind.RSS, parent=None)
     form = AdditionalFeedForm(request.POST, prefix=f"feed-{publisher.pk}")
