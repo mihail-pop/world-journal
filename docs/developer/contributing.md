@@ -39,7 +39,7 @@ Enable Django's development mode in the terminal used to run the server:
 Keep changes consistent with the existing architecture:
 
 - use Django templates, HTMX, CSS and small vanilla JavaScript modules;
-- preserve direct URL loads and progressive enhancement;
+- preserve direct URL loads;
 - keep authentication as an optional installation-wide gate unless the shared-data model is deliberately redesigned;
 - do not add a separate frontend framework, Redis or Celery without an explicit project decision;
 - keep dependencies minimal;
@@ -58,7 +58,6 @@ Use the workspace virtual environment for Python commands:
 
     ```powershell
     .\.venv\Scripts\python.exe manage.py check
-    .\.venv\Scripts\python.exe manage.py test
     git diff --check
     ```
 
@@ -66,11 +65,8 @@ Use the workspace virtual environment for Python commands:
 
     ```sh
     .venv/bin/python manage.py check
-    .venv/bin/python manage.py test
     git diff --check
     ```
-
-Tests should use local fixtures rather than depending on live news publishers.
 
 ## Documentation
 
@@ -100,9 +96,9 @@ That command builds the site and writes the generated files to the `gh-pages` br
 
 ## Preparing a Release
 
-Release information is maintained in `config/version.py`. Before publishing a release, update `APP_VERSION` to the new tag. The Information page uses that value for **Your Release** and checks the configured GitHub repository for **Latest Release**.
+Release information is maintained in `config/version.py`. Set `APP_VERSION` to the version number, such as `0.1.0`, and publish the GitHub release with the matching `v`-prefixed tag, such as `v0.1.0`. Settings displays the tag under **Your Release** and checks GitHub for **Latest Release**.
 
-`REPOSITORY_URL` and `LATEST_RELEASE_API_URL` in the same file contain the repository placeholders. Update them if the final GitHub owner or repository name changes.
+The Windows installer workflow builds and attaches `WorldJournalSetup.exe` when a GitHub release is published.
 
 ## Pull Requests
 

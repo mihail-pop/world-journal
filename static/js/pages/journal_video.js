@@ -1,4 +1,5 @@
 import { loadPlayerApi } from "../player.js";
+import { randomId } from "../random_id.js";
 
 const embeds = new Map();
 const videoId = /^[A-Za-z0-9_-]{11}$/;
@@ -67,7 +68,7 @@ export function refreshJournalVideos(root = document) {
         }
         dispose(panel);
         const frame = document.createElement("iframe");
-        frame.id = `journal-video-${crypto.randomUUID()}`;
+        frame.id = `journal-video-${randomId()}`;
         frame.title = panel.dataset.videoTitle || "YouTube video";
         frame.allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share";
         frame.allowFullscreen = true;

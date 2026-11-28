@@ -9,6 +9,7 @@ from django.conf import settings
 from django.core.cache import cache
 from django.utils import timezone
 
+from core.database import write_transaction
 from news.adapters.rss import FeedParseError, _plain_text, normalize_feed
 from news.adapters.youtube import ATOM_NAMESPACE, YouTubeFeedParseError, normalize_youtube_feed
 from news.cache_backend import CacheWriteError
@@ -140,9 +141,10 @@ def with_custom_sources(registry):
 
 
 def check_custom_source(record):
-    """One bounded live check. Failed sources stay visible and can be checked again."""
+    """Check and save a source. Failed sources can be checked again."""
     now = timezone.now()
     record.last_checked_at = now
+    snapshot = None
     try:
         location = normalize_location(record.url, record.kind)
         curated = get_source_registry()
@@ -195,11 +197,20 @@ def check_custom_source(record):
             "etag": response.etag, "last_modified": response.last_modified,
             "parser_warnings": list(getattr(normalized, "parser_warnings", ())),
         }
+    except (FeedFetchError, FeedParseError, YouTubeFeedParseError) as error:
+        record.last_error = str(error)[:240]
+    with write_transaction():
+        if (not record._state.adding and not CustomSource.objects.filter(pk=record.pk).exists()
+                or record.parent_id and not CustomSource.objects.filter(pk=record.parent_id).exists()):
+            record.last_error = "This source was removed while it was being checked."
+            return False
+        if CustomSource.objects.exclude(pk=record.pk).filter(url=record.url).exists():
+            record.last_error = "This source has already been added."
+            return False
+        record.save()
+    if snapshot is not None:
         try:
             cache.set(key, snapshot, ttl)
         except CacheWriteError:
             logger.warning("Could not cache verified source %s; the background scheduler will check it again when due.", record.registry_id)
-        return True
-    except (FeedFetchError, FeedParseError, YouTubeFeedParseError) as error:
-        record.last_error = str(error)[:240]
-        return False
+    return snapshot is not None

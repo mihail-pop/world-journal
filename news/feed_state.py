@@ -1,5 +1,11 @@
 """Compact metadata shared by the feed cache and scheduler."""
+import re
+
 from django.utils import timezone
+
+from .models import CustomSource
+
+CUSTOM_FEED_ID = re.compile(r"custom_([a-f0-9]{32})(?:_feed)?\Z")
 
 METADATA_FIELDS = (
     "fetched_at", "last_success_at", "last_attempt_at", "last_error",
@@ -18,3 +24,8 @@ def snapshot_metadata(snapshot):
 
 def is_feed_key(key):
     return key.startswith("news:v") and any(part in key for part in (":google_country:", ":rss:", ":youtube:"))
+
+
+def feed_source_exists(source_id):
+    match = CUSTOM_FEED_ID.fullmatch(source_id)
+    return match is None or CustomSource.objects.filter(pk=match[1]).exists()

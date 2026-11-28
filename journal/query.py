@@ -8,6 +8,14 @@ from django.utils import timezone
 from .models import Entry, EntryType
 
 
+SORT_FIELDS = {"activity": "updated_at", "release": "journal_release_date", "event": "event_date", "title": "title"}
+
+
+def entry_sort(params):
+    requested = params.get("sort")
+    return requested if requested in SORT_FIELDS else "activity"
+
+
 def date_bounds(params):
     if value := params.get("date"):
         start = date.fromisoformat(value)
@@ -70,9 +78,7 @@ def filtered_entries(params, *, for_display=True, apply_date=True):
         entries = entries.filter(countries__isnull=True)
     if params.get("undated") == "1":
         entries = entries.filter(event_date__isnull=True)
-    sort = params.get("sort", "activity")
-    if sort not in {"activity", "release", "title"}:
-        sort = "activity"
+    sort = entry_sort(params)
     if sort == "release":
         entries = entries.annotate(journal_release_date=Case(
             When(entry_type=EntryType.NOTE, then=F("updated_at")),
@@ -87,6 +93,6 @@ def filtered_entries(params, *, for_display=True, apply_date=True):
                 entries = entries.filter(updated_at__lt=date_boundary(end))
         except ValueError:
             entries = entries.none()
-    field = Lower("title") if sort == "title" else F("journal_release_date" if sort == "release" else "updated_at")
+    field = Lower("title") if sort == "title" else F(SORT_FIELDS[sort])
     ordering = field.asc(nulls_last=True) if params.get("order") == "asc" else field.desc(nulls_last=True)
     return entries.order_by(ordering, "id") if for_display else entries.order_by()

@@ -1,4 +1,5 @@
 import json
+import logging
 from datetime import UTC, date, timedelta
 from hashlib import sha256
 
@@ -6,6 +7,7 @@ from django import forms
 from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.core.paginator import Paginator
+from django.db import DatabaseError
 from django.db.models import Count, Max
 from django.db.models.functions import Lower
 from django.http import FileResponse, Http404, HttpResponse, JsonResponse, QueryDict
@@ -21,12 +23,17 @@ from core.database import database_write, write_transaction
 from core.views import render_page
 from countries.models import Country
 
+from .documents import image_ids, validate_document
 from .formatting import country_aliases, referenced_countries
 from .forms import AttachmentForm, CollectionForm, EntryForm, SectionFormSet, default_collection
-from .models import Attachment, BUILTIN_COLLECTION_NAMES, Collection, Entry, EntryType
-from .query import date_boundary, date_bounds, filtered_entries
+from .models import Attachment, BodyFormat, BUILTIN_COLLECTION_NAMES, Collection, DeletedEntry, Entry, EntryType
+from .query import date_boundary, date_bounds, entry_sort, filtered_entries
 from .validators import VIDEO_ID, parse_youtube_reference
 from .bookmarks import bookmark_details, bookmark_states
+
+
+ENTRY_CONFLICT = "This entry changed or was deleted in another tab. Your draft is still here. Open the Journal in another tab to check the saved version."
+IMAGE_UNDO_GRACE = timedelta(days=1)
 
 
 @never_cache
@@ -57,7 +64,7 @@ def player_video(request, video_id):
                 entry.is_favorite = favorite
                 entry.save(update_fields=["is_favorite", "updated_at"])
             if entry is not None and favorite:
-                entry.countries.add(*initial["countries"])
+                entry.add_country_tags(initial["countries"])
     else:
         entry = Entry.objects.filter(youtube_video_id=video_id).first()
     return JsonResponse({
@@ -157,8 +164,7 @@ def list_entries(request):
             date_parts = {key: str(getattr(selected_date, key)) for key in date_parts}
         except ValueError:
             pass
-    sort = request.GET.get("sort", "activity")
-    sort = sort if sort in {"activity", "release", "title"} else "activity"
+    sort = entry_sort(params)
     order = "asc" if request.GET.get("order") == "asc" else "desc"
     editor_data = {str(item.pk): {
         "id": str(item.pk), "name": item.name, "description": item.description,
@@ -260,7 +266,7 @@ def quick_save(request):
         if created:
             entry = form.save()
         else:
-            entry.countries.add(*form.cleaned_data["countries"])
+            entry.add_country_tags(country.pk for country in form.cleaned_data["countries"])
     return JsonResponse({**bookmark_details(entry), "created": created})
 
 
@@ -307,28 +313,55 @@ def section_submission(data, entry):
     return result, prefixes
 
 
-def save_entry(form, sections):
-    with write_transaction():
-        entry = form.save()
-        sections.instance = entry
-        section_objects = sections.save(commit=False)
-        for section in sections.deleted_objects:
-            section.delete()
-        for section in section_objects:
-            section.entry = entry
-            section.save()
-        codes = referenced_countries(entry.body, entry.body_format)
-        for section in entry.sections.all():
-            codes.update(referenced_countries(section.body, section.body_format))
-        entry.countries.add(*Country.objects.filter(code__in=codes))
+def entry_revision(entry):
+    return entry.updated_at.isoformat() if entry and entry.updated_at else ""
+
+
+def entry_images(contents):
+    ids = set()
+    for content in contents:
+        if content.body_format == BodyFormat.RICHTEXT:
+            ids.update(image_ids(validate_document(content.body)))
+    return ids
+
+
+def save_entry(form, sections, previous):
+    # Call while holding the write transaction that checked the editor revision.
+    before = entry_images([previous, *previous.sections.all()]) if previous else set()
+    entry = form.save()
+    sections.instance = entry
+    section_objects = sections.save(commit=False)
+    for section in sections.deleted_objects:
+        section.delete()
+    for section in section_objects:
+        section.entry = entry
+        section.save()
+    contents = [entry, *entry.sections.all()]
+    codes = {code for content in contents for code in referenced_countries(content.body, content.body_format)}
+    entry.countries.add(*Country.objects.filter(code__in=codes))
+    after = entry_images(contents)
+    now = timezone.now()
+    if before - after:
+        entry.attachments.filter(pk__in=before - after, detached_at__isnull=True).update(detached_at=now)
+    if after:
+        entry.attachments.filter(pk__in=after, detached_at__isnull=False).update(detached_at=None)
+    Attachment.objects.filter(detached_at__lte=now - IMAGE_UNDO_GRACE).delete()
     return entry
 
 
 @require_http_methods(["POST"])
+@write_transaction()
 def autosave(request, pk):
-    # The editor gets its UUID before its first save. Retrying that first save
-    # updates the same entry instead of creating another draft.
-    entry = Entry.objects.filter(pk=pk).first() or Entry(pk=pk)
+    previous = Entry.objects.filter(pk=pk).first()
+    attempt = request.POST.get("save_attempt", "")[:64]
+    revision = entry_revision(previous)
+    if previous and attempt:
+        receipt = previous.editor_save_receipt
+        if receipt.get("attempt") == attempt and receipt["result"]["revision"] == revision:
+            return JsonResponse(receipt["result"])
+    if request.POST.get("entry_revision") != revision or (previous is None and DeletedEntry.objects.filter(pk=pk).exists()):
+        return JsonResponse({"message": ENTRY_CONFLICT}, status=409)
+    entry = Entry.objects.get(pk=pk) if previous else Entry(pk=pk)
     data = request.POST.copy()
     if not data.get("title", "").strip():
         data["title"] = "Untitled"
@@ -359,9 +392,16 @@ def autosave(request, pk):
                     field_errors[name] = [str(error) for error in messages]
         errors.extend(str(error) for error in sections.non_form_errors())
         return JsonResponse({"message": "Not saved: " + (errors[0] if errors else "Complete the highlighted fields."), "errors": field_errors}, status=422)
-    entry = save_entry(form, sections)
+    entry = save_entry(form, sections, previous)
     section_ids = {prefixes.get(section.prefix, section.prefix): {"id": str(section.instance.pk), "title": section.instance.title} for section in sections.forms if not section.instance._state.adding and not section.cleaned_data.get("DELETE")}
-    return JsonResponse({"edit_url": reverse("journal:edit", args=[entry.pk]), "read_url": entry.get_absolute_url(), "title": entry.title, "sections": section_ids, "countries": list(entry.countries.values_list("pk", flat=True))})
+    result = {
+        "edit_url": reverse("journal:edit", args=[entry.pk]), "read_url": entry.get_absolute_url(),
+        "title": entry.title, "sections": section_ids, "countries": list(entry.countries.values_list("pk", flat=True)),
+        "revision": entry_revision(entry),
+    }
+    if attempt:
+        Entry.objects.filter(pk=entry.pk).update(editor_save_receipt={"attempt": attempt, "result": result})
+    return JsonResponse(result)
 
 
 @require_http_methods(["GET", "POST"])
@@ -369,8 +409,7 @@ def edit(request, pk=None):
     if pk:
         entry = get_object_or_404(Entry, pk=pk)
     elif request.method == "POST":
-        # Share the editor's UUID with ordinary submissions too. A lost
-        # autosave response followed by Save must not create a duplicate.
+        # The first ordinary submission uses the same identity as autosave.
         try:
             draft_id = Entry._meta.pk.to_python(request.POST.get("entry_id"))
         except (ValidationError, ValueError):
@@ -389,13 +428,24 @@ def edit(request, pk=None):
         except ValueError:
             pass
     sections = SectionFormSet(section_data, instance=entry, prefix="sections")
+    revision = request.POST.get("entry_revision", "" if entry._state.adding else None) if request.method == "POST" else entry_revision(entry)
     if request.method == "POST" and not adding_section:
-        form_valid, sections_valid = form.is_valid(), sections.is_valid()
-        if form_valid and sections_valid:
-            entry = save_entry(form, sections)
-            messages.success(request, "Saved.")
-            return navigate(request, reverse("journal:edit", args=[entry.pk]))
-    return page(request, "journal/edit.html", {"entry": entry, "form": form, "section_formset": sections, "is_new": entry._state.adding, "journal_country_aliases": country_aliases()})
+        with write_transaction():
+            previous = Entry.objects.filter(pk=entry.pk).first()
+            form_valid, sections_valid = form.is_valid(), sections.is_valid()
+            if form_valid and sections_valid:
+                if revision != entry_revision(previous) or (previous is None and (pk or DeletedEntry.objects.filter(pk=entry.pk).exists())):
+                    form.add_error(None, ENTRY_CONFLICT)
+                else:
+                    entry = save_entry(form, sections, previous)
+                    messages.success(request, "Saved.")
+                    return navigate(request, reverse("journal:edit", args=[entry.pk]))
+    initial_published = form.initial.get("source_published_at") if entry._state.adding else None
+    return page(request, "journal/edit.html", {
+        "entry": entry, "form": form, "section_formset": sections, "is_new": entry._state.adding,
+        "entry_revision": revision, "journal_country_aliases": country_aliases(),
+        "initial_source_published_at": request.POST.get("initial_source_published_at", "") if form.is_bound else initial_published.isoformat() if initial_published else "",
+    })
 
 
 @require_http_methods(["GET"])
@@ -406,20 +456,32 @@ def detail(request, pk):
 
 @require_http_methods(["GET", "POST"])
 def delete_entry(request, pk):
-    entry = get_object_or_404(Entry, pk=pk)
     form = ConfirmationForm(request.POST if request.method == "POST" else None)
+    json_request = request.headers.get("Accept") == "application/json"
     if request.method == "POST" and form.is_valid():
-        videos = [entry.youtube_video_id] if entry.youtube_video_id else []
-        urls = [entry.source_url] if entry.source_url else []
+        video, url = request.POST.get("video", ""), request.POST.get("url", "")
+        if json_request and (bool(video) == bool(url) or (video and not VIDEO_ID.fullmatch(video)) or len(url) > 2048):
+            return JsonResponse({"message": "Choose the article or video to remove from Journal."}, status=422)
         with write_transaction():
+            entry = Entry.objects.filter(pk=pk).first()
+            if json_request and (entry is None or (video and video != entry.youtube_video_id) or (url and url != entry.source_url)):
+                return JsonResponse({
+                    "message": "The saved item changed. The card has been updated.",
+                    "bookmarks": bookmark_states([video] if video else (), [url] if url else ()),
+                }, status=409)
+            if entry is None:
+                raise Http404
+            videos = [entry.youtube_video_id] if entry.youtube_video_id else []
+            urls = [entry.source_url] if entry.source_url else []
+            DeletedEntry.objects.get_or_create(pk=entry.pk)
             entry.delete()
-            remaining = bookmark_states(videos, urls) if request.headers.get("Accept") == "application/json" else None
-        if remaining is not None:
-            return JsonResponse({"deleted": True, "bookmarks": remaining})
+            if json_request:
+                return JsonResponse({"deleted": True, "bookmarks": bookmark_states(videos, urls)})
         messages.success(request, "Entry deleted, including its sections and local images.")
         return navigate(request, reverse("core:journal"))
-    if request.method == "POST" and request.headers.get("Accept") == "application/json":
+    if request.method == "POST" and json_request:
         return JsonResponse({"message": "Confirm removal from Journal."}, status=422)
+    entry = get_object_or_404(Entry, pk=pk)
     return page(request, "journal/confirm_delete.html", {"form": form, "title": f"Delete {entry.title}?", "description": "This deletes the entry, its subsections and its local images.", "cancel_url": entry.get_absolute_url()})
 
 
@@ -466,7 +528,7 @@ def collection_delete(request, pk):
         with write_transaction():
             for types in ((EntryType.YOUTUBE,), (EntryType.ARTICLE, EntryType.BOOKMARK), (EntryType.NOTE,)):
                 target = default_collection(types[0])
-                Entry.objects.filter(collection=collection, entry_type__in=types).update(collection=target)
+                Entry.objects.filter(collection=collection, entry_type__in=types).update(collection=target, updated_at=timezone.now())
             collection.delete()
         messages.success(request, "Collection deleted.")
         return navigate(request, reverse("journal:list"))
@@ -479,8 +541,21 @@ def upload_attachment(request, pk):
     form = AttachmentForm(request.POST, request.FILES, entry=entry)
     if form.is_valid():
         from .documents import image_url
-        with write_transaction():
-            image = form.save()
+        image = form.save(commit=False)
+        try:
+            with write_transaction():
+                if not Entry.objects.filter(pk=entry.pk).exists() or (image.section_id and not entry.sections.filter(pk=image.section_id).exists()):
+                    return JsonResponse({"message": ENTRY_CONFLICT}, status=409)
+                if request.POST.get("inline") == "1":
+                    image.detached_at = timezone.now()
+                image.save()
+        except (DatabaseError, OSError):
+            if image.file and image.file._committed:
+                try:
+                    image.file.storage.delete(image.file.name)
+                except OSError:
+                    logging.getLogger(__name__).warning("A rolled-back image upload could not be removed from local media.")
+            return JsonResponse({"message": "The image could not be saved. Check available space and try again."}, status=503)
         return JsonResponse({"id": str(image.pk), "src": image_url(image.pk), "alt": image.original_name, "width": image.width, "height": image.height})
     return JsonResponse({"message": str(next(iter(form.errors.values()))[0])}, status=422)
 
@@ -504,7 +579,12 @@ def delete_attachment(request, pk, attachment_pk):
     url = attachment.entry.get_absolute_url()
     if request.method == "POST" and form.is_valid():
         with write_transaction():
+            entry = get_object_or_404(Entry, pk=pk)
+            if attachment.pk in entry_images([entry, *entry.sections.all()]):
+                messages.warning(request, "Remove this image in the editor and save the entry.")
+                return navigate(request, url)
             attachment.delete()
+            Entry.objects.filter(pk=pk).update(updated_at=timezone.now())
         messages.success(request, "Image deleted.")
         return navigate(request, url)
     return page(request, "journal/confirm_delete.html", {"form": form, "title": "Delete this image?", "description": "The uploaded image will be removed from local storage.", "cancel_url": url})

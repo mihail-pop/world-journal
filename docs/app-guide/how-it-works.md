@@ -12,7 +12,7 @@ Current news comes from external feeds:
 - RSS or Atom feeds published by regional news organizations;
 - public YouTube channel feeds for recent videos.
 
-The app stores normalized metadata from those feeds. It does not scrape full articles, bypass paywalls or download videos. Selecting an article opens the original result or publisher page.
+The app stores article and video metadata from those feeds. Selecting an article opens its Google News link or publisher page. For Google News results, World Journal can pick a related article from a publisher that generally offers free access when the feed includes one.
 
 ## 2. Local Storage
 
@@ -22,15 +22,15 @@ This includes entries, collections, country tags, favorites, map presets, source
 
 Optional authentication uses a Django administrator account as one gate around the whole installation. It does not create separate data for each account. Everyone who is allowed into one installation shares the same journal and settings.
 
-The installation shares one theme across browsers. The home country, map display settings and player position use browser storage so two browsers can keep different layouts while sharing the same journal.
+The installation shares its theme, font, home country, map display settings and active color preset across browsers. Each browser stores its own map camera and player layout.
 
 ## 3. Feed Refreshing
 
-A bounded scheduler runs inside Django while the server is active. It refreshes enabled feeds in the background with a small worker pool.
+A scheduler starts when the app is opened and runs inside Django while the server is active. It refreshes enabled feeds with a small worker pool and keeps its progress across server restarts.
 
-The normal refresh interval is 12 hours plus a separate random 1 to 30 minutes for each feed before it becomes due. That random time is not a delay inserted between every download. Missing feeds and manual refresh requests can start promptly.
+Publisher feeds and YouTube channels use the interval from **Settings > Sources**, with options from two to twelve hours and a six-hour default. Google News uses a 24-hour interval. Both add one to five minutes to the next scheduled check. Google also has a separate delay between requests, which you can review or change with the info button next to **Refresh News**.
 
-When a country is selected, its missing or due feeds receive priority. Existing cached content remains usable when a provider temporarily fails. Repeated failures back off instead of retrying continuously.
+Publisher and YouTube feeds take priority over Google News. Google checks frequently selected countries first in a new sweep and resumes an interrupted sweep from where it left off. Failed feeds retry at their normal interval or a later time requested by the publisher. Cached results can remain available in the meantime.
 
 > **Note:** The scheduler is intentionally part of the Django process. World Journal does not require Celery, Redis or a separate worker service.
 
@@ -40,7 +40,7 @@ World Journal uses Django templates and HTMX rather than a separate frontend app
 
 The browser retains one Map, Journal, News and Countries workspace. This is why the map canvas, camera, selected country, loaded tabs, reading position and unsaved Journal form can survive a trip to another section.
 
-The video player and notifications belong to the persistent shell outside that replaced area. A full refresh still starts a new browser workspace and stops the current video.
+The video player and notifications belong to the persistent shell. A full refresh starts a new workspace, and the player can restore its previous video and playback position from browser storage.
 
 ## 5. Reliability and Longevity
 

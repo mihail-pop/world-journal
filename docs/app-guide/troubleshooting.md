@@ -48,7 +48,7 @@ For Docker, create the account inside the running container:
 docker exec -it world-journal python manage.py createsuperuser
 ```
 
-For a native install, use the project's `.venv` interpreter from the project folder. Confirm that the server and the command use the same environment variables.
+For the Windows installer, use the installed release's Python and settings as shown in [Authentication](../configuration/authentication.md). For a manual install, use the project's `.venv` interpreter and the same database settings as the server.
 
 ---
 
@@ -90,11 +90,11 @@ The server restarted but the map, styles or controls still look unchanged.
 
 **The Cause:**
 
-The browser is using cached CSS or JavaScript.
+The browser may have cached older assets, or the server may still be using the previous set of collected files.
 
 **The Solution:**
 
-Restart Django and use a hard refresh. On Windows and Linux press `Ctrl+F5`. On Mac use `Command+Shift+R`.
+For a manual install outside development mode, rerun `collectstatic` using the command above. Then restart the server and use a hard refresh. On Windows and Linux press `Ctrl+F5`. On Mac use `Command+Shift+R`.
 
 ---
 
@@ -102,7 +102,7 @@ Restart Django and use a hard refresh. On Windows and Linux press `Ctrl+F5`. On 
 
 **The Problem:**
 
-A country has no recent articles or shows a refresh warning.
+A country has no recent articles, or the Sources tab in Settings shows a warning.
 
 **The Cause:**
 
@@ -110,7 +110,7 @@ A publisher feed may be unavailable, rate limited or waiting for its next schedu
 
 **The Solution:**
 
-Open **Settings > Sources** and inspect the source health. Use the manual refresh action once, then allow the background queue time to work. Repeatedly pressing refresh does not bypass provider limits.
+Open **Settings > Sources** and check **Sources needing attention**. Use **Retry** when it is available, or **Refresh now** to request an update of enabled feeds. Google News pauses until the time shown after a rate limit, while other feeds can continue refreshing.
 
 Cached stories may remain visible after a failure. A failure from one source should not hide successful results from another source.
 

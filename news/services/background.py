@@ -14,7 +14,7 @@ from django.utils.timezone import localtime
 
 from core.database import database_write, write_transaction
 from countries.models import Country
-from news.feed_state import snapshot_metadata
+from news.feed_state import feed_source_exists, snapshot_metadata
 from news.google_pacing import gap_label, maximum_gap
 from news.models import FeedSchedule, FeedState
 from news.preferences import effective_registry, refresh_preferences
@@ -687,13 +687,18 @@ class FeedWarmer:
                 return None
             key = self.jobs[job]
             archive_pending = self.states.get(key, {}).get("metadata", {}).get("archive_pending")
+        kind, identity = job
+        if not feed_source_exists(identity):
+            return False
         if archive_pending:
             with cache_lock(key):
                 snapshot = cache.get(key)
                 if isinstance(snapshot, dict) and snapshot.get("last_success_at"):
                     if not capture_snapshot(job, snapshot, registry):
                         raise ArchiveWriteError()
-                    state = FeedState.objects.get(pk=key)
+                    state = FeedState.objects.filter(pk=key).first()
+                    if state is None:
+                        return False
                     metadata = snapshot_metadata(snapshot)
                     metadata["saved_at"] = state.metadata.get("saved_at") or metadata.get("last_attempt_at")
                     with database_write():
@@ -701,7 +706,6 @@ class FeedWarmer:
                     state.metadata = metadata
                     self.snapshot_saved(state)
                     return True
-        kind, identity = job
         options = {"fresh_seconds": interval, "retry_failed": retry, "force_refresh": force}
         if kind == "rss":
             feed = next((feed for feed in registry.feeds if feed.id == identity), None)
@@ -719,6 +723,8 @@ class FeedWarmer:
             success = not (result.error or result.warning)
             key = google_cache_key(registry.get("google_news_country"), identity)
         if success:
+            if not feed_source_exists(identity):
+                return False
             if not capture_snapshot(job, cache.get(key), registry):
                 raise ArchiveWriteError()
             with self.condition:
@@ -763,7 +769,8 @@ class FeedWarmer:
             expiry = state.get("expires_at") or now + timedelta(seconds=settings.NEWS_STALE_SECONDS)
         try:
             with write_transaction():
-                FeedState.objects.update_or_create(pk=key, defaults={"metadata": metadata, "expires_at": expiry})
+                if feed_source_exists(job[1]):
+                    FeedState.objects.update_or_create(pk=key, defaults={"metadata": metadata, "expires_at": expiry})
         except DatabaseError:
             logger.warning("Could not retain the retry time for %s", job)
 

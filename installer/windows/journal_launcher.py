@@ -611,6 +611,7 @@ def serve(root: Path, state: dict) -> None:
         os.environ.update(app_environment(root, source))
         sys.path[:0] = [str(root / "support"), str(source)]
         sys.stdout = sys.stderr = LogStream()
+        from django.conf import settings
         from django.core.wsgi import get_wsgi_application
         from waitress import create_server
 
@@ -618,7 +619,9 @@ def serve(root: Path, state: dict) -> None:
         shutting_down = threading.Event()
 
         def wrapped(environ, start_response):
-            if environ.get("PATH_INFO") == HEALTH_PATH:
+            if environ.get("PATH_INFO") == HEALTH_PATH and (
+                not settings.REQUIRE_LOGIN or environ.get("REMOTE_ADDR") == "127.0.0.1"
+            ):
                 body = json.dumps({"installation_id": state["installation_id"], "ready": not shutting_down.is_set()}).encode()
                 start_response("200 OK" if not shutting_down.is_set() else "503 Service Unavailable", [
                     ("Content-Type", "application/json"), ("Content-Length", str(len(body))), ("Cache-Control", "no-store"),

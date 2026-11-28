@@ -2,7 +2,7 @@
 
 By default World Journal does not require a login. This is convenient for local use on one computer or a trusted home network.
 
-If you expose the app to the internet, enable the whole-app login gate. It protects every app page and uploaded journal image. There is no registration page. You create the administrator account yourself in the terminal.
+If you expose the app to the internet, enable the login gate. It protects app pages, CSS, JavaScript, map files and uploaded journal images. The login page includes its own styling and icon. Create the administrator account in the terminal.
 
 The data is still shared. Authentication controls who can enter the app, but it does not create separate journals for different accounts.
 
@@ -15,6 +15,25 @@ The data is still shared. Authentication controls who can enter the app, but it 
 	```
 
 === "Windows"
+
+	**Windows installer**
+
+	Open PowerShell in your installation folder, usually `%USERPROFILE%\WorldJournal`, and run:
+
+	```powershell
+	$journalRoot = (Get-Location).Path
+	$journalState = Get-Content -LiteralPath .\install-state.json -Raw | ConvertFrom-Json
+	$journalRelease = Join-Path $journalRoot ("releases\" + $journalState.active_release)
+	$env:DJANGO_SETTINGS_MODULE = "installed_settings"
+	$env:WORLD_JOURNAL_INSTALL_ROOT = $journalRoot
+	$env:WORLD_JOURNAL_STATIC_ROOT = Join-Path $journalRelease "staticfiles"
+	$env:PYTHONPATH = "$journalRoot\support;$journalRelease\application"
+	& "$journalRelease\env\Scripts\python.exe" "$journalRelease\application\manage.py" createsuperuser
+	```
+
+	You can close this PowerShell window when you finish.
+
+	**Manual install**
 
 	```powershell
 	.\.venv\Scripts\python.exe manage.py createsuperuser
@@ -36,7 +55,7 @@ Django asks for a username, optional email and password. Nothing appears while t
 
 ## Step 2: Enable the Login Screen
 
-Start the app with `REQUIRE_LOGIN=True`.
+Enable the login gate for your installation.
 
 === "Docker"
 
@@ -55,14 +74,18 @@ Start the app with `REQUIRE_LOGIN=True`.
 
 === "Windows"
 
-	**PowerShell:**
+	**Windows installer**
+
+	Open `config.json` in your installation folder and set `require_login` to `true`. Use **Stop World Journal** in the Start menu, then open **World Journal** again.
+
+	**Manual install in PowerShell**
 
 	```powershell
 	$env:REQUIRE_LOGIN="True"
 	.\.venv\Scripts\python.exe manage.py runserver 0.0.0.0:8000 --noreload
 	```
 
-	**Command Prompt or a `.bat` file:**
+	**Manual install in Command Prompt or a `.bat` file**
 
 	```bat
 	set REQUIRE_LOGIN=True

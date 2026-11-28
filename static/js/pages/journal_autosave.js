@@ -1,4 +1,5 @@
 import { dismissNotice, notify } from "../notifications.js";
+import { randomId } from "../random_id.js";
 
 const editors = new Map();
 const replayLinks = new WeakSet();
@@ -52,9 +53,14 @@ async function save(state, explicit = false, skipUploads = false) {
     }
     if (state.savedVersion === state.version && !explicit) return true;
     const {form} = state;
-    form.dispatchEvent(new CustomEvent("world-journal:prepare-save", {bubbles: true}));
-    const version = state.version;
-    const data = new FormData(form);
+    const retrying = Boolean(state.retry);
+    if (!state.retry) {
+        form.dispatchEvent(new CustomEvent("world-journal:prepare-save", {bubbles: true}));
+        const data = new FormData(form);
+        data.set("save_attempt", randomId());
+        state.retry = {data, version: state.version};
+    }
+    const {data, version} = state.retry;
     const abort = new AbortController();
     const timeout = setTimeout(() => abort.abort(), 20000);
     showStatus(state, "Saving…", "saving");
@@ -65,12 +71,15 @@ async function save(state, explicit = false, skipUploads = false) {
                 headers: {"Accept": "application/json", "X-CSRFToken": data.get("csrfmiddlewaretoken")},
             });
             const result = response.headers.get("Content-Type")?.includes("application/json") ? await response.json() : {message: "Not saved: the server could not complete the request. Try again."};
-            if (!response.ok) {
+            if (!response.ok || typeof result.revision !== "string") {
+                if (response.status >= 400 && response.status < 500) state.retry = null;
+                state.conflicted = response.status === 409;
                 form.dispatchEvent(new CustomEvent("world-journal:validation-errors", {bubbles: true, detail: {errors: result.errors, focus: explicit}}));
                 throw new Error(result.message || "Could not save. Try Save again.");
             }
             form.dispatchEvent(new CustomEvent("world-journal:validation-errors", {bubbles: true, detail: {errors: {}}}));
             form.action = result.edit_url;
+            form.elements.namedItem("entry_revision").value = result.revision;
             if (form.isConnected) {
                 history.replaceState(history.state, "", result.edit_url);
                 document.dispatchEvent(new CustomEvent("world-journal:location-change"));
@@ -106,20 +115,23 @@ async function save(state, explicit = false, skipUploads = false) {
                 state.applying = false;
             }
             state.savedVersion = version;
+            state.retry = null;
+            state.conflicted = false;
             dismissNotice(`autosave-${form.dataset.autosaveUrl}`);
             showStatus(state, state.version === version ? "Saved" : "Unsaved changes", state.version === version ? "saved" : "dirty");
             document.dispatchEvent(new CustomEvent("world-journal:data-changed", {detail: {path: result.edit_url}}));
             return true;
         } catch (error) {
             showStatus(state, error.name === "AbortError" ? "Not saved: connection timed out. Try again." : error.message || "Not saved: connection unavailable.", "error");
-            notify({id: `autosave-${form.dataset.autosaveUrl}`, kind: "error", title: "Your changes need saving", message: `${form.querySelector('[data-autosave-status]').textContent} Your draft is kept in this tab.`, action: {label: "Retry save", run: () => { if (editors.has(form)) void save(state, true); }}});
+            notify({id: `autosave-${form.dataset.autosaveUrl}`, kind: "error", title: "Your changes need saving", message: `${form.querySelector('[data-autosave-status]').textContent} Your draft is kept in this tab.`, ...(!state.conflicted ? {action: {label: "Retry save", run: () => { if (editors.has(form)) void save(state, true); }}} : {})});
             return false;
         } finally {
             clearTimeout(timeout);
             state.pending = null;
         }
     })();
-    return state.pending;
+    const saved = await state.pending;
+    return saved && retrying && state.savedVersion !== state.version ? save(state, explicit, skipUploads) : saved;
 }
 
 export function saveJournalEditor(form, {skipUploads = false} = {}) {
@@ -161,7 +173,7 @@ export function registerJournalAutosave() {
     });
     // The timer only saves the visible editor. Leaving Journal flushes its draft.
     setInterval(() => {
-        for (const state of editors.values()) if (state.form.isConnected && !state.pending && !state.submitting && state.version !== state.savedVersion) void save(state);
+        for (const state of editors.values()) if (state.form.isConnected && !state.pending && !state.submitting && !state.conflicted && state.version !== state.savedVersion) void save(state);
     }, 60000);
     document.addEventListener("click", async event => {
         const link = event.target.closest("a[href]");

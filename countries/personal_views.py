@@ -123,11 +123,22 @@ def save_preset(form, groups):
     return preset
 
 
+PRESET_CONFLICT = "This preset changed since you opened it. Your draft is kept. Reopen the preset to load the saved version."
+
+
+def preset_is_current(pk, revision):
+    if not pk:
+        return True
+    saved = MapPreset.objects.filter(pk=pk).values_list("updated_at", flat=True).first()
+    return saved is not None and saved.isoformat() == revision
+
+
 @require_http_methods(["GET", "POST"])
 def preset_edit(request, pk=None):
     preset = get_object_or_404(MapPreset, pk=pk) if pk else MapPreset()
     form = PresetForm(request.POST if request.method == "POST" else None, instance=preset)
     rows = request.POST.copy() if request.method == "POST" else None
+    revision = request.POST.get("preset_revision", "") if rows is not None else preset.updated_at.isoformat() if pk else ""
     adding = request.method == "POST" and request.POST.get("action") == "add_group"
     if adding:
         try:
@@ -140,7 +151,11 @@ def preset_edit(request, pk=None):
         if valid and colors_valid:
             try:
                 with write_transaction():
-                    saved = save_preset(form, colors)
+                    if preset_is_current(pk, revision):
+                        saved = save_preset(form, colors)
+                    else:
+                        form.add_error(None, PRESET_CONFLICT)
+                        saved = None
             except OperationalError as error:
                 if not is_database_busy(error):
                     raise
@@ -150,7 +165,9 @@ def preset_edit(request, pk=None):
                     messages.success(request, "Color preset saved.")
                     url = reverse("core:map") + f"?edit_preset={saved.pk}" if request.POST.get("action") == "edit_map" else reverse("countries:preset_list")
                     return navigate(request, url)
-    return page(request, "countries/preset_edit.html", {"form": form, "color_formset": colors, "preset": preset, "is_new": pk is None})
+    return page(request, "countries/preset_edit.html", {
+        "form": form, "color_formset": colors, "preset": preset, "is_new": pk is None, "preset_revision": revision,
+    })
 
 
 @never_cache
@@ -187,9 +204,8 @@ def preset_data(request, pk=None):
         try:
             with write_transaction():
                 # A second editor must not overwrite a newer saved version silently.
-                current_stamp = MapPreset.objects.filter(pk=pk).values_list("updated_at", flat=True).first() if pk else None
-                if pk and (not current_stamp or current_stamp.isoformat() != payload.get("updated_at")):
-                    return JsonResponse({"error": "This preset changed since you opened it. Your draft is kept; reopen the preset to load the saved version."}, status=409)
+                if not preset_is_current(pk, payload.get("updated_at")):
+                    return JsonResponse({"error": PRESET_CONFLICT}, status=409)
                 preset = save_preset(form, groups)
                 if preset is None:
                     return JsonResponse({"error": form.errors["name"][0]}, status=400)
@@ -278,7 +294,7 @@ def profile_edit(request, iso2):
         with write_transaction():
             profile = form.save()
             if profile.entry_id:
-                profile.entry.countries.add(country)
+                profile.entry.add_country_tags([country.pk])
         from .views import overview_context
         return JsonResponse({"country": country.pk, "markup": render_to_string(
             "countries/partials/overview.html", overview_context(country), request=request)})

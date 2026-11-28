@@ -6,7 +6,7 @@ from django.core.cache.backends.db import DatabaseCache
 from django.db import DatabaseError, OperationalError
 
 from core.database import database_write, is_database_busy, write_transaction
-from .feed_state import is_feed_key, snapshot_metadata
+from .feed_state import feed_source_exists, is_feed_key, snapshot_metadata
 from .models import FeedState
 
 
@@ -39,6 +39,8 @@ class FeedDatabaseCache(DatabaseCache):
                 # DatabaseCache.set discards the write result. Retry the same
                 # snapshot so transient contention doesn't require another fetch.
                 with write_transaction():
+                    if feed_key and not feed_source_exists(feed_key.split(":", 4)[3]):
+                        return
                     if self._base_set("set", key, value, timeout):
                         if feed_key:
                             deadline = self.get_backend_timeout(timeout)

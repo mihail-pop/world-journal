@@ -111,7 +111,7 @@ git pull
 
 Start the server again and perform a hard refresh in the browser so updated static files are loaded.
 
-> **Note:** Export a backup from **Settings > Backup** before a major update. The app keeps personal data in `db.sqlite3` and uploaded journal images in `media/`.
+> **Note:** Export a backup from **Settings > Backup** before a major update. The app keeps personal data in `database/db.sqlite3` and uploaded journal images in `media/`.
 
 <div markdown="1" style="display: flex; justify-content: center; gap: 15px; flex-wrap: wrap;">
 

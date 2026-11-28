@@ -41,7 +41,13 @@ Before doing this:
 
 === "Windows"
 
-	**PowerShell:**
+	**Windows installer**
+
+	Follow [Authentication](authentication.md) to create an account and enable login. In the installation folder's `config.json`, set `csrf_trusted_origins` to your public HTTPS origin, such as `https://your-domain.com`. The installer already creates a unique secret key.
+
+	Use **Stop World Journal** in the Start menu, then open **World Journal** again. Point the tunnel or reverse proxy at the local port selected during Setup.
+
+	**Manual install in PowerShell**
 
 	```powershell
 	$env:REQUIRE_LOGIN="True"
@@ -50,7 +56,7 @@ Before doing this:
 	.\.venv\Scripts\python.exe -m waitress --listen=0.0.0.0:8000 --threads=8 config.wsgi:application
 	```
 
-	**Command Prompt or a `.bat` file:**
+	**Manual install in Command Prompt or a `.bat` file**
 
 	```bat
 	set REQUIRE_LOGIN=True

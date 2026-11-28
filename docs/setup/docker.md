@@ -28,7 +28,7 @@
 
 World Journal uses port `8091` on the host so it can run next to Media Journal, which uses `8090`. The container still listens on port `8000` internally.
 
-Personal data is stored in `runtime/` and uploaded images in `media/`. Both folders remain on the host when the container is replaced.
+The SQLite database lives in `database/db.sqlite3` and uploaded images in `media/`. Both folders remain on the host when the container is replaced.
 
 ## Updating
 

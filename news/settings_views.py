@@ -5,6 +5,7 @@ from uuid import uuid4
 from django.contrib import messages
 from django.core.cache import cache
 from django.core.exceptions import ValidationError
+from django.db import DatabaseError
 from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse
@@ -17,6 +18,7 @@ from core.views import render_page
 from countries.models import Country
 
 from .cache_backend import CacheWriteError
+from .feed_state import feed_source_exists
 from .forms import AdditionalFeedForm, CustomSourceForm, GooglePacingForm, NewsPreferencesForm, single_feed_providers
 from .models import CustomSource, FeedState, NewsPreferences, SourcePreference
 from .preferences import effective_registry, freshness_seconds, source_choices
@@ -216,6 +218,8 @@ def save_preference(request):
         if related_feed_id and not registry.get_feed(related_feed_id).enabled_by_default:
             return JsonResponse({"error": "This source is not available right now."}, status=400)
         with write_transaction():
+            if not feed_source_exists(identity) or (related_feed_id and not feed_source_exists(related_feed_id)):
+                return JsonResponse({"error": "This source was removed. Reload Sources to see the updated list."}, status=409)
             SourcePreference.objects.update_or_create(source_id=identity, defaults={"enabled": value == "true"})
             if related_feed_id:
                 SourcePreference.objects.update_or_create(source_id=related_feed_id, defaults={"enabled": value == "true"})
@@ -272,9 +276,10 @@ def add_publisher_feed(request, source_id):
     if form.is_valid():
         record = CustomSource(parent=publisher, kind=CustomSource.Kind.RSS, url=form.cleaned_data["location"], name=form.cleaned_data["name"])
         success = check_custom_source(record)
-        record.save()
         feed_warmer.rescan()
-        if success:
+        if record._state.adding:
+            messages.warning(request, record.last_error)
+        elif success:
             messages.success(request, "Feed added to this publisher and checked.")
         else:
             messages.warning(request, "Feed saved, but it could not be reached. Check the message below and try again.")
@@ -302,11 +307,11 @@ def add_custom_source(request):
         return render_page(request, "settings", page_template="news/settings.html", context=context)
     record = CustomSource(kind=form.cleaned_data["kind"], url=form.cleaned_data["location"], name=form.cleaned_data["name"])
     success = check_custom_source(record)
-    record.save()
-    from .services.background import feed_warmer
 
     feed_warmer.rescan()
-    if success:
+    if record._state.adding:
+        messages.warning(request, record.last_error)
+    elif success:
         messages.success(request, "Source added and checked.")
     else:
         messages.warning(request, "Source saved, but its check failed. See the reason below; it stays paused until a successful check.")
@@ -316,27 +321,29 @@ def add_custom_source(request):
 @never_cache
 @require_http_methods(["POST"])
 def custom_source_action(request, source_id, action):
-    record = get_object_or_404(CustomSource, pk=source_id)
-    from .services.background import feed_warmer
-
     if action == "remove":
-        records = [record, *record.extra_feeds.all()]
-        identities, keys = [], []
-        for removed in records:
-            item, feed = registry_items(removed)
-            identities.extend((removed.registry_id, f"{removed.registry_id}_feed"))
-            keys.append(fixed_feed_cache_key(feed) if feed else youtube_cache_key(item))
-        SourcePreference.objects.filter(source_id__in=identities).delete()
-        record.delete()
-        cache.delete_many(keys)
-        with database_write():
-            FeedState.objects.filter(cache_key__in=keys).delete()
-        from .services.archive import remove_origins
-        remove_origins(identities)
-        messages.success(request, "Custom source removed. Saved journal entries are kept.")
+        from .services.archive import archive_write_transaction, remove_origins
+        try:
+            with archive_write_transaction():
+                record = get_object_or_404(CustomSource, pk=source_id)
+                records = [record, *record.extra_feeds.all()]
+                identities, keys = [], []
+                for removed in records:
+                    item, feed = registry_items(removed)
+                    identities.extend((removed.registry_id, f"{removed.registry_id}_feed"))
+                    keys.append(fixed_feed_cache_key(feed) if feed else youtube_cache_key(item))
+                SourcePreference.objects.filter(source_id__in=identities).delete()
+                record.delete()
+                cache.delete_many(keys)
+                FeedState.objects.filter(cache_key__in=keys).delete()
+                remove_origins(identities)
+        except DatabaseError:
+            messages.error(request, "The source could not be removed. Try again.")
+        else:
+            messages.success(request, "Custom source removed. Saved journal entries are kept.")
     elif action == "check":
+        record = get_object_or_404(CustomSource, pk=source_id)
         success = check_custom_source(record)
-        record.save()
         if success:
             messages.success(request, "Source checked.")
         else:

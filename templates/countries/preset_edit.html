@@ -1,6 +1,7 @@
 <section class="page page-standard journal-page preset-edit-page" data-page="settings" hx-boost="true" hx-target="#app-content" hx-push-url="true" aria-label="Color preset">
     <form method="post" class="preset-edit-form" data-preset-editor>
         {% csrf_token %}
+        <input type="hidden" name="preset_revision" value="{{ preset_revision }}">
         <header class="preset-edit-toolbar">
             <a class="journal-icon-button" href="{% url 'countries:preset_list' %}" aria-label="Back to color presets">{% include 'core/partials/icon.html' with name='arrow-left' %}</a>
             <div class="preset-edit-actions">

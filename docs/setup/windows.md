@@ -1,5 +1,17 @@
 # Setup for Windows
 
+## Windows Installer
+
+On Windows 11, download `WorldJournalSetup.exe` from [GitHub Releases](https://github.com/mihail-pop/world-journal/releases) and run it. Setup installs its own Python and dependencies.
+
+Choose the installation folder, port and startup mode. You can start World Journal manually, when you sign in to Windows, or when Windows starts. Starting before sign-in uses a service and requires administrator approval. Enable **Allow access from other devices on this network** if you want to connect over your local network.
+
+Open **World Journal** from the Start menu or the optional desktop shortcut. The Start menu also has **Stop World Journal** and **Update World Journal**. An update keeps your library. The uninstaller keeps it unless you choose to remove it.
+
+The default installation folder is `%USERPROFILE%\WorldJournal`. Within it, the database is at `library/database/db.sqlite3` and uploaded images are in `library/media/`. See [Authentication](../configuration/authentication.md) to set up a login for an installed copy.
+
+## Manual Setup
+
 1. Download and install [Python 3.13](https://www.python.org/downloads/). During installation enable **Add Python to PATH**.
 
 2. Install [Git for Windows](https://git-scm.com/install/windows), then open PowerShell in the folder where you want the app installed.
@@ -60,13 +72,13 @@
 
 The terminal window must remain open while the app is running. Press `Ctrl+C` in that terminal when you want to stop it.
 
-## Access from Other Devices
+### Access from Other Devices
 
 Run `ipconfig` and find the host computer's IPv4 address. A device on the same trusted network can then open an address such as `http://192.168.1.15:8000`.
 
 Everyone who can reach the server can access the shared app unless [Authentication](../configuration/authentication.md) is enabled.
 
-## Run Automatically on Startup
+### Run Automatically on Startup
 
 Create `run_world_journal.bat` in the project folder and update the path:
 
@@ -91,7 +103,7 @@ Set WshShell = Nothing
 
 This starts the app after you log into Windows without leaving a terminal window open.
 
-## Run Automatically on Boot
+### Run Automatically on Boot
 
 To start World Journal before login, install the batch file as a Windows service with a service manager such as NSSM:
 
@@ -106,7 +118,7 @@ Select `run_world_journal.bat` as the application path, install the service and 
 nssm start WorldJournal
 ```
 
-## Updating
+### Updating
 
 Stop the server, open PowerShell in the project folder and run:
 
@@ -120,7 +132,7 @@ git pull
 
 Start the server again and use `Ctrl+F5` in the browser so updated static files are loaded.
 
-> **Note:** Export a backup from **Settings > Backup** before a major update. The app keeps personal data in `db.sqlite3` and uploaded journal images in `media/`.
+> **Note:** Export a backup from **Settings > Backup** before a major update. A manual install keeps the database in `database/db.sqlite3` and uploaded journal images in `media/`.
 
 <div markdown="1" style="display: flex; justify-content: center; gap: 15px; flex-wrap: wrap;">
 

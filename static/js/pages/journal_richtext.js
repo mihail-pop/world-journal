@@ -1,6 +1,7 @@
 import { notify } from "../notifications.js";
 import { refreshSelectControl } from "../ui_controls.js";
 import { saveJournalEditor } from "./journal_autosave.js";
+import { randomId } from "../random_id.js";
 
 const controllers = new Map();
 let library;
@@ -381,13 +382,14 @@ class JournalEditor {
             const section = editor.view.dom.closest("[data-journal-section]");
             for (const file of accepted) {
                 if (editor.isDestroyed) return;
-                const uploadId = crypto.randomUUID();
+                const uploadId = randomId();
                 const preview = URL.createObjectURL(file);
                 editor.chain().focus().insertContentAt(editor.state.selection.to, {type: "image", attrs: {src: preview, alt: "Adding image…", uploadId}}).run();
                 try {
                     const data = new FormData();
                     data.set("file", file);
                     data.set("section", section?.querySelector('[name$="-id"]')?.value || "");
+                    data.set("inline", "1");
                     const response = await fetch(this.form.dataset.uploadUrl, {method: "POST", body: data,
                         headers: {"Accept": "application/json", "X-CSRFToken": this.form.querySelector('[name="csrfmiddlewaretoken"]').value}, signal: AbortSignal.timeout(60000)});
                     const result = await response.json();

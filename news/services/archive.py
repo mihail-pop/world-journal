@@ -1,4 +1,5 @@
 """Rolling metadata history. All collection is from existing cached feed items."""
+from contextlib import contextmanager
 from hashlib import sha256
 import json
 import logging
@@ -10,11 +11,12 @@ from uuid import uuid4
 
 from django.conf import settings
 from django.core.cache import cache
-from django.db import DatabaseError
+from django.db import DatabaseError, transaction
 from django.db.models import Exists, OuterRef, Q
 from django.utils import timezone
 
 from core.database import write_transaction
+from news.feed_state import feed_source_exists
 from news.models import ArchiveUsage, ArchivedNews, ArchivedNewsCountry, ArchivedNewsSource, FeedState
 from news.preferences import archive_storage_bytes, effective_registry
 from news.types import SourceKind
@@ -27,6 +29,12 @@ _seen = {}  # One snapshot stamp per configured feed, not one per news item.
 _next_cleanup = 0.0
 _next_error_log = 0.0
 REVISION_KEY = "news:archive:revision"
+
+
+@contextmanager
+def archive_write_transaction():
+    with _write_lock, write_transaction():
+        yield
 
 
 def revision():
@@ -236,6 +244,8 @@ def _collect(job, snapshot, registry, now, cache_key, stamp):
             touched.add(code)
     changed = bool(new_rows or updates or missing_origins or missing_tags)
     with write_transaction():
+        if not feed_source_exists(feed_id):
+            return True
         if new_rows:
             ArchivedNews.objects.bulk_create(new_rows.values(), ignore_conflicts=True)
         if updates:
@@ -291,12 +301,8 @@ def archived_items(kind, country_code=None, *, category="all", exclude=(), regis
 
 
 def remove_origins(feed_ids):
-    with _write_lock:
-        try:
-            with write_transaction():
-                touched = set(ArchivedNewsCountry.objects.filter(item__origins__feed_id__in=feed_ids).values_list("country_code", flat=True))
-                ArchivedNewsSource.objects.filter(feed_id__in=feed_ids).delete()
-                ArchivedNews.objects.filter(origins__isnull=True).delete()
-            _changed(touched)
-        except DatabaseError as error:
-            _log_failure(error)
+    # The caller holds archive_write_transaction through source removal.
+    touched = set(ArchivedNewsCountry.objects.filter(item__origins__feed_id__in=feed_ids).values_list("country_code", flat=True))
+    ArchivedNewsSource.objects.filter(feed_id__in=feed_ids).delete()
+    ArchivedNews.objects.filter(origins__isnull=True).delete()
+    transaction.on_commit(lambda: _changed(touched), robust=True)

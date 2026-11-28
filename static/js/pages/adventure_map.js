@@ -134,30 +134,6 @@ function fantasyHeart(palette) {
     });
 }
 
-function compass(canvas, palette, bearing) {
-    const context = canvas.getContext("2d");
-    context.clearRect(0,0,256,256);
-    context.save(); context.translate(128,128); context.rotate(-bearing * Math.PI / 180);
-    context.strokeStyle = palette.ink; context.fillStyle = palette.ink; context.lineWidth = 1.4;
-    for (const radius of [68,75]) { context.beginPath(); context.arc(0,0,radius,0,Math.PI*2); context.stroke(); }
-    for (let index = 0; index < 32; index++) {
-        const angle = index * Math.PI / 16;
-        const inner = index % 4 ? 70 : 64;
-        context.beginPath(); context.moveTo(Math.sin(angle)*inner,-Math.cos(angle)*inner); context.lineTo(Math.sin(angle)*75,-Math.cos(angle)*75); context.stroke();
-    }
-    for (let index = 0; index < 8; index++) {
-        context.save(); context.rotate(index*Math.PI/4);
-        const reach = index % 2 ? 56 : 87, width = index % 2 ? 9 : 13;
-        path(context, [[0,-reach],[-width,0],[0,14],[width,0]], palette.paper, palette.ink);
-        path(context, [[0,-reach],[0,14],[width,0]], palette.ink, null);
-        context.restore();
-    }
-    context.fillStyle = palette.ink; context.beginPath(); context.arc(0,0,5,0,Math.PI*2); context.fill();
-    context.font = "17px Georgia, serif"; context.textAlign = "center"; context.textBaseline = "middle";
-    for (const [letter,x,y] of [["N",0,-106],["E",106,0],["S",0,106],["W",-106,0]]) context.fillText(letter,x,y);
-    context.restore();
-}
-
 function illustrationData(geometry) {
     const points = [];
     const polygons = geometry.features.flatMap(feature => feature.geometry.type === "Polygon" ? [feature.geometry.coordinates] : feature.geometry.coordinates).map(polygon => {
@@ -267,9 +243,6 @@ export function updateAdventure(controller, active, palette = adventurePalette()
         map.setPaintProperty(PREFIX+"ocean-names","text-halo-width",1);
     }
     updateAdventureMarkers(controller,true,palette);
-    const canvas = controller.page.querySelector("[data-adventure-compass]");
-    const key = `${palette.name}:${map.getBearing()}`;
-    if (canvas.dataset.paintKey !== key) { compass(canvas,palette,map.getBearing()); canvas.dataset.paintKey = key; }
 }
 
 function updateAdventureMarkers(controller, active, palette) {

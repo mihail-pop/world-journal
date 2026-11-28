@@ -23,7 +23,12 @@
                     <h2 id="journal-sort-title">Sort By</h2>
                     <div class="journal-sort-controls">
                         <label class="visually-hidden" for="journal-sort">Sort by</label>
-                        <select name="sort" id="journal-sort"><option value="activity" {% if sort == 'activity' %}selected{% endif %}>Activity Date</option><option value="release" {% if sort == 'release' %}selected{% endif %}>Release Date</option><option value="title" {% if sort == 'title' %}selected{% endif %}>Title</option></select>
+                        <select name="sort" id="journal-sort">
+                            <option value="activity" {% if sort == 'activity' %}selected{% endif %}>Activity Date</option>
+                            <option value="release" {% if sort == 'release' %}selected{% endif %}>Release Date</option>
+                            <option value="event" {% if sort == 'event' %}selected{% endif %}>Event Date</option>
+                            <option value="title" {% if sort == 'title' %}selected{% endif %}>Title</option>
+                        </select>
                         <button class="news-sort-order journal-sort-order" type="button" data-journal-sort-order data-order="{{ order }}" aria-label="Sort {% if order == 'asc' %}ascending{% else %}descending{% endif %}"></button>
                     </div>
                 </section>

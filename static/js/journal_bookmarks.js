@@ -153,12 +153,20 @@ async function changeBookmark(link, remove = false) {
     const timeout = setTimeout(() => abort.abort(), 20000);
     const finish = beginTask(remove ? "Removing from Journal…" : "Saving to Journal…");
     const path = remove ? bookmark.delete_url : document.body.dataset.journalQuickSaveUrl;
+    const params = new URL(originalUrl).searchParams;
+    const target = params.get("type") === "youtube" ? "video" : "url";
+    const body = remove ? new URLSearchParams({confirm: "on", [target]: params.get(target)}) : params;
     const task = (async () => {
         try {
             const response = await fetch(path, {method: "POST", signal: abort.signal,
-                body: remove ? new URLSearchParams({confirm: "on"}) : new URL(originalUrl).searchParams,
+                body,
                 headers: {"Accept": "application/json", "X-CSRFToken": document.querySelector('meta[name="csrf-token"]').content}});
             const result = response.headers.get("Content-Type")?.includes("application/json") ? await response.json() : {};
+            if (remove && response.status === 409) {
+                saved.set(key, result.bookmarks?.[key] || null);
+                notify({id: "journal-bookmark", kind: "warning", title: result.message || "The saved item changed"});
+                return;
+            }
             if (!response.ok && !(remove && response.status === 404)) throw new Error(result.message || "Try again.");
             if (remove && response.status === 404) saved.delete(key);
             else saved.set(key, remove ? result.bookmarks[key] || null : result);

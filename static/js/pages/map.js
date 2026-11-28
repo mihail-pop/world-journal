@@ -1059,9 +1059,6 @@ function createMap(controller, styleUrl) {
         saveViewport(map);
         scheduleHoverUpdate(controller);
     });
-    map.on("rotate", () => {
-        if (controller.layersInstalled && controller.preferences.mapType === "adventure") updateAdventure(controller, true);
-    });
     // Recheck a stationary pointer once newly loaded tiles have been rendered.
     map.on("idle", () => scheduleHoverUpdate(controller));
     map.on("render", () => updateFavoriteMarkerVisibility(controller));

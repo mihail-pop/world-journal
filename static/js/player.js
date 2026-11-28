@@ -1,5 +1,6 @@
 import { iconPlay, iconPause, iconPrev, iconNext, iconInfo, iconTheater, iconSmall,
     iconFsEnter, iconFsExit, iconClose, iconHistory, iconHeart } from "./player_icons.js";
+import { randomId } from "./random_id.js";
 
 const PREFIX = "world-journal:player:";
 const STATE = `${PREFIX}state`, LEASE = `${PREFIX}owner`, COMMAND = `${PREFIX}command`, LAYOUT = `${PREFIX}layout`;
@@ -62,7 +63,7 @@ export function initializePlayer() {
     initialized = true;
     const popout = document.body.dataset.playerPopout === "true";
     const tabKey = `${PREFIX}${popout ? "popup-tab" : "tab"}`;
-    const tab = read(tabKey, null, sessionStorage) || crypto.randomUUID();
+    const tab = read(tabKey, null, sessionStorage) || randomId();
     write(tabKey, tab, sessionStorage);
     const byId = id => root.querySelector(`#mp-${id}`);
     const wrapper = byId("wrapper"), controls = byId("controls"), history = byId("history");
@@ -304,7 +305,7 @@ export function initializePlayer() {
         if (!item) return;
         const owner = lease();
         if (!popout && alive(owner) && owner.popup) {
-            write(COMMAND, {id: crypto.randomUUID(), type: "play", detail: item, queue});
+            write(COMMAND, {id: randomId(), type: "play", detail: item, queue});
             popupWindow?.focus();
             return;
         }

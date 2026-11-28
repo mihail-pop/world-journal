@@ -3,6 +3,8 @@
     <form method="post" action="{% if is_new %}{% url 'journal:new' %}{% else %}{% url 'journal:edit' entry.pk %}{% endif %}" class="journal-editor journal-editor-workspace" data-journal-editor data-autosave-url="{% url 'journal:autosave' entry.pk %}" data-edit-url="{% url 'journal:edit' entry.pk %}" data-upload-url="{% url 'journal:upload_attachment' entry.pk %}" data-export-url="{% url 'journal:export' entry.pk 'docx' %}" novalidate>
         {% csrf_token %}
         <input type="hidden" name="entry_id" value="{{ entry.pk }}">
+        <input type="hidden" name="entry_revision" value="{{ entry_revision|default_if_none:'unavailable' }}">
+        {% if initial_source_published_at %}<input type="hidden" name="initial_source_published_at" value="{{ initial_source_published_at }}">{% endif %}
         {% if form.is_bound %}<input type="hidden" data-autosave-retry value="true">{% endif %}
         <aside class="journal-writing-rail" aria-label="Journal navigation">
             <nav class="journal-workspace-actions" aria-label="Journal views">

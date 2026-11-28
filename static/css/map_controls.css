@@ -167,7 +167,6 @@
 .map-zoom-controls button { display: grid; place-items: center; width: 34px; height: 34px; padding: 0; border: 0; border-radius: 8px; background: transparent; color: var(--map-ink); }
 .map-zoom-controls button:hover:not(:disabled) { background: var(--map-hover); }
 .map-zoom-controls button:disabled { opacity: .3; }
-.page-map[data-map-type="adventure"] .adventure-map-compass { right: 76px; bottom: 12px; }
 .page-map .map-preset-legend { left: 12px; bottom: 12px; max-width: min(236px, calc(100% - 24px)); padding: 11px 13px; border: 0; }
 .map-preset-legend summary { display: flex; align-items: center; justify-content: space-between; gap: 16px; list-style: none; color: var(--map-ink); font-size: 12px; font-weight: 600; }
 .map-preset-legend summary::-webkit-details-marker { display: none; }

@@ -10,6 +10,7 @@ from django.views.decorators.http import require_GET, require_POST, require_http
 
 from config.version import (
     APP_VERSION,
+    CURRENT_RELEASE_TAG,
     CURRENT_RELEASE_URL,
     DISCUSSIONS_URL,
     ISSUES_URL,
@@ -95,7 +96,7 @@ def settings_page(request: HttpRequest) -> HttpResponse:
             "settings",
             page_template="core/partials/information.html",
             context={
-                "app_version": APP_VERSION,
+                "current_release_tag": CURRENT_RELEASE_TAG,
                 "current_release_url": CURRENT_RELEASE_URL,
                 "releases_url": RELEASES_URL,
                 "issues_url": ISSUES_URL,

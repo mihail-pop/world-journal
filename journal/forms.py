@@ -5,6 +5,7 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.forms import BaseInlineFormSet, inlineformset_factory
 from django.utils import timezone
+from django.utils.dateparse import parse_datetime
 
 from .models import Attachment, BodyFormat, BUILTIN_COLLECTION_NAMES, Collection, Entry, EntrySection, EntryType
 from .documents import image_ids, serialize_document, validate_document
@@ -38,6 +39,22 @@ class ContentForm(forms.ModelForm):
 
     def clean_entry_type(self):
         return self.cleaned_data.get("entry_type") or EntryType.NOTE
+
+    def clean_source_published_at(self):
+        published = self.cleaned_data["source_published_at"]
+        if published is None or len(self.data.get(self.add_prefix("source_published_at"), "")) != 10:
+            return published
+        original = self.instance.source_published_at
+        if original is None and self.instance._state.adding:
+            try:
+                original = parse_datetime(self.data.get(self.add_prefix("initial_source_published_at"), ""))
+            except ValueError:
+                pass
+        if original is not None:
+            local_date = timezone.localtime(original).date() if timezone.is_aware(original) else original.date()
+            if local_date == timezone.localtime(published).date():
+                return original
+        return published
 
     def clean_body(self):
         value = self.cleaned_data.get("body", "")

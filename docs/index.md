@@ -1,12 +1,6 @@
 # Introduction
 
-## My Note
-
-The app is usable but still work in progress, I will update the readme and documentation when I think it's good enough to share it with others. :)
-
-## Demo Video
-
-## Screenshots
+World Journal is a self-hosted app for exploring countries, following the news and keeping a personal research journal.
 
 ## How do I set it up?
 

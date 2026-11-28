@@ -23,6 +23,7 @@ from PIL import Image
 from countries.models import Country, CountryFavorite, CountryProfile, MapPreset, PresetColorGroup, PresetCountry, TerritoryDetails
 from journal.models import Attachment, Collection, Entry, EntrySection
 from news.models import CustomSource, NewsPreferences, SourcePreference
+from .database import write_transaction
 from .models import AppSettings
 from .preferences import validate_preferences
 
@@ -105,8 +106,10 @@ def export_archive():
     """Return a seekable temporary ZIP. Missing media makes export fail explicitly."""
     output = tempfile.SpooledTemporaryFile(max_size=8 * 1024 * 1024)
     try:
-        with transaction.atomic():
-            records = {name: [_record(obj) for obj in model.objects.all()] for name, model in DATASETS.items()}
+        with write_transaction():
+            records = {name: [_record(obj) for obj in model.objects.all()] for name, model in DATASETS.items() if model is not Attachment}
+            attachments = list(Attachment.objects.filter(detached_at__isnull=True))
+            records["attachments"] = [_record(obj) for obj in attachments]
             if not records["app_settings"]:
                 records["app_settings"] = [_record(AppSettings(pk=1))]
             # A list per entry preserves multi-country associations.
@@ -116,7 +119,13 @@ def export_archive():
                     tags.setdefault(entry_id, []).append(code)
             for record in records["entries"]:
                 record["countries"] = sorted(tags.get(record["id"], []))
-            attachments = list(Attachment.objects.all())
+        if sum(map(len, records.values())) > RECORD_LIMIT:
+            raise BackupError("This library has too many records for a portable backup.")
+        image_bytes = sum(attachment.byte_size for attachment in attachments)
+        if image_bytes > settings.BACKUP_MAX_BYTES:
+            raise BackupError("This library is too large for a portable backup.")
+        if any(attachment.byte_size > settings.JOURNAL_IMAGE_MAX_BYTES for attachment in attachments):
+            raise BackupError("An image exceeds the maximum size supported by portable backups.")
         media = {}
         with zipfile.ZipFile(output, "w", compression=zipfile.ZIP_STORED, allowZip64=True) as archive:
             by_id = {record["id"]: record for record in records["attachments"]}
@@ -139,7 +148,12 @@ def export_archive():
                 by_id[attachment.id]["file"] = path
                 media[path] = {"sha256": digest.hexdigest()}
             manifest = {"format": FORMAT, "version": VERSION, "exported_at": timezone.now(), "records": records, "media": media}
-            archive.writestr("manifest.json", json.dumps(manifest, cls=DjangoJSONEncoder, ensure_ascii=False), compress_type=zipfile.ZIP_DEFLATED)
+            encoded = json.dumps(manifest, cls=DjangoJSONEncoder, ensure_ascii=False).encode("utf-8")
+            if len(encoded) > MANIFEST_LIMIT or image_bytes + len(encoded) > settings.BACKUP_MAX_BYTES:
+                raise BackupError("This library is too large for a portable backup.")
+            archive.writestr("manifest.json", encoded, compress_type=zipfile.ZIP_DEFLATED)
+        if output.tell() > settings.BACKUP_MAX_BYTES:
+            raise BackupError("The backup ZIP exceeds the supported upload size.")
         output.seek(0)
         return output
     except Exception:
@@ -418,7 +432,7 @@ def import_archive(source):
     data, tags = read_backup(source)
     saved_files = []
     try:
-        with transaction.atomic(), zipfile.ZipFile(source) as archive:
+        with write_transaction(), zipfile.ZipFile(source) as archive:
             # Recompute conflicts at confirmation time, in case data changed since preview.
             plan, remap = import_plan(data)
             for name, items in plan.items():
@@ -441,12 +455,8 @@ def import_archive(source):
                         type(obj).objects.filter(pk=obj.pk).update(**dates)
                     if isinstance(obj, Entry):
                         obj.countries.set(tags[obj.pk])
-            if any(action == "add" for obj, action in plan["news_preferences"]):
-                from news.services.background import feed_warmer
-
-                transaction.on_commit(feed_warmer.rescan, robust=True)
-                transaction.on_commit(feed_warmer.trim_archive, robust=True)
-            return plan_summary(plan)
+            changed_news_preferences = any(action == "add" for obj, action in plan["news_preferences"])
+            summary = plan_summary(plan)
     except Exception:
         for storage, name in saved_files:
             try:
@@ -454,3 +464,9 @@ def import_archive(source):
             except OSError:
                 logging.getLogger(__name__).warning("A rolled-back import image could not be removed from local media.")
         raise
+    if changed_news_preferences:
+        from news.services.background import feed_warmer
+
+        transaction.on_commit(feed_warmer.rescan, robust=True)
+        transaction.on_commit(feed_warmer.trim_archive, robust=True)
+    return summary

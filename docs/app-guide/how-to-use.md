@@ -14,7 +14,7 @@ World Journal has three map types:
 - **Simple** uses bundled country geometry and removes roads, buildings and other unnecessary layers.
 - **Adventure** turns the world into an illustrated maritime atlas with its own colors, textures and artwork.
 
-Your map type, camera position and display choices are remembered by the browser.
+Your map type and display choices are shared across browsers. Each browser remembers its own camera position.
 
 ### 1.2 Country Overview
 
@@ -26,7 +26,7 @@ The map contains 238 ISO-backed entries and 14 custom territories from the pinne
 
 Articles combines a Google News country search with matching stories from enabled regional feeds. Videos uses public YouTube channel feeds. Every item keeps its publisher or channel visible.
 
-A source can fail without making the whole country drawer fail. If a previous successful result exists, the app can continue showing that cached result with a warning.
+The drawer can keep showing saved results if a source fails. Check **Settings > Sources** for warnings and retry controls.
 
 > **Note:** Matching is a useful filter, not a claim that every relevant story was found. Regional items are matched through reviewed country names and aliases rather than by downloading article bodies.
 
@@ -46,7 +46,7 @@ An entry can be a Note, Article, Video or Bookmark. New saves are placed into th
 
 Entries support:
 
-- Markdown text;
+- rich text with headings, lists and tables;
 - ordered subsections;
 - one or more country tags;
 - article and video references;
@@ -57,23 +57,21 @@ Entries support:
 
 ### 2.2 Writing and Autosave
 
-While editing an existing entry, changed content autosaves approximately once per minute. The status near the editor tells you whether the current version is saved. Explicit Save buttons remain available when you want to finish immediately.
+Changed content autosaves approximately once per minute. Check the save status in the toolbar or use **Save** to save immediately.
 
-Valid YouTube links written in Markdown become player controls. They do not create automatic third-party iframes inside the entry.
+Entries with a YouTube reference can play the video inline or open it in the shared player. Use **PDF / Print** or **Word (.docx)** to export an entry.
 
 ### 2.3 Country References
 
-Use `[[Romania]]` or another exact country name in Markdown to create a country link. Known aliases and canonical names are resolved when the entry is saved. Unrecognized text remains visible instead of being guessed.
+Use **Countries** in the editor to link an entry to one or more places. These links make the entry available from each country's Notes tab.
 
-Country statistics use explicit country relationships. A country name appearing in ordinary prose does not silently change the statistics.
+### 2.4 Search, Filters and Sorting
 
-### 2.4 Search, Filters and Statistics
-
-The Journal can be searched and filtered by collection, entry type, country, event date, creation date and favorite state. Statistics summarize entries by type, collection, country and time period, and the totals link back to the relevant filtered list.
+Search the Journal or narrow the list by collection, entry type, country and **Activity Date**, which is the last time the entry was saved or updated. Sort by Activity Date, Release Date, Event Date or Title. **Rewind** jumps to the previous day with matching activity.
 
 ## 3. News
 
-The News page provides a broader reading board outside a single country drawer. Use its tabs and filters to move between current results and the rolling archive.
+The News page brings current results and archived coverage into one list per tab. Search or filter by source and publication period, then scroll to load more.
 
 ### 3.1 Sources
 
@@ -88,7 +86,7 @@ Go to **Settings > Sources** to enable or disable sources, add custom ones, insp
 
 ### 3.2 Archive
 
-Article and video metadata is kept in a rolling 90-day archive. The archive is bounded to 50,000 items and an approximate 100 MiB metadata budget. It does not download article bodies, publisher pages or video files.
+The archive stores article and video metadata. In **Settings > Sources**, choose an archive budget of **500 MB**, **1 GB** or **2 GB**. The default is 2 GB. World Journal removes the oldest items as needed to stay within the approximate storage budget and the 3 million item safety cap. Coverage for 90 days is a storage estimate.
 
 Save anything important to the Journal rather than relying on the archive as permanent storage.
 
@@ -102,7 +100,7 @@ Selecting a custom territory exposes **Edit details** in Overview. Local edits c
 
 Press Play on a supported YouTube item to load it into the shared player. The iframe is only created after that action and uses the privacy-enhanced YouTube domain.
 
-The player can be moved, minimized, expanded and closed. It lives outside the page area replaced during navigation, so the same video can continue while you move between Map, Journal, News, Countries and Settings.
+The player can be moved, minimized, expanded, popped out or closed. The same video can continue across app pages, and a full refresh can restore the video and playback position.
 
 Use the bookmark control to save the current video and continue writing in the Journal.
 
@@ -113,6 +111,6 @@ Settings is divided into Preferences, Backup, Sources and Information.
 - **Preferences** controls the theme, app font, home country, map type and map labels.
 - **Backup** exports or imports portable personal data.
 - **Sources** controls feeds, channels, refresh timing and source health.
-- **Information** collects application and data-source information.
+- **Information** shows the installed and latest releases, with links to report an issue or ask a question.
 
-The app font and visual map preferences belong to the current browser. The theme, journal entries, favorites, presets, source choices and territory edits are shared through SQLite.
+Preferences, journal entries, favorites, presets, source choices and territory edits are shared through SQLite. The map camera and player layout are saved in the browser.

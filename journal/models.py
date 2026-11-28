@@ -115,6 +115,7 @@ class Entry(ResearchContent):
     is_pinned = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    editor_save_receipt = models.JSONField(default=dict, blank=True, editable=False)
 
     class Meta:
         ordering = ("-is_pinned", "-created_at", "-id")
@@ -136,6 +137,14 @@ class Entry(ResearchContent):
     def get_absolute_url(self):
         return reverse("journal:detail", kwargs={"pk": self.pk})
 
+    def add_country_tags(self, codes):
+        codes = set(codes)
+        if codes:
+            missing = codes - set(self.countries.values_list("pk", flat=True))
+            if missing:
+                self.countries.add(*missing)
+                self.save(update_fields=["updated_at"])
+
 
 class EntrySection(ResearchContent):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -154,6 +163,11 @@ class EntrySection(ResearchContent):
 
     def __str__(self):
         return self.title
+
+
+class DeletedEntry(models.Model):
+    # A draft ID may be retried after a lost first save response.
+    id = models.UUIDField(primary_key=True, editable=False)
 
 
 def attachment_path(instance, filename):
@@ -176,6 +190,7 @@ class Attachment(models.Model):
     height = models.PositiveIntegerField()
     position = models.PositiveIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
+    detached_at = models.DateTimeField(null=True, blank=True, editable=False, db_index=True)
 
     class Meta:
         ordering = ("position", "created_at", "id")
