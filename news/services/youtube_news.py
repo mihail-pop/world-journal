@@ -16,7 +16,7 @@ from news.types import CountryVideosPage, NewsSource, VideoItem, VideoSourceResu
 
 from .cache import (
     age, cache_lock, deserialize_video_items, failure_retry_pending, feed_snapshot, parse_datetime,
-    record_failure, stale_cache_remaining, youtube_cache_key,
+    publisher_retry_pending, record_failure, stale_cache_remaining, youtube_cache_key,
 )
 from .country_matcher import match_title
 from .country_news import _country_for_code
@@ -101,8 +101,8 @@ def get_youtube_feed(
         ):
             return _source_result(source, snapshot)
         if (
-            not force_refresh and not retrying_failure
-            and failure_retry_pending(snapshot, current_time)
+            publisher_retry_pending(snapshot, current_time)
+            or not force_refresh and not retrying_failure and failure_retry_pending(snapshot, current_time, fresh_seconds)
         ):
             return _source_result(
                 source,
@@ -131,8 +131,9 @@ def get_youtube_feed(
                     "last_error": "",
                     "last_error_detail": "",
                     "last_attempt_at": current_time.isoformat(),
-                    "consecutive_failures": 0,
                     "retry_after_at": None,
+                    "failed_at": None,
+                    "server_retry_at": None,
                 })
             else:
                 normalized = normalize_youtube_feed(
@@ -154,7 +155,7 @@ def get_youtube_feed(
             return _source_result(source, snapshot)
         except (FeedFetchError, YouTubeFeedParseError) as error:
             failed_at = now or datetime.now(UTC)
-            failure_ttl = record_failure(snapshot, failed_at, error)
+            failure_ttl = record_failure(snapshot, failed_at, error, fresh_seconds)
             snapshot["last_error"] = "This video channel is temporarily unavailable."
             snapshot["last_error_detail"] = str(error)[:240]
             snapshot["last_attempt_at"] = current_time.isoformat()
@@ -171,7 +172,8 @@ def get_youtube_feed(
                 "last_error": "This video channel is temporarily unavailable.",
                 "last_error_detail": str(error)[:240],
                 "last_attempt_at": current_time.isoformat(),
-                "consecutive_failures": snapshot["consecutive_failures"],
+                "failed_at": snapshot["failed_at"],
+                "server_retry_at": snapshot["server_retry_at"],
                 "retry_after_at": snapshot["retry_after_at"],
             }
             backend.set(key, empty, failure_ttl)

@@ -8,6 +8,7 @@ import { adventurePalette, prepareAdventure, updateAdventure } from "./adventure
 import { getCountryFeed, rememberCountryFeed } from "../news_cache.js";
 import { applyCountryNewsFilter, replaceCountryMarkup } from "../news_archive.js";
 import { notify } from "../notifications.js";
+import { recordCountrySelection } from "../country_selections.js";
 import { basemapFeaturePreferences, isBasemapCapitalLabel, isBasemapCountryLabel, splitBasemapRegionLabels } from "./basemap_features.js";
 import { factsSelectionChanged, initializeCountryFacts, loadCountryOverview } from "./map_facts.js";
 import { applyPersonalLayers, initializePersonalMap, loadCountryNotes, loadPersonalData, personalSelectionChanged, updateFavoriteMarkerVisibility } from "./map_personal.js";
@@ -356,16 +357,16 @@ function applyNewsFilter(controller, filter) {
     applyCountryNewsFilter(controller.newsContent, filter);
 }
 
-function loadCountryNews(controller, code, countryName, { retryFailed = false } = {}) {
+function loadCountryNews(controller, code, { retry = false } = {}) {
     cancelCountryNews(controller);
     const cached = getCountryFeed(code, "articles");
     if (cached) {
         renderCachedNews(controller, code, cached);
-        if (!retryFailed) return;
+        if (!retry) return;
     }
     controller.newsContent.setAttribute("aria-busy", "true");
     if (!cached) showNewsMessage(controller, "");
-    controller.pendingNews = { code, countryName, retryFailed, requestId: controller.newsRequestId };
+    controller.pendingNews = { code, requestId: controller.newsRequestId };
     // Coalesce quick clicks before contacting the server. A pending selection
     // replaces the previous one, so there is never a queue of country requests.
     controller.newsTimer = window.setTimeout(() => {
@@ -414,7 +415,7 @@ function startPendingCountryNews(controller) {
     }
 }
 
-async function fetchCountryNews(controller, { code, countryName, retryFailed, requestId }) {
+async function fetchCountryNews(controller, { code, requestId }) {
     const requestedAt = Date.now();
     const abortController = new AbortController();
     controller.newsAbortController = abortController;
@@ -425,9 +426,6 @@ async function fetchCountryNews(controller, { code, countryName, retryFailed, re
         controller.newsUrlTemplate.replace("COUNTRY_CODE", encodeURIComponent(code)),
         window.location.origin,
     );
-    if (retryFailed) {
-        url.searchParams.set("refresh", "failed");
-    }
 
     try {
         const response = await fetch(url, {
@@ -481,12 +479,12 @@ function showVideoMessage(controller, message, { retry = false } = {}) {
     }
 }
 
-async function loadCountryVideos(controller, code, countryName, { retryFailed = false } = {}) {
+async function loadCountryVideos(controller, code, { retry = false } = {}) {
     cancelCountryVideos(controller);
     const cached = getCountryFeed(code, "videos");
     if (cached) {
         renderCachedVideos(controller, code, cached);
-        if (!retryFailed) return;
+        if (!retry) return;
     }
     const requestId = controller.videoRequestId;
     const requestedAt = Date.now();
@@ -498,9 +496,6 @@ async function loadCountryVideos(controller, code, countryName, { retryFailed = 
         controller.videoUrlTemplate.replace("COUNTRY_CODE", encodeURIComponent(code)),
         window.location.origin,
     );
-    if (retryFailed) {
-        url.searchParams.set("refresh", "failed");
-    }
 
     try {
         const response = await fetch(url, {
@@ -560,8 +555,7 @@ function selectCountrySection(controller, section, { focus = false } = {}) {
         && controller.pendingNews?.code !== controller.selectedCode
         && !controller.newsTimer
     ) {
-        const country = controller.countriesByCode.get(controller.selectedCode);
-        loadCountryNews(controller, controller.selectedCode, country.name);
+        loadCountryNews(controller, controller.selectedCode);
     }
     if (
         section === "videos"
@@ -569,8 +563,7 @@ function selectCountrySection(controller, section, { focus = false } = {}) {
         && (controller.videoContent.dataset.loadedCountry !== controller.selectedCode || !getCountryFeed(controller.selectedCode, "videos"))
         && !controller.videoAbortController
     ) {
-        const country = controller.countriesByCode.get(controller.selectedCode);
-        loadCountryVideos(controller, controller.selectedCode, country.name);
+        loadCountryVideos(controller, controller.selectedCode);
     }
 }
 
@@ -652,6 +645,7 @@ function selectCountry(controller, code, options = {}) {
         return;
     }
     if (selectPresetCountry(controller, code)) return;
+    recordCountrySelection(controller.page, code);
     if (options.pushHistory !== false && (code !== controller.selectedCode || new URL(location.href).searchParams.has("place"))) {
         updateHistory(code);
     }
@@ -1262,8 +1256,7 @@ async function initializeMapPage() {
     page.querySelector("[data-country-close]").addEventListener("click", () => closeCountry(controller), { signal: abortController.signal });
     controller.newsContent.addEventListener("click", (event) => {
         if (event.target.closest("[data-news-retry]") && controller.selectedCode) {
-            const country = controller.countriesByCode.get(controller.selectedCode);
-            loadCountryNews(controller, controller.selectedCode, country.name, { retryFailed: true });
+            loadCountryNews(controller, controller.selectedCode, { retry: true });
             return;
         }
         const filterButton = event.target.closest("[data-news-filter]");
@@ -1293,8 +1286,7 @@ async function initializeMapPage() {
     }, { signal: abortController.signal });
     controller.videoContent.addEventListener("click", (event) => {
         if (event.target.closest("[data-video-retry]") && controller.selectedCode) {
-            const country = controller.countriesByCode.get(controller.selectedCode);
-            loadCountryVideos(controller, controller.selectedCode, country.name, { retryFailed: true });
+            loadCountryVideos(controller, controller.selectedCode, { retry: true });
             return;
         }
         const playButton = event.target.closest("[data-video-play]");

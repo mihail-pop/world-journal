@@ -4,6 +4,8 @@ from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.utils import timezone
 
+from .google_pacing import validate_pacing
+
 
 class FeedState(models.Model):
     """Small scheduling/status index; feed contents stay in the response cache."""
@@ -21,6 +23,8 @@ class FeedSchedule(models.Model):
     cycle_finished_at = models.DateTimeField(null=True, blank=True)
     cycle_manual = models.BooleanField(default=False)
     manual_requested = models.BooleanField(default=False)
+    google_sweep_started_at = models.DateTimeField(null=True, blank=True)
+    google_sweep_order = models.JSONField(default=list, blank=True)
 
 
 class ArchivedNews(models.Model):
@@ -99,6 +103,7 @@ class NewsPreferences(models.Model):
         default=360, validators=[MinValueValidator(120), MaxValueValidator(720)],
     )
     archive_storage_mb = models.PositiveSmallIntegerField(default=2000, choices=STORAGE_CHOICES)
+    google_pacing = models.JSONField(default=dict, blank=True, validators=[validate_pacing])
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:

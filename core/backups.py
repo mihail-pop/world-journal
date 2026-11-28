@@ -28,7 +28,7 @@ from .preferences import validate_preferences
 
 
 FORMAT = "world-journal-backup"
-VERSION = 11
+VERSION = 12
 MANIFEST_LIMIT = 32 * 1024 * 1024
 RECORD_LIMIT = 100_000
 IMAGE_TYPES = {"image/jpeg": (".jpg", "JPEG"), "image/png": (".png", "PNG"), "image/webp": (".webp", "WEBP"), "image/gif": (".gif", "GIF")}
@@ -66,6 +66,7 @@ LABELS = {
 # Version 9 adds the map menu position and favorites display choice.
 # Version 10 adds the saved open/closed map menu choice.
 # Version 11 removes manual collection positions.
+# Version 12 adds Google News request gap preferences.
 # New backup versions must retain a reader for older archive versions.
 CONTENT_FIELDS = "title body body_format entry_type source_url source_name source_published_at youtube_video_id youtube_start_seconds"
 SCHEMA_FIELDS = {
@@ -80,7 +81,7 @@ SCHEMA_FIELDS = {
     CountryProfile: "country_id entry_id updated_at",
     TerritoryDetails: "country_id name population area capital languages currency government notes updated_at",
     SourcePreference: "source_id enabled updated_at",
-    NewsPreferences: "id freshness_minutes archive_storage_mb updated_at",
+    NewsPreferences: "id freshness_minutes archive_storage_mb google_pacing updated_at",
     AppSettings: "id theme font map_type map_favorites_display map_menu_position map_menu_open home_country_id active_preset_id country_names capital_names city_names region_names small_country_markers protected_areas vegetation relief water transport buildings land_use administrative_borders points_of_interest all_other_text",
     CustomSource: "id parent_id kind name url feed_format channel_id verified_at last_checked_at last_error created_at updated_at",
 }
@@ -198,6 +199,11 @@ def _read_archive(archive):
             if not isinstance(record, dict) or "archive_storage_mb" in record:
                 raise BackupError("The news preference fields do not match the backup version.")
             record["archive_storage_mb"] = 2000
+    if manifest["version"] < 12:
+        for record in records["news_preferences"]:
+            if not isinstance(record, dict) or "google_pacing" in record:
+                raise BackupError("The Google News pacing fields do not match the backup version.")
+            record["google_pacing"] = {}
     if 6 <= manifest["version"] < 9:
         for record in records["app_settings"]:
             if not isinstance(record, dict) or {"map_favorites_display", "map_menu_position"} & record.keys():

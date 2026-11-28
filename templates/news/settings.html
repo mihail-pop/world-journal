@@ -2,7 +2,10 @@
     {% include 'core/partials/settings_nav.html' with section='sources' heading_id='sources-title' %}
     <div class="settings-grid source-overview-grid">
         <article class="settings-card source-refresh-card">
-            <h2>Refresh News</h2>
+            <div class="source-library-heading">
+                <h2>Refresh News</h2>
+                <button class="journal-icon-button" type="button" data-google-pacing-open aria-label="Google News request gaps" aria-haspopup="dialog" aria-controls="google-pacing-dialog">{% include 'core/partials/icon.html' with name='info' %}</button>
+            </div>
             <div class="source-refresh-content">
                 <progress data-refresh-progress max="{{ refresh_status.progress_max }}" value="{{ refresh_status.progress_value }}" aria-label="News update progress"></progress>
                 <p class="source-refresh-status" data-refresh-summary role="status" aria-live="polite">{{ refresh_status.summary }}</p>
@@ -50,5 +53,6 @@
         </div>
     </section>
     {% include 'news/partials/source_modal.html' %}
+    {% include 'news/partials/google_pacing.html' with pacing=refresh_status.google_pacing %}
     <noscript><button class="journal-button is-primary" type="submit" form="news-preferences">Save source preferences</button></noscript>
 </section>

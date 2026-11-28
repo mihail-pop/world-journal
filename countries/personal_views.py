@@ -1,13 +1,13 @@
 import json
 
 from django.contrib import messages
-from django.db import OperationalError
-from django.http import JsonResponse, QueryDict
+from django.db import OperationalError, connection
+from django.http import HttpResponse, JsonResponse, QueryDict
 from django.shortcuts import get_object_or_404, render
 from django.template.loader import render_to_string
 from django.urls import reverse
 from django.views.decorators.cache import never_cache
-from django.views.decorators.http import require_http_methods
+from django.views.decorators.http import require_http_methods, require_POST
 
 from core.database import database_write, is_database_busy, write_transaction
 from core.views import render_page
@@ -19,7 +19,7 @@ from journal.models import Entry
 from journal.views import ConfirmationForm, navigate
 
 from .forms import ColorGroups, CountryProfileForm, DuplicatePresetForm, PresetForm, TerritoryDetailsForm
-from .models import Country, CountryFavorite, CountryProfile, MapPreset, PresetColorGroup, PresetCountry, TerritoryDetails, preset_groups
+from .models import Country, CountryFavorite, CountryProfile, CountrySelection, MapPreset, PresetColorGroup, PresetCountry, TerritoryDetails, preset_groups
 
 
 PRESET_BUSY_MESSAGE = "The database is still busy. Try saving again."
@@ -61,6 +61,19 @@ def territory_edit(request, iso2):
 @require_http_methods(["GET"])
 def personal_data(request):
     return JsonResponse(personal_snapshot())
+
+
+@require_POST
+def record_selection(request, iso2):
+    selections = connection.ops.quote_name(CountrySelection._meta.db_table)
+    countries = connection.ops.quote_name(Country._meta.db_table)
+    with database_write(), connection.cursor() as cursor:
+        cursor.execute(f"""
+            INSERT INTO {selections} (country_id, count)
+            SELECT code, 1 FROM {countries} WHERE code = %s
+            ON CONFLICT(country_id) DO UPDATE SET count = {selections}.count + 1
+        """, [iso2.upper()])
+        return HttpResponse(status=204 if cursor.rowcount else 404)
 
 
 @require_http_methods(["POST"])

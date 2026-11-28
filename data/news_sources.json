@@ -158,6 +158,54 @@
       "disabled_reason": "",
       "operational_notes": "Replaced the previous 404 candidate with the channel linked by the official publisher. Canonical YouTube identity and Atom feed identity verified; 15 usable English entries.",
       "display_priority": 10
+    },
+    {
+      "id": "youtube_bbc_news",
+      "kind": "youtube",
+      "display_name": "BBC News",
+      "homepage_url": "https://www.youtube.com/channel/UC16niRr50-MSBwiO3YDb3RA",
+      "language": "en",
+      "enabled_by_default": true,
+      "youtube_channel_id": "UC16niRr50-MSBwiO3YDb3RA",
+      "editorial_region": "europe",
+      "coverage_regions": ["middle_east", "asia_pacific", "europe", "africa", "north_america", "latin_america_caribbean"],
+      "allowed_hosts": ["www.youtube.com"],
+      "verification_date": "2026-11-28",
+      "disabled_reason": "",
+      "operational_notes": "Official BBC News channel with international English-language coverage.",
+      "display_priority": 30
+    },
+    {
+      "id": "youtube_nhk_world_japan",
+      "kind": "youtube",
+      "display_name": "NHK WORLD-JAPAN",
+      "homepage_url": "https://www.youtube.com/channel/UCSPEjw8F2nQDtmUKPFNF7_A",
+      "language": "en",
+      "enabled_by_default": true,
+      "youtube_channel_id": "UCSPEjw8F2nQDtmUKPFNF7_A",
+      "editorial_region": "asia_pacific",
+      "coverage_regions": ["asia_pacific"],
+      "allowed_hosts": ["www.youtube.com"],
+      "verification_date": "2026-11-28",
+      "disabled_reason": "",
+      "operational_notes": "Official NHK WORLD-JAPAN channel with news and features in English.",
+      "display_priority": 30
+    },
+    {
+      "id": "youtube_associated_press",
+      "kind": "youtube",
+      "display_name": "Associated Press",
+      "homepage_url": "https://www.youtube.com/channel/UC52X5wxOL_s5yw0dQk7NtgA",
+      "language": "en",
+      "enabled_by_default": true,
+      "youtube_channel_id": "UC52X5wxOL_s5yw0dQk7NtgA",
+      "editorial_region": "north_america",
+      "coverage_regions": ["middle_east", "asia_pacific", "europe", "africa", "north_america", "latin_america_caribbean"],
+      "allowed_hosts": ["www.youtube.com"],
+      "verification_date": "2026-11-28",
+      "disabled_reason": "",
+      "operational_notes": "Official Associated Press news channel with international coverage.",
+      "display_priority": 30
     }
   ],
   "providers": [
@@ -280,6 +328,17 @@
       "editorial_region": "africa",
       "coverage_regions": ["africa"],
       "display_priority": 20,
+      "enabled_by_default": true
+    },
+    {
+      "id": "euronews",
+      "display_name": "Euronews",
+      "homepage_url": "https://www.euronews.com/news/international",
+      "language": "en",
+      "publisher_country_code": null,
+      "editorial_region": "europe",
+      "coverage_regions": ["europe"],
+      "display_priority": 30,
       "enabled_by_default": true
     }
   ],
@@ -452,6 +511,19 @@
       "verification_date": "2026-10-11",
       "disabled_reason": "",
       "operational_notes": "Verified RSS; preserve item-level publisher metadata only when explicitly supplied."
+    },
+    {
+      "id": "euronews_world",
+      "provider_id": "euronews",
+      "section_label": "World",
+      "feed_url": "https://www.euronews.com/rss?format=mrss&level=theme&name=news",
+      "source_type": "rss",
+      "language": "en",
+      "enabled_by_default": true,
+      "allowed_hosts": ["www.euronews.com"],
+      "verification_date": "2026-11-28",
+      "disabled_reason": "",
+      "operational_notes": "English World feed listed in the publisher's RSS directory."
     }
   ]
 }

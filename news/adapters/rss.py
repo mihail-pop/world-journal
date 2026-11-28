@@ -11,6 +11,26 @@ from news.types import NewsFeed, NewsItem, NewsProvider, NewsSource, NormalizedF
 
 
 MAX_FEED_ARTICLES = 500
+OPEN_NEWS_PUBLISHERS = {
+    "africanews": "africanews.com",
+    "africanews english": "africanews.com",
+    "al jazeera": "aljazeera.com",
+    "al jazeera english": "aljazeera.com",
+    "ap news": "apnews.com",
+    "associated press": "apnews.com",
+    "cbc news": "cbc.ca",
+    "cbc.ca": "cbc.ca",
+    "cgtn": "cgtn.com",
+    "channel newsasia": "channelnewsasia.com",
+    "cna": "channelnewsasia.com",
+    "deutsche welle": "dw.com",
+    "dw": "dw.com",
+    "dw.com": "dw.com",
+    "euronews": "euronews.com",
+    "france 24": "france24.com",
+    "npr": "npr.org",
+    "telesur english": "telesurenglish.net",
+}
 
 
 class FeedParseError(ValueError):
@@ -90,6 +110,72 @@ def is_google_news_link(link: str) -> bool:
         return False
 
 
+class _RelatedArticlesParser(HTMLParser):
+    """Read each Google News list item's linked headline and trailing byline."""
+
+    def __init__(self):
+        super().__init__()
+        self.articles: list[tuple[str, str, str]] = []
+        self._href = None
+        self._title = []
+        self._byline = []
+        self._text = None
+
+    def handle_starttag(self, tag, attrs):
+        if tag == "li":
+            self._href = None
+            self._title = []
+            self._byline = []
+            self._text = self._byline
+        elif tag == "a" and self._text is not None:
+            if self._href is not None:
+                self._text = None  # A row with several links is ambiguous.
+            else:
+                self._href = dict(attrs).get("href") or ""
+                self._text = self._title
+
+    def handle_endtag(self, tag):
+        if self._text is None:
+            return
+        if tag == "a":
+            self._text = self._byline
+        elif tag == "li":
+            if self._href:
+                headline = " ".join("".join(self._title).split())
+                publisher = " ".join("".join(self._byline).split())
+                self.articles.append((headline, self._href, publisher))
+            self._text = None
+
+    def handle_data(self, data):
+        if self._text is not None:
+            self._text.append(data)
+
+
+def _preferred_google_article(title, link, publisher, description):
+    if publisher.casefold() in OPEN_NEWS_PUBLISHERS or not isinstance(description, str) or "<li" not in description:
+        return title, link, publisher
+
+    parser = _RelatedArticlesParser()
+    parser.feed(description)
+    for headline, href, byline in parser.articles:
+        domain = OPEN_NEWS_PUBLISHERS.get(byline.casefold())
+        if not domain or not headline:
+            continue
+        alternative = _safe_link(href)
+        if not alternative or alternative == link or len(alternative) > 2048:
+            continue
+        target = urlsplit(alternative)
+        if target.scheme != "https" or target.port not in (None, 443) or not target.hostname:
+            continue
+        if target.hostname == "news.google.com":
+            if target.path.startswith("/rss/articles/") and target.path != "/rss/articles/":
+                return headline, alternative, byline
+        elif target.hostname == domain or target.hostname.endswith("." + domain):
+            if target.path.strip("/"):
+                return headline, alternative, byline
+    return title, link, publisher
+
+
 def clean_article_text(title: str, publisher: str, summary: str, *, google: bool = False) -> tuple[str, str]:
     """Keep publisher attribution separate and omit descriptions that aren't abstracts."""
     original_title = title
@@ -148,6 +234,7 @@ def normalize_feed(
     if parsed.bozo and not parsed.entries:
         raise FeedParseError("The feed could not be parsed")
 
+    google_source = isinstance(source, NewsSource) and source.kind is SourceKind.DYNAMIC_COUNTRY_RSS
     items = []
     for source_order, entry in enumerate(parsed.entries):
         title = _plain_text(entry.get("title"))
@@ -155,11 +242,12 @@ def normalize_feed(
         if not title or not link:
             continue
         publisher = _publisher(entry, source)
-        summary = _plain_text(entry.get("summary") or entry.get("description"))
+        description = entry.get("summary") or entry.get("description")
+        if google_source:
+            title, link, publisher = _preferred_google_article(title, link, publisher, description)
+        google = google_source or is_google_news_link(link)
         title, summary = clean_article_text(
-            title, publisher, summary,
-            google=(isinstance(source, NewsSource) and source.kind is SourceKind.DYNAMIC_COUNTRY_RSS)
-            or is_google_news_link(link),
+            title, publisher, "" if google else _plain_text(description), google=google,
         )
         items.append(
             NewsItem(

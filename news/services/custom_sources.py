@@ -123,7 +123,7 @@ def registry_items(record):
 
 
 def with_custom_sources(registry):
-    sources, providers, feeds = list(registry.sources), list(registry.providers), list(registry.feeds)
+    custom_sources, feeds = [], list(registry.feeds)
     grouped_providers = {}
     for record in CustomSource.objects.select_related("parent"):
         item, feed = registry_items(record)
@@ -132,8 +132,11 @@ def with_custom_sources(registry):
             grouped_providers[item.id] = replace(item, enabled_by_default=item.enabled_by_default or bool(previous and previous.enabled_by_default))
             feeds.append(feed)
         else:
-            sources.append(item)
-    return SourceRegistry(tuple(sources), tuple(providers) + tuple(grouped_providers.values()), tuple(feeds))
+            custom_sources.append(item)
+    # Keep the original source ID, archive and preferences if its channel becomes built-in.
+    custom_channels = {source.youtube_channel_id for source in custom_sources if source.enabled_by_default}
+    built_in_sources = tuple(source for source in registry.sources if source.youtube_channel_id not in custom_channels)
+    return SourceRegistry(built_in_sources + tuple(custom_sources), registry.providers + tuple(grouped_providers.values()), tuple(feeds))
 
 
 def check_custom_source(record):
@@ -146,7 +149,8 @@ def check_custom_source(record):
         if record.kind == CustomSource.Kind.YOUTUBE:
             channel = _channel_id(location)
             location = f"https://www.youtube.com/feeds/videos.xml?channel_id={channel}"
-            if any(source.youtube_channel_id == channel for source in curated.sources):
+            existing_channel = record.verified_at and record.channel_id == channel
+            if not existing_channel and any(source.youtube_channel_id == channel for source in curated.sources):
                 raise FeedFetchError("This channel is already in the built-in sources.")
             if CustomSource.objects.exclude(pk=record.pk).filter(channel_id=channel, kind="youtube").exists():
                 raise FeedFetchError("This channel has already been added.")

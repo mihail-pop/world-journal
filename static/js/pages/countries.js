@@ -1,6 +1,7 @@
 import { getCountryFeed, rememberCountryFeed } from "../news_cache.js";
 import { applyCountryNewsFilter, replaceCountryMarkup } from "../news_archive.js";
 import { notify } from "../notifications.js";
+import { recordCountrySelection } from "../country_selections.js";
 
 let controller = null;
 let registered = false;
@@ -75,8 +76,7 @@ function renderLists(state) {
     const favorites = matching.filter(country => state.favorites.has(country.iso_a2));
     state.page.querySelector("[data-directory-all-list]").replaceChildren(...matching.map(country => countryRow(state,country,false)));
     state.page.querySelector("[data-directory-favorite-list]").replaceChildren(...favorites.map(country => countryRow(state,country,true)));
-    state.page.querySelector("[data-directory-favorites]").hidden = !state.favorites.size;
-    state.page.querySelector("[data-directory-favorites-empty]").hidden = Boolean(favorites.length);
+    state.page.querySelector("[data-directory-favorites]").hidden = !favorites.length;
     state.page.querySelector("[data-directory-empty]").hidden = Boolean(matching.length);
     state.page.querySelector("[data-directory-count]").textContent = matching.length;
     for (const link of state.page.querySelectorAll("[data-directory-tab]")) link.href = directoryUrl(state,state.code,link.dataset.directoryTab);
@@ -166,7 +166,6 @@ function loadContent(state, retry = false) {
         try {
             const endpoint = {overview:"countryFactsUrlTemplate",articles:"countryNewsUrlTemplate",videos:"countryVideosUrlTemplate",notes:"countryNotesUrlTemplate"}[tab];
             const url = new URL(state.page.dataset[endpoint].replace("COUNTRY_CODE",code),location.origin);
-            if (retry && feed) url.searchParams.set("refresh","failed");
             const response = await fetch(url,{signal:abort.signal,cache:"no-store"});
             if (!response.ok) throw new Error("Country details unavailable");
             const markup = await response.text();
@@ -321,13 +320,14 @@ function initialize() {
     page.addEventListener("click",event => {
         const row = event.target.closest("[data-directory-country]");
         const tab = event.target.closest("[data-directory-tab]");
+        if (row && event.button === 0) recordCountrySelection(page, row.dataset.directoryCountry);
         if ((row || tab) && !event.ctrlKey && !event.metaKey && !event.shiftKey && !event.altKey && event.button === 0) {
             event.preventDefault(); select(state,row?.dataset.directoryCountry || state.code,tab?.dataset.directoryTab || state.tab);
             if (row && window.matchMedia("(max-width: 46rem)").matches) page.querySelector("[data-directory-detail]").scrollIntoView({block:"start",behavior:"instant"});
         }
         const filter = event.target.closest("[data-news-filter]");
         if (filter) applyArticleFilter(state,filter.dataset.newsFilter);
-        if (event.target.closest("[data-directory-retry],[data-news-retry],[data-video-retry]")) loadContent(state,true);
+        if (event.target.closest("[data-directory-retry]")) loadContent(state,true);
         const play = event.target.closest("[data-video-play]");
         if (play) {
             const bookmark = play.closest(".country-video-item")?.querySelector("[data-bookmark-url]");

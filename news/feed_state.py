@@ -3,8 +3,8 @@ from django.utils import timezone
 
 METADATA_FIELDS = (
     "fetched_at", "last_success_at", "last_attempt_at", "last_error",
-    "last_error_detail", "retry_after_at", "consecutive_failures",
-    "google_spacing_seconds", "google_request_ready_at",
+    "last_error_detail", "retry_after_at", "failed_at", "server_retry_at",
+    "google_spacing_seconds", "google_spacing_max_seconds", "google_request_ready_at",
 )
 
 

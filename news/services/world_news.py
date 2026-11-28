@@ -8,7 +8,6 @@ from django.conf import settings
 from django.core.cache import cache
 from django.db.models import Exists, OuterRef, Prefetch, Q
 from django.urls import reverse
-from django.utils.timezone import localtime
 
 from news.adapters.rss import clean_article_text, is_google_news_link
 from news.adapters.youtube import build_embed_url, build_thumbnail_url, build_watch_url
@@ -19,7 +18,7 @@ from news.types import NewsItem, SourceKind, VideoItem
 from journal.bookmarks import bookmark_states
 
 from .archive import country_revisions, identities, restrict_origins, revision
-from .cache import fixed_feed_cache_key, google_cache_key, google_pause_until, youtube_cache_key
+from .cache import fixed_feed_cache_key, google_cache_key, youtube_cache_key
 from .country_news import _countries_by_code, get_country_news, get_world_news
 from .regional_news import get_fixed_feed
 from .youtube_news import get_youtube_feed
@@ -138,20 +137,14 @@ class CachedNews:
             google_options = {**options, "fresh_seconds": settings.NEWS_GOOGLE_REFRESH_SECONDS}
             result = get_world_news(registry=self.registry, **google_options) if self.options["country"] == "WORLD" else get_country_news(self.options["country"], registry=self.registry, **google_options)
             google_items = [replace(item, is_stale=result.is_stale) for item in result.items]
-            if result.warning or result.error:
-                errors.append(("Google News", result.warning or result.error))
-            if pause := google_pause_until(cache, self.now):
-                errors.append(("Google News", f"Refresh is paused until {localtime(pause):%H:%M on %b %d}; cached headlines remain available."))
         for feed in self.feeds:
             provider = self.registry.get_provider(feed.provider_id)
             result = get_fixed_feed(feed, provider, **options)
             regional_items += [replace(item, is_stale=result.is_stale) for item in result.items]
-            if result.refresh_failed:
-                errors.append((f"{provider.display_name} · {feed.section_label}", "Showing cached articles." if result.items else result.error or "Feed temporarily unavailable."))
         for source in self.channels:
             result = get_youtube_feed(source, **options)
             video_items += [replace(item, is_stale=result.is_stale) for item in result.items]
-            if result.refresh_failed:
+            if result.refresh_failed and not self.country_scoped:
                 errors.append((source.display_name, "Showing cached videos." if result.items else result.error or "Channel temporarily unavailable."))
 
         if self.country_scoped:
@@ -343,6 +336,5 @@ def country_video_context(code, registry, query=None):
         "cursor": query.get("cursor", ""), "at": query.get("at", ""),
     }, registry)
     context = CachedNews(options, registry, country_scoped=True).context()
-    context.update(country_code=code, feed_pending=bool(context["pending"]),
-                   video_status="partial" if context["errors"] else "success" if context["cards"] else "empty")
+    context.update(country_code=code, feed_pending=bool(context["pending"]))
     return context

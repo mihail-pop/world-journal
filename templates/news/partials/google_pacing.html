@@ -1,0 +1,27 @@
+<dialog class="source-modal google-pacing-dialog" id="google-pacing-dialog" data-google-pacing-dialog aria-labelledby="google-pacing-title">
+    <header class="source-modal-heading">
+        <h2 id="google-pacing-title">Google News request gaps</h2>
+        <button class="source-remove-button" type="button" data-google-pacing-close aria-label="Close">{% include 'core/partials/icon.html' with name='close' %}</button>
+    </header>
+    <dl class="google-pacing-stats">
+        <dt>Current gap</dt><dd data-google-gap-stat="current">{{ pacing.current }} s</dd>
+        <dt>Today</dt><dd data-google-gap-stat="today">{% if pacing.today %}{{ pacing.today }} s{% else %}No recorded checks{% endif %}</dd>
+        <dt>Yesterday</dt><dd data-google-gap-stat="yesterday">{% if pacing.yesterday %}{{ pacing.yesterday }} s{% else %}No recorded checks{% endif %}</dd>
+        <dt>Adaptive maximum</dt><dd data-google-gap-stat="maximum">{{ pacing.maximum }} s</dd>
+    </dl>
+    <form method="post" action="{% url 'news:save_google_pacing' %}" data-google-pacing-form>
+        {% csrf_token %}
+        <div class="source-modal-fields source-add-fields">
+            <div class="settings-field">
+                <label for="google-fixed-gap">Fixed gap in seconds</label>
+                <input id="google-fixed-gap" name="fixed" value="{{ pacing.fixed }}" placeholder="Adaptive" maxlength="24" autocomplete="off" aria-describedby="google-gap-help">
+            </div>
+            <div class="settings-field">
+                <label for="google-maximum-gap">Custom adaptive maximum in seconds</label>
+                <input id="google-maximum-gap" name="maximum" value="{{ pacing.custom_maximum }}" placeholder="360–365" maxlength="24" autocomplete="off" aria-describedby="google-gap-help">
+            </div>
+        </div>
+        <p class="field-note" id="google-gap-help">Enter a range such as 60–65. Clear the fixed gap to use adaptive pacing.</p>
+        <div class="source-modal-actions"><button class="journal-button is-primary" type="submit">Save</button></div>
+    </form>
+</dialog>

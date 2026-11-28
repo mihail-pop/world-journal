@@ -10,6 +10,7 @@ urlpatterns = [
     path("news/", board_views.index, name="index"),
     path("settings/news/", settings_views.source_settings, name="settings"),
     path("settings/news/preference/", settings_views.save_preference, name="save_preference"),
+    path("settings/news/google-pacing/", settings_views.save_google_pacing, name="save_google_pacing"),
     path("settings/news/status/", settings_views.refresh_status, name="refresh_status"),
     path("settings/news/refresh-all/", settings_views.refresh_all, name="refresh_all"),
     path("settings/news/retry/", settings_views.retry_source, name="source_retry"),

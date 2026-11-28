@@ -83,7 +83,7 @@ def index(request):
             content = CachedDrawers([code]).render(code, tab)
     return render_page(request, "countries", page_template="countries/index.html", context={
         "catalog": rows, "country_rows": matching,
-        "favorite_rows": [row for row in matching if row["favorite"]], "has_favorites": bool(favorites),
+        "favorite_rows": [row for row in matching if row["favorite"]],
         "options": options, "selected_country": selected,
         "selected_favorite": options["country"] in favorites, "country_content": mark_safe(content),
     })

@@ -57,6 +57,11 @@ class CountryFavorite(models.Model):
         ordering = ("country__name",)
 
 
+class CountrySelection(models.Model):
+    country = models.OneToOneField(Country, primary_key=True, on_delete=models.CASCADE, related_name="selection_count")
+    count = models.PositiveBigIntegerField(default=0)
+
+
 class MapPreset(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=160, unique=True)

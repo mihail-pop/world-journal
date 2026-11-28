@@ -17,8 +17,8 @@ from news.types import CountryNewsPage, CountryNewsResult, NewsItem
 from .cache import age as _age
 from .cache import cache_lock as _cache_lock
 from .cache import (
-    deserialize_items, failure_retry_pending, google_cache_key, google_pause_until,
-    google_request_slot, pause_google, record_failure, stale_cache_remaining,
+    deserialize_items, failure_retry_pending, feed_snapshot, google_cache_key, google_pause_until,
+    google_request_slot, pause_google, publisher_retry_pending, record_failure, stale_cache_remaining,
 )
 from .cache import parse_datetime as _parse_datetime
 from .fetch import FeedFetchError, FeedResponse, fetch_feed
@@ -84,6 +84,7 @@ def _get_google_news(
     force_refresh: bool = False,
     fresh_seconds: int | None = None,
     cache_only: bool = False,
+    pacing: dict | None = None,
 ) -> CountryNewsResult:
     source = (registry or effective_registry()).get(GOOGLE_SOURCE_ID)
     if not source.enabled_by_default or not source.feed_host:
@@ -110,7 +111,7 @@ def _get_google_news(
 
     with _cache_lock(cache_key):
         current_time = now or datetime.now(UTC)
-        snapshot = backend.get(cache_key)
+        snapshot = feed_snapshot(backend, cache_key)
         if not isinstance(snapshot, dict):
             snapshot = {}
         if google_pause_until(backend, current_time):
@@ -120,17 +121,19 @@ def _get_google_news(
         success_age = _age(current_time, snapshot.get("fetched_at"))
         if not force_refresh and not retrying_failure and not snapshot.get("last_error") and snapshot.get("last_success_at") and success_age is not None and success_age.total_seconds() < fresh_seconds:
             return _result(country, source, snapshot)
-        if not force_refresh and not retrying_failure and failure_retry_pending(snapshot, current_time, google=True):
+        if (publisher_retry_pending(snapshot, current_time)
+                or not force_refresh and not retrying_failure and failure_retry_pending(snapshot, current_time, fresh_seconds)):
             return _result(country, source, snapshot, is_stale=bool(snapshot.get("last_success_at")))
 
-        with google_request_slot(backend, now=now) as request:
+        pacing = pacing or {}
+        with google_request_slot(backend, pacing, now=now) as request:
             if request is None:
                 paused = {**snapshot, "last_error": "Google News refresh is paused after a rate-limit response; it will resume automatically."}
                 return _result(country, source, paused, is_stale=bool(snapshot.get("last_success_at")))
-            return _refresh_google_news(country, source, snapshot, backend, fetcher, request, now=now)
+            return _refresh_google_news(country, source, snapshot, backend, fetcher, request, pacing, fresh_seconds, now=now)
 
 
-def _refresh_google_news(country, source, snapshot, backend, fetcher, request, *, now=None):
+def _refresh_google_news(country, source, snapshot, backend, fetcher, request, pacing, fresh_seconds, *, now=None):
     cache_key = google_cache_key(source, country["iso_a2"])
     attempted_at = request.attempted_at
     try:
@@ -152,8 +155,9 @@ def _refresh_google_news(country, source, snapshot, backend, fetcher, request, *
                 "last_error": "",
                 "last_error_detail": "",
                 "last_attempt_at": attempted_at.isoformat(),
-                "consecutive_failures": 0,
                 "retry_after_at": None,
+                "failed_at": None,
+                "server_retry_at": None,
             })
         else:
             normalized = normalize_feed(response.body, source)
@@ -175,8 +179,8 @@ def _refresh_google_news(country, source, snapshot, backend, fetcher, request, *
     except (FeedFetchError, FeedParseError) as error:
         failed_at = now or datetime.now(UTC)
         if getattr(error, "status_code", None) == 429:
-            pause_google(backend, failed_at, error)
-        failure_ttl = record_failure(snapshot, failed_at, error, google=True)
+            pause_google(backend, failed_at, error, country["iso_a2"], pacing, request.spacing)
+        failure_ttl = record_failure(snapshot, failed_at, error, fresh_seconds)
         snapshot["last_error"] = "Google News is temporarily unavailable."
         snapshot["last_error_detail"] = str(error)[:240]
         snapshot["last_attempt_at"] = attempted_at.isoformat()
@@ -195,7 +199,8 @@ def _refresh_google_news(country, source, snapshot, backend, fetcher, request, *
             "last_error_detail": str(error)[:240],
             "last_attempt_at": attempted_at.isoformat(),
             "parser_warnings": [],
-            "consecutive_failures": snapshot["consecutive_failures"],
+            "failed_at": snapshot["failed_at"],
+            "server_retry_at": snapshot["server_retry_at"],
             "retry_after_at": snapshot["retry_after_at"],
             **request.metadata(failed_at),
         }

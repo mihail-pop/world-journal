@@ -1,7 +1,7 @@
 import json
 from urllib.parse import urlencode
+from uuid import uuid4
 
-from django.conf import settings
 from django.contrib import messages
 from django.core.cache import cache
 from django.core.exceptions import ValidationError
@@ -17,12 +17,11 @@ from core.views import render_page
 from countries.models import Country
 
 from .cache_backend import CacheWriteError
-from .forms import AdditionalFeedForm, CustomSourceForm, NewsPreferencesForm, single_feed_providers
+from .forms import AdditionalFeedForm, CustomSourceForm, GooglePacingForm, NewsPreferencesForm, single_feed_providers
 from .models import CustomSource, FeedState, NewsPreferences, SourcePreference
 from .preferences import effective_registry, freshness_seconds, source_choices
 from .registry import get_source_registry
-from .services.cache import fixed_feed_cache_key, google_cache_key, parse_datetime, youtube_cache_key
-from .services.country_news import get_country_news
+from .services.cache import fixed_feed_cache_key, parse_datetime, youtube_cache_key
 from .services.regional_news import get_fixed_feed
 from .services.youtube_news import get_youtube_feed
 from .services.custom_sources import check_custom_source, registry_items, with_custom_sources
@@ -59,7 +58,13 @@ def _refresh_progress():
     feed_warmer.start()
     result = feed_warmer.status()
     if result["busy"]:
-        summary = f"Updating news · {result['completed']} of {result['total']}" if result["total"] else "Updating news…"
+        phase = result["phase"]
+        if phase:
+            name = {"rss": "Articles", "youtube": "YouTube", "google": "Google News"}[phase]
+            unit = "countries" if phase == "google" else "feeds"
+            summary = f"{name} · {result['completed']} of {result['total']} {unit}" if result["total"] else f"Updating {name}…"
+        else:
+            summary = "Updating news…"
     elif not result["enabled"]:
         summary = "Choose a source below"
     elif result["failed"]:
@@ -73,6 +78,27 @@ def _refresh_progress():
         "progress_value": result["completed"] if result["total"] else int(not result["busy"] and not result["missing"]),
         "current_label": (" · ".join(result["current"]) or "Getting the next update…") if result["busy"] else "",
     }
+
+
+@never_cache
+@require_http_methods(["POST"])
+def save_google_pacing(request):
+    form = GooglePacingForm(request.POST)
+    if not form.is_valid():
+        return JsonResponse({"error": next(iter(form.errors.values()))[0]}, status=400)
+    with write_transaction():
+        preference, _created = NewsPreferences.objects.get_or_create(pk=1)
+        previous = preference.google_pacing or {}
+        pacing = {key: gap for key, gap in form.cleaned_data.items() if gap is not None}
+        if previous.get("fixed") and not pacing.get("fixed"):
+            pacing["adaptive_token"] = uuid4().hex
+        elif previous.get("adaptive_token"):
+            pacing["adaptive_token"] = previous["adaptive_token"]
+        if pacing != previous:
+            preference.google_pacing = pacing
+            preference.save(update_fields=["google_pacing", "updated_at"])
+    feed_warmer.rescan()
+    return JsonResponse({"pacing": feed_warmer.pacing_status(pacing)})
 
 
 def _context(registry, choices, form, country):
@@ -334,6 +360,12 @@ def refresh_source(request, source_id):
     if not item.enabled_by_default:
         messages.warning(request, "This source is switched off or unavailable. Turn it on before refreshing it.")
         return _navigate(request, country)
+    if getattr(item, "kind", None) is SourceKind.DYNAMIC_COUNTRY_RSS and country:
+        if feed_warmer.request_google(country.pk):
+            messages.success(request, "Google News check queued.")
+        else:
+            messages.warning(request, "No Google News check was queued for this country.")
+        return _navigate(request, country)
     options = {"force_refresh": True, "fresh_seconds": freshness_seconds()}
     try:
         if source_id in feeds:
@@ -343,10 +375,6 @@ def refresh_source(request, source_id):
         elif item.kind is SourceKind.YOUTUBE:
             result = get_youtube_feed(item, **options)
             name = item.display_name
-        elif item.kind is SourceKind.DYNAMIC_COUNTRY_RSS and country:
-            options["fresh_seconds"] = settings.NEWS_GOOGLE_REFRESH_SECONDS
-            result = get_country_news(country.pk, registry=registry, **options)
-            name = f"{item.display_name} — {country.name}"
         else:
             raise Http404("Source cannot be refreshed here")
     except CacheWriteError:
@@ -354,10 +382,8 @@ def refresh_source(request, source_id):
         return _navigate(request, country)
     if source_id in feeds:
         job, key = ("rss", source_id), fixed_feed_cache_key(item)
-    elif item.kind is SourceKind.YOUTUBE:
-        job, key = ("youtube", source_id), youtube_cache_key(item)
     else:
-        job, key = ("google", country.pk), google_cache_key(item, country.pk)
+        job, key = ("youtube", source_id), youtube_cache_key(item)
     from .services.archive import capture_snapshot
     capture_snapshot(job, cache.get(key), registry)
     feed_warmer.rescan()

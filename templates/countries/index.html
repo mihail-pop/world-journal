@@ -5,6 +5,7 @@
     data-country-videos-url-template="{% url 'news:country_videos' iso2='COUNTRY_CODE' %}"
     data-country-notes-url-template="{% url 'countries:notes' iso2='COUNTRY_CODE' %}"
     data-favorite-url-template="{% url 'countries:favorite' iso2='COUNTRY_CODE' %}"
+    data-country-selection-url-template="{% url 'countries:selection' iso2='COUNTRY_CODE' %}"
     data-personal-url="{% url 'countries:personal_data' %}">
     {{ catalog|json_script:'country-directory-catalog' }}
     <div class="countries-layout">
@@ -23,13 +24,12 @@
                 </div>
             </form>
             <div class="directory-country-lists" data-directory-lists>
-                <section data-directory-favorites{% if not has_favorites %} hidden{% endif %} aria-labelledby="directory-favorites-title">
+                <section data-directory-favorites{% if not favorite_rows %} hidden{% endif %} aria-labelledby="directory-favorites-title">
                     <h2 id="directory-favorites-title">Favorites</h2>
                     <ul data-directory-favorite-list>{% for row in favorite_rows %}{% include 'countries/partials/directory_row.html' %}{% endfor %}</ul>
-                    <p class="field-note" data-directory-favorites-empty{% if favorite_rows %} hidden{% endif %}>No favorites match your search.</p>
                 </section>
                 <section aria-labelledby="directory-all-title">
-                    <h2 id="directory-all-title">All countries <span data-directory-count>{{ country_rows|length }}</span></h2>
+                    <h2 id="directory-all-title" title="* and territories">All countries <span data-directory-count>{{ country_rows|length }}</span></h2>
                     <ul data-directory-all-list>{% for row in country_rows %}{% include 'countries/partials/directory_row.html' %}{% endfor %}</ul>
                     <p class="field-note" data-directory-empty{% if country_rows %} hidden{% endif %}>No countries match your search.</p>
                 </section>

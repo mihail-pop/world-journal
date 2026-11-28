@@ -5,6 +5,7 @@
     data-map-style-url="{{ map_style_url }}"
     data-map-personal-url="{% url 'countries:personal_data' %}"
     data-favorite-url-template="{% url 'countries:favorite' iso2='COUNTRY_CODE' %}"
+    data-country-selection-url-template="{% url 'countries:selection' iso2='COUNTRY_CODE' %}"
     data-country-facts-url-template="{% url 'countries:facts' iso2='COUNTRY_CODE' %}"
     data-country-notes-url-template="{% url 'countries:notes' iso2='COUNTRY_CODE' %}"
     data-preset-activate-url-template="{% url 'countries:preset_activate' pk='00000000-0000-0000-0000-000000000000' %}"

@@ -14,7 +14,7 @@ def _country_response(request, iso2, kind):
     try:
         code = _country_for_code(iso2)["iso_a2"]
         if request.headers.get("X-News-Paging") != "1":
-            feed_warmer.prioritize(code, retry=request.GET.get("refresh") == "failed")
+            feed_warmer.prioritize(code)
         if kind == "videos":
             context = country_video_context(code, effective_registry(), request.GET)
             if page_changed(request, context["paging_version"]):

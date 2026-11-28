@@ -32,6 +32,7 @@ function openSourceDialog(dialog, kind = null) {
 function cleanupSources() {
     cleanupProgress();
     closeSourceDialog();
+    document.querySelector("[data-google-pacing-dialog][open]")?.close();
     modalEvents?.abort();
     modalEvents = null;
 }
@@ -50,8 +51,10 @@ function renderProgress(page, result) {
     page.querySelector("[data-refresh-summary]").textContent = result.summary;
     page.querySelector("[data-refresh-current]").textContent = result.current_label;
     page.querySelector("[data-refresh-all]").disabled = result.busy || !result.enabled;
+    renderPacing(page, result.google_pacing);
     const details = page.querySelector("[data-refresh-errors]");
     details.hidden = !result.errors.length;
+    page.querySelector("[data-settings-source-warning]")?.toggleAttribute("hidden", details.hidden);
     const list = details.querySelector("[data-refresh-error-list]");
     const signature = JSON.stringify(result.errors);
     if (list.dataset.errors !== signature) {
@@ -82,6 +85,40 @@ function renderProgress(page, result) {
             list.append(item);
         }
         list.dataset.errors = signature;
+    }
+}
+
+function renderPacing(page, pacing) {
+    if (!pacing) return;
+    for (const stat of page.querySelectorAll("[data-google-gap-stat]")) {
+        const gap = pacing[stat.dataset.googleGapStat];
+        stat.textContent = gap ? `${gap} s` : "No recorded checks";
+    }
+}
+
+async function savePacing(form) {
+    const button = form.querySelector('button[type="submit"]');
+    if (button.disabled) return;
+    button.disabled = true;
+    const dialog = form.closest("dialog");
+    const page = form.closest("[data-source-settings]");
+    try {
+        const response = await fetch(form.action, { method: "POST", body: new FormData(form) });
+        const result = await response.json().catch(() => null);
+        if (!response.ok || !result?.pacing) {
+            notify({id: "google-pacing", kind: response.status === 400 ? "warning" : "error",
+                title: "Request gaps could not be saved", message: result?.error || "Try again shortly."});
+            return;
+        }
+        form.elements.fixed.value = result.pacing.fixed;
+        form.elements.maximum.value = result.pacing.custom_maximum;
+        renderPacing(page, result.pacing);
+        dialog.close();
+        notify({id: "google-pacing", kind: "success", title: "Google News request gaps saved"});
+    } catch {
+        notify({id: "google-pacing", kind: "error", title: "Request gaps could not be saved", message: "Check that the server is running."});
+    } finally {
+        button.disabled = false;
     }
 }
 
@@ -280,6 +317,9 @@ export function registerSourceSettings() {
         const opener = event.target.closest("[data-source-modal-open]");
         if (opener) openSourceDialog(opener.closest("[data-source-settings]").querySelector("[data-source-modal]"), opener.dataset.sourceModalOpen);
         if (event.target.closest("[data-source-modal-close]")) closeSourceDialog();
+        const pacingOpener = event.target.closest("[data-google-pacing-open]");
+        if (pacingOpener) pacingOpener.closest("[data-source-settings]").querySelector("[data-google-pacing-dialog]").showModal();
+        event.target.closest("[data-google-pacing-close]")?.closest("dialog").close();
     });
     document.addEventListener("visibilitychange", () => {
         const page = document.querySelector("[data-source-settings]");
@@ -301,6 +341,12 @@ export function registerSourceSettings() {
         savePending(page, state);
     });
     document.addEventListener("submit", event => {
+        if (event.target.matches("[data-google-pacing-form]")) {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            savePacing(event.target);
+            return;
+        }
         if (event.target.matches("[data-refresh-all-form]")) {
             event.preventDefault();
             event.stopImmediatePropagation();

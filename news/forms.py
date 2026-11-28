@@ -2,6 +2,8 @@ from django import forms
 
 from core.database import write_transaction
 
+from .google_pacing import parse_gap
+
 from .models import CustomSource, NewsPreferences, SourcePreference
 
 
@@ -10,6 +12,17 @@ def single_feed_providers(registry):
     for feed in registry.feeds:
         feeds.setdefault(feed.provider_id, []).append(feed.id)
     return {provider_id: identities[0] for provider_id, identities in feeds.items() if len(identities) == 1}
+
+
+class GooglePacingForm(forms.Form):
+    fixed = forms.CharField(required=False, max_length=24)
+    maximum = forms.CharField(required=False, max_length=24)
+
+    def clean_fixed(self):
+        return parse_gap(self.cleaned_data["fixed"])
+
+    def clean_maximum(self):
+        return parse_gap(self.cleaned_data["maximum"])
 
 
 class NewsPreferencesForm(forms.Form):

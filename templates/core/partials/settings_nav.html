@@ -2,6 +2,6 @@
 <nav class="settings-tabs" aria-label="Settings sections" data-version-info-url="{% url 'core:version_info' %}" hx-boost="true" hx-target="#app-content" hx-push-url="true">
     <a href="{% url 'core:settings' %}"{% if section == 'preferences' %} aria-current="page"{% endif %}>Preferences</a>
     <a href="{% url 'core:backups' %}"{% if section == 'backup' %} aria-current="page"{% endif %}>Backup</a>
-    <a href="{% url 'news:settings' %}"{% if section == 'sources' %} aria-current="page"{% endif %}>Sources</a>
+    <a href="{% url 'news:settings' %}"{% if section == 'sources' %} aria-current="page"{% endif %}><span class="settings-sources-label">Sources<span class="settings-source-warning" data-settings-source-warning{% if not sources_need_attention %} hidden{% endif %}>{% include 'core/partials/icon.html' with name='warning' %}<span class="visually-hidden"> need attention</span></span></span></a>
     <a href="{% url 'core:settings' %}?section=information"{% if section == 'information' %} aria-current="page"{% endif %}>Information</a>
 </nav>

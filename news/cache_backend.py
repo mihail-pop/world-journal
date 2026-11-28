@@ -20,7 +20,7 @@ class FeedDatabaseCache(DatabaseCache):
         if not metadata.get("last_error"):
             return None
         return {field: metadata.get(field) for field in (
-            "last_error", "last_error_detail", "last_attempt_at", "retry_after_at", "consecutive_failures",
+            "last_error", "last_error_detail", "last_attempt_at", "retry_after_at", "failed_at", "server_retry_at",
         )}
 
     def google_request_deadline(self):
@@ -28,12 +28,6 @@ class FeedDatabaseCache(DatabaseCache):
 
         values = FeedState.objects.filter(cache_key__contains=":google_country:").values_list("metadata__google_request_ready_at", flat=True)
         return max((parsed for value in values if (parsed := parse_datetime(value))), default=None)
-
-    def google_succeeded_since(self, since, spacing):
-        return FeedState.objects.filter(
-            cache_key__contains=":google_country:", metadata__last_error="",
-            metadata__last_attempt_at__gt=since.isoformat(), metadata__google_spacing_seconds=spacing,
-        ).exists()
 
     def set(self, key, value, timeout=DEFAULT_TIMEOUT, version=None):
         feed_key = key if is_feed_key(key) and isinstance(value, dict) else None

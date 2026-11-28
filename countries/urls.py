@@ -10,6 +10,7 @@ urlpatterns = [
     path("countries/<str:iso2>/territory/", personal_views.territory_edit, name="territory_edit"),
     path("data/map-personal.json", personal_views.personal_data, name="personal_data"),
     path("countries/<str:iso2>/favorite/", personal_views.favorite, name="favorite"),
+    path("countries/<str:iso2>/selection/", personal_views.record_selection, name="selection"),
     path("countries/<str:iso2>/notes/", personal_views.country_notes, name="notes"),
     path("countries/<str:iso2>/overview/", personal_views.profile_edit, name="profile_edit"),
     path("countries/<str:iso2>/overview/new/", personal_views.profile_create, name="profile_create"),

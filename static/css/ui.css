@@ -168,6 +168,9 @@ body:has(.settings-page) .select-menu .select-search:focus { outline: none; box-
 .settings-tabs a { display: inline-flex; align-items: center; justify-content: center; padding: .65rem 1.25rem; border-top: 3px solid transparent; border-radius: 4px 4px 0 0; background: var(--bg-tertiary); color: var(--text-primary); text-decoration: none; font-size: 1rem; font-weight: 600; transition: background-color .3s ease, color .3s ease, border-color .3s ease; }
 .settings-tabs a:hover { background: var(--ui-surface); color: var(--text-secondary); }
 .settings-tabs a[aria-current=page] { background: var(--ui-surface); color: var(--text-secondary); border-top-color: var(--text-secondary); }
+.settings-sources-label { position: relative; }
+.settings-source-warning { position: absolute; inset-block-start: -5px; inset-inline-start: calc(100% + 1px); color: var(--ui-warning); pointer-events: none; }
+.settings-source-warning .icon { display: block; width: 14px; height: 14px; shape-rendering: geometricPrecision; }
 .settings-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.15rem; align-items: stretch; }
 .settings-grid.settings-preferences-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) minmax(18rem, 1fr); }
 .settings-card { min-width: 0; padding: 1.3rem; border: 0; border-radius: 7px; background: var(--ui-surface); overflow-wrap: anywhere; }
@@ -255,6 +258,9 @@ body:has(.settings-page) .select-menu .select-search:focus { outline: none; box-
 .source-overview-grid .source-preferences-form { position: relative; display: flex; flex-direction: column; flex-wrap: nowrap; align-items: center; justify-content: flex-start; gap: 0; margin: 0; }
 .source-warning { color: var(--ui-warning); }
 .source-refresh-card { display: flex; flex-direction: column; }
+.source-refresh-card .source-library-heading [data-google-pacing-open] { width: 1.5rem; height: 1.5rem; padding: 0; background: transparent; color: var(--text-primary); }
+.source-refresh-card .source-library-heading [data-google-pacing-open]:hover { background: transparent; color: var(--ui-accent); }
+.source-refresh-card [data-google-pacing-open] .icon { width: 1.125rem; height: 1.125rem; }
 .source-refresh-content { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .7rem; text-align: center; }
 .source-refresh-content form { display: flex; justify-content: center; width: 100%; margin: 0; }
 .source-refresh-status { margin: 0; color: var(--ui-text); font-size: .95rem; }
@@ -278,6 +284,7 @@ body:has(.settings-page) .select-menu .select-search:focus { outline: none; box-
 .source-tile-description { margin: 1rem 0 0; color: var(--text-primary); font-size: .95rem; font-weight: 500; line-height: 1.6; text-align: center; }
 .sources-library { margin-top: 1.4rem; }
 .settings-card > .source-library-heading { display: grid; grid-template-columns: 2.5rem minmax(0, 1fr) 2.5rem; }
+.source-refresh-card > .source-library-heading { grid-template-columns: 1.5rem minmax(0, 1fr) 1.5rem; }
 .source-library-heading h2 { grid-column: 2; min-width: 0; margin: 0; font: inherit; }
 .source-library-list { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: .8rem; align-items: start; }
 .source-library-item { position: relative; min-width: 0; }
@@ -329,6 +336,14 @@ html.source-modal-open { overflow: hidden; }
 .source-modal-actions .source-check-progress { margin-right: auto; }
 .source-modal .source-check-progress { display: none; font-size: .9rem; color: var(--ui-muted); }
 .source-modal .htmx-request .source-check-progress { display: inline; }
+html:has(.google-pacing-dialog[open]) { overflow: hidden; }
+.google-pacing-dialog { width: min(28rem, calc(100vw - 2rem)); }
+.google-pacing-dialog .source-remove-button:not(:hover) { background: var(--bg-quaternary); }
+.google-pacing-stats { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .5rem 1rem; margin: 0 0 1.35rem; font-size: .9rem; }
+.google-pacing-stats dd { margin: 0; color: var(--text-primary); font-variant-numeric: tabular-nums; text-align: right; }
+.settings-page .google-pacing-dialog .source-modal-fields input { border: 0; background: var(--ui-surface); }
+.google-pacing-dialog .field-note { margin-top: .75rem; font-size: .85rem; }
+.google-pacing-dialog .source-modal-actions .journal-button.is-primary { color: #fff; }
 @media (max-width: 70rem) {
     .source-library-list { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }

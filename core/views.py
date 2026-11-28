@@ -38,6 +38,9 @@ def render_page(request: HttpRequest, page: str, *, page_template: str | None = 
         "page_template": page_template or f"core/partials/{page}.html",
     }
     page_context.update(context or {})
+    if page == "settings":
+        refresh_status = page_context.get("refresh_status")
+        page_context["sources_need_attention"] = bool(refresh_status["errors"]) if refresh_status else feed_warmer.sources_need_attention()
     notices = [{"kind": message.level_tag, "message": str(message)} for message in get_messages(request)]
     if page_context.get("page_error"):
         notices.append({"kind": "error", "message": page_context["page_error"]})

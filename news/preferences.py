@@ -10,6 +10,11 @@ def source_choices():
     return dict(SourcePreference.objects.values_list("source_id", "enabled"))
 
 
+def refresh_preferences():
+    row = NewsPreferences.objects.filter(pk=1).values_list("freshness_minutes", "google_pacing").first()
+    return (row[0] * 60, row[1] or {}) if row else (settings.NEWS_REFRESH_SECONDS, {})
+
+
 def freshness_seconds():
     minutes = NewsPreferences.objects.filter(pk=1).values_list("freshness_minutes", flat=True).first()
     return minutes * 60 if minutes is not None else settings.NEWS_REFRESH_SECONDS
