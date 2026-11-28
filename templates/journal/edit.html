@@ -25,12 +25,20 @@
         <template data-journal-section-template>{% include 'journal/_section_form.html' with section_form=section_formset.empty_form %}</template>
         {{ journal_country_aliases|json_script:'journal-country-aliases' }}
         <input type="file" data-rich-image-input accept="image/jpeg,image/png,image/webp,image/gif" multiple hidden>
-        <dialog class="journal-link-dialog" data-rich-link-dialog data-journal-ui aria-labelledby="journal-link-title">
-            <h2 id="journal-link-title">Link</h2>
-            <label>Text<input type="text" data-rich-link-text autocomplete="off"></label>
-            <label>URL<input type="url" data-rich-link-url placeholder="https://" autocomplete="off"></label>
-            <p role="alert" data-rich-link-error hidden></p>
-            <div><button type="button" data-rich-link-remove>Remove link</button><button type="button" data-rich-link-cancel>Cancel</button><button type="button" data-rich-link-apply>Apply</button></div>
+        <dialog class="source-modal journal-link-dialog" data-rich-link-dialog data-journal-ui aria-labelledby="journal-link-title">
+            <header class="source-modal-heading">
+                <h2 id="journal-link-title">Insert link</h2>
+                <button class="source-remove-button" type="button" data-rich-link-close aria-label="Close">{% include 'core/partials/icon.html' with name='close' %}</button>
+            </header>
+            <div class="source-modal-fields">
+                <div class="settings-field source-modal-link"><label for="journal-link-url">URL</label><input id="journal-link-url" type="url" data-rich-link-url placeholder="https://" autocomplete="off" aria-describedby="journal-link-error"></div>
+                <div class="settings-field source-modal-link"><label for="journal-link-text">Text</label><input id="journal-link-text" type="text" data-rich-link-text autocomplete="off"></div>
+                <p class="source-modal-link" id="journal-link-error" role="alert" data-rich-link-error hidden></p>
+            </div>
+            <footer class="source-modal-actions">
+                <button class="journal-button journal-link-remove" type="button" data-rich-link-remove hidden>Remove link</button>
+                <button class="journal-button is-primary" type="button" data-rich-link-apply>Insert</button>
+            </footer>
         </dialog>
     </form>
     <noscript><p>Enable JavaScript to use the journal editor.</p></noscript>

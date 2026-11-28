@@ -16,7 +16,6 @@
         <button class="news-sort-order" type="button" data-news-sort data-order="{{ options.sort_order }}" data-next="{{ options.sort_next }}" title="{{ options.sort_label }}" aria-label="Sort: {{ options.sort_label }}"></button>
         <label class="visually-hidden" for="news-search">{% if tab == 'videos' %}Search videos{% else %}Search articles{% endif %}</label>
         <input class="news-search" type="search" id="news-search" name="q" value="{{ options.q }}" maxlength="200" placeholder="{% if tab == 'videos' %}Search video..{% else %}Search article..{% endif %}" aria-label="{% if tab == 'videos' %}Search videos{% else %}Search articles{% endif %}" autocomplete="off" data-news-search>
-        <noscript><button class="journal-button" type="submit">Apply</button></noscript>
     </form>
     </div>
     <div data-news-board-results aria-live="polite" aria-atomic="false">{% include 'news/partials/board_results.html' %}</div>

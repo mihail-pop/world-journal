@@ -1,6 +1,6 @@
 <div class="journal-content-fields journal-editor-content" data-content-fields>
     <div class="journal-writing-paper journal-document-paper">
-        {% include 'journal/_video.html' with content=content_form.instance editable=True %}
+        {% include 'journal/_video.html' with content=content_form.instance editable=True main_video=is_main %}
         <div data-journal-body-field>{{ content_form.body }}{{ content_form.body.errors }}<div class="journal-prose" data-rich-editor data-legacy-html="{{ content_form.editor_html|force_escape }}"></div></div>
     </div>
     <aside class="journal-document-details" aria-label="Writing details">

@@ -149,6 +149,7 @@ def backups(request):
             page_error = str(error)
     return render_page(request, "settings", page_template="core/backups.html", context={
         "upload_form": upload, "confirmation_form": confirmation, "summary": summary,
+        "preview_rows": [dict(row, skipped=row["skip"] + row["reuse"]) for row in summary or () if row["total"]],
         "page_error": page_error,
     })
 

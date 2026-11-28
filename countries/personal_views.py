@@ -13,9 +13,8 @@ from core.database import database_write, is_database_busy, write_transaction
 from core.views import render_page
 from core.models import AppSettings
 from core.preferences import preferences_snapshot, save_preferences
-from journal.formatting import render_body
 from journal.forms import default_collection
-from journal.models import Entry
+from journal.models import BodyFormat, Entry
 from journal.views import ConfirmationForm, navigate
 
 from .forms import ColorGroups, CountryProfileForm, DuplicatePresetForm, PresetForm, TerritoryDetailsForm
@@ -239,7 +238,10 @@ def preset_duplicate(request, pk):
             PresetColorGroup.objects.bulk_create([PresetColorGroup(preset=copy, color=group["color"], title=group["title"], position=index) for index, group in enumerate(preset_groups(original))])
         messages.success(request, "Color preset duplicated.")
         return navigate(request, reverse("countries:preset_edit", kwargs={"pk": copy.pk}))
-    return page(request, "countries/preset_duplicate.html", {"form": form, "preset": original})
+    context = {"form": form, "preset": original}
+    if request.headers.get("HX-Target") == "preset-duplicate-dialog":
+        return render(request, "countries/partials/preset_duplicate_form.html", {**context, "in_dialog": True})
+    return page(request, "countries/preset_duplicate.html", context)
 
 
 @require_http_methods(["GET", "POST"])
@@ -264,18 +266,11 @@ def country_notes(request, iso2):
 
 
 def country_overview_context(country):
-    profile = CountryProfile.objects.select_related("entry").filter(country=country).first()
+    profile = CountryProfile.objects.select_related("entry").prefetch_related("entry__sections__attachments").filter(country=country).first()
     entry = profile.entry if profile else None
-    images = list(entry.attachments.filter(section__isnull=True)[:3]) if entry and entry.body_format != "richtext" else []
-    if entry and entry.body_format == "richtext":
-        from journal.documents import nodes, validate_document
-        image_ids = [node["attrs"]["attachmentId"] for node in nodes(validate_document(entry.body)) if node["type"] == "image"][:3]
-        by_id = {str(image.pk): image for image in entry.attachments.filter(pk__in=image_ids)}
-        images = [by_id[pk] for pk in image_ids if pk in by_id]
+    images = entry.attachments.filter(section__isnull=True) if entry and entry.body_format != BodyFormat.RICHTEXT else ()
     return {
-        "country": country, "overview": entry, "overview_images": images,
-        "overview_preview": render_body(entry.body, entry.body_format, limit=1600) if entry else "",
-        "overview_truncated": bool(entry and len(entry.body_text) > 1600),
+        "country": country, "overview": entry, "main_attachments": images,
     }
 
 

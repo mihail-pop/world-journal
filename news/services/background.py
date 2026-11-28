@@ -421,7 +421,7 @@ class FeedWarmer:
                 scope = feed.section_label
             else:
                 key, name, scope = job, label(job), ""
-            group = problems.setdefault(key, {"name": name, "pause": "", "messages": OrderedDict(), "jobs": set(),
+            group = problems.setdefault(key, {"name": name, "paused": False, "messages": OrderedDict(), "jobs": set(),
                                               "kind": kind, "source_id": key[1]})
             group["jobs"].add(job)
             return group, scope
@@ -435,7 +435,7 @@ class FeedWarmer:
         google_paused = paused and paused > now and ("google", "WORLD") in jobs
         if google_paused:
             group, _scope = problem_group(("google", "WORLD"))
-            group["pause"] = f"Automatic refresh is paused after a rate-limit response. It resumes after {localtime(paused):%H:%M on %b %d}. Cached headlines remain available."
+            group["paused"] = True
         missing = 0
         for job, key in jobs.items():
             state = states.get(key, {})
@@ -446,28 +446,32 @@ class FeedWarmer:
                 add_problem(job, message)
         errors = []
         for group in problems.values():
-            messages = [group["pause"]] if group["pause"] else []
+            messages = []
             for message, scopes in group["messages"].items():
                 scope = ", ".join(scopes[:5])
                 if len(scopes) > 5:
                     scope += f" and {len(scopes) - 5} more"
-                if group["pause"] and "HTTP 429" in message:
-                    messages.append(f"Rate-limited check: {scope}.")
+                if group["paused"] and "HTTP 429" in message:
+                    messages.append(f"Rate limited while checking {scope}.")
                 else:
                     messages.append(f"{scope + ': ' if scope else ''}{message.rstrip('. ')}.")
-            retrying = not group["pause"] and (bool(active.intersection(group["jobs"])) or any(
+            retrying = not group["paused"] and (bool(active.intersection(group["jobs"])) or any(
                 states.get(jobs[job], {}).get("metadata", {}).get("retry_requested_at") for job in group["jobs"]
             ))
             retry_at = min(due_times[job] for job in group["jobs"])
             retry_text = ""
-            if group["kind"] != "google" and not retrying:
+            if group["paused"]:
+                retry_text = f"Resumes after {localtime(paused):%b %d, %H:%M}"
+                if not messages:
+                    messages.append("Rate limit reached.")
+            elif group["kind"] != "google" and not retrying:
                 local_retry = localtime(retry_at)
                 when = local_retry.strftime("%H:%M" if local_retry.date() == localtime(now).date() else "%H:%M on %b %d")
                 retry_text = f"Automatic retry at {when}"
             errors.append({"name": group["name"], "error": " ".join(messages),
                            "kind": group["kind"], "source_id": group["source_id"],
                            "category": "YouTube" if group["kind"] == "youtube" else "Articles",
-                           "retrying": retrying, "retry_disabled": bool(group["pause"]) or retrying,
+                           "paused": group["paused"], "retrying": retrying, "retry_disabled": group["paused"] or retrying,
                            "retry_at": retry_at.isoformat(), "retry_text": retry_text})
         progress["current"] = [label(job) for job in progress.pop("running")]
         return {**progress, "errors": errors, "failed": len(errors), "enabled": len(jobs), "missing": missing,

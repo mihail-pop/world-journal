@@ -2,6 +2,7 @@ import { notify } from "../notifications.js";
 import { refreshSelectControl } from "../ui_controls.js";
 import { saveJournalEditor } from "./journal_autosave.js";
 import { randomId } from "../random_id.js";
+import { journalVideoThumbnails, refreshJournalVideos } from "./journal_video.js";
 
 const controllers = new Map();
 let library;
@@ -179,6 +180,7 @@ class JournalEditor {
                 TableKit.configure({table: {resizable: true, allowTableNodeSelection: true}}),
                 TaskList, TaskItem.configure({nested: true, HTMLAttributes: {"data-type": "taskItem"}}), ContentAlign.configure({types: ["heading", "paragraph"]}),
                 TextStyleKit, HighlightContrast, Placeholder.configure({placeholder: "Start writing…"}), CountryLinks,
+                journalVideoThumbnails(this.modules),
             ],
             editorProps: {
                 attributes: {class: "journal-rich-editor", role: "textbox", "aria-multiline": "true", "aria-label": "Document body", spellcheck: "true"},
@@ -203,6 +205,7 @@ class JournalEditor {
                 this.syncField(field, editor);
                 this.form.dispatchEvent(new Event("world-journal:editor-changed"));
                 this.syncToolbar();
+                refreshJournalVideos(field.closest("[data-editor-page]"));
             },
             onSelectionUpdate: () => this.syncToolbar(),
             onTransaction: () => this.syncToolbar(),
@@ -223,6 +226,7 @@ class JournalEditor {
         for (const field of this.form.querySelectorAll("[data-journal-body]")) this.mount(field);
         for (const [field, editor] of this.editors) editor.setEditable(!field.disabled, false);
         this.syncToolbar();
+        refreshJournalVideos(this.form);
     }
 
     syncToolbar() {
@@ -327,11 +331,16 @@ class JournalEditor {
         const editor = this.active();
         if (!editor?.isEditable || imageSelected(editor)) return;
         if (editor.isActive("link")) editor.commands.extendMarkRange("link");
+        this.closeMenus();
         this.linkEditor = editor;
         this.linkRange = {from: editor.state.selection.from, to: editor.state.selection.to};
         const dialog = this.form.querySelector("[data-rich-link-dialog]");
+        const href = editor.getAttributes("link").href || "";
+        dialog.querySelector("#journal-link-title").textContent = href ? "Edit link" : "Insert link";
+        dialog.querySelector("[data-rich-link-apply]").textContent = href ? "Save" : "Insert";
+        dialog.querySelector("[data-rich-link-remove]").hidden = !href;
         dialog.querySelector("[data-rich-link-text]").value = editor.state.doc.textBetween(this.linkRange.from, this.linkRange.to, " ");
-        dialog.querySelector("[data-rich-link-url]").value = editor.getAttributes("link").href || "";
+        dialog.querySelector("[data-rich-link-url]").value = href;
         dialog.querySelector("[data-rich-link-error]").hidden = true;
         dialog.showModal();
         dialog.querySelector("[data-rich-link-url]").focus();
@@ -527,7 +536,7 @@ export function registerJournalRichtext() {
         else if (event.target.closest("[data-rich-image]")) form.querySelector("[data-rich-image-input]").click();
         else if (event.target.closest("[data-rich-link-apply]")) controller.applyLink();
         else if (event.target.closest("[data-rich-link-remove]")) controller.applyLink(true);
-        else if (event.target.closest("[data-rich-link-cancel]")) form.querySelector("[data-rich-link-dialog]").close();
+        else if (event.target.closest("[data-rich-link-close]")) form.querySelector("[data-rich-link-dialog]").close();
         else if (event.target.closest("[data-journal-export]")) void controller.export(event.target.closest("[data-journal-export]").dataset.journalExport);
     });
     document.addEventListener("change", event => {
@@ -551,7 +560,7 @@ export function registerJournalRichtext() {
             controller.form.requestSubmit(controller.form.querySelector("[data-journal-save]"));
         }
         if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k" && event.target.closest(".journal-rich-editor")) { event.preventDefault(); controller.openLink(); }
-        if (event.key === "Enter" && event.target.closest("[data-rich-link-dialog]")) { event.preventDefault(); controller.applyLink(); }
+        if (event.key === "Enter" && event.target.matches("[data-rich-link-dialog] input")) { event.preventDefault(); controller.applyLink(); }
         if (event.key === "ArrowDown" && event.target.matches("[data-rich-menu] > summary")) {
             event.preventDefault();
             const menu = event.target.closest("[data-rich-menu]");

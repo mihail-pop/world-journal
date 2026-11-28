@@ -6,3 +6,5 @@ export { TableKit } from "@tiptap/extension-table";
 export { TextAlign } from "@tiptap/extension-text-align";
 export { TextStyleKit } from "@tiptap/extension-text-style";
 export { Placeholder } from "@tiptap/extensions";
+export { Plugin, Selection } from "@tiptap/pm/state";
+export { Decoration, DecorationSet } from "@tiptap/pm/view";

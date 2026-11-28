@@ -1,0 +1,13 @@
+<article class="{% if not compact %}journal-reading-surface {% endif %}journal-prose" data-journal-reading-section{% if not compact %} id="main-note"{% endif %} aria-labelledby="{{ title_id }}">
+    {% include 'journal/_content.html' with content=entry main_content=True %}
+    {% if entry.body_format != 'richtext' and main_attachments %}{% include 'journal/_images.html' with images=main_attachments %}{% endif %}
+</article>
+{% for section in entry.sections.all %}
+    <section class="journal-reader-section" id="section-{{ section.pk }}" aria-labelledby="section-title-{{ section.pk }}">
+        <h2 id="section-title-{{ section.pk }}">{{ section.title }}</h2>
+        <article class="{% if not compact %}journal-reading-surface {% endif %}journal-prose" data-journal-reading-section aria-labelledby="section-title-{{ section.pk }}">
+            {% include 'journal/_content.html' with content=section %}
+            {% if section.body_format != 'richtext' %}{% include 'journal/_images.html' with images=section.attachments.all %}{% endif %}
+        </article>
+    </section>
+{% endfor %}

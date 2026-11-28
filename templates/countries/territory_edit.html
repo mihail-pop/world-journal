@@ -1,9 +1,19 @@
-<section class="page page-standard journal-page" data-page="settings" hx-boost="true" hx-target="#app-content" hx-push-url="true" aria-labelledby="territory-edit-title">
-    <a class="journal-back-link" href="{{ cancel_url }}">{% include 'core/partials/icon.html' with name='arrow-left' %} {{ country.name }}</a>
-    <div class="page-copy"><h1 id="territory-edit-title">Edit territory</h1><p class="field-note">Local details for this custom map area. Leave a fact blank to use its bundled value, where available.</p></div>
-    <form method="post" class="journal-editor" data-task-label="Saving territory details…">
+<section class="page page-standard journal-page territory-edit-page" data-page="settings" hx-boost="true" hx-target="#app-content" hx-push-url="true" aria-labelledby="territory-edit-title">
+    <header class="territory-edit-toolbar">
+        <a class="journal-icon-button" href="{{ cancel_url }}" aria-label="Back to territory overview">{% include 'core/partials/icon.html' with name='arrow-left' %}</a>
+        <h1 id="territory-edit-title">{{ country.name }}</h1>
+        <button class="journal-button is-primary" type="submit" form="territory-edit-form">Save</button>
+    </header>
+    <form id="territory-edit-form" method="post" class="territory-edit-form" data-task-label="Saving territory details…">
         {% csrf_token %}<input type="hidden" name="origin" value="{{ origin }}">{{ form.non_field_errors }}
-        {% for field in form %}{% include 'journal/_field.html' %}{% endfor %}
-        <div class="journal-save-bar"><button class="journal-button is-primary" type="submit">Save details</button><a href="{{ cancel_url }}">Cancel</a></div>
+        {% include 'journal/_field.html' with field=form.name wide=True %}
+        {% include 'journal/_field.html' with field=form.capital %}
+        {% include 'journal/_field.html' with field=form.government %}
+        {% include 'journal/_field.html' with field=form.population %}
+        {% include 'journal/_field.html' with field=form.area %}
+        {% include 'journal/_field.html' with field=form.languages %}
+        {% include 'journal/_field.html' with field=form.currency %}
+        {% include 'journal/_field.html' with field=form.notes wide=True %}
+        <p class="territory-edit-hint field-note">Blank fields use the default facts where available.</p>
     </form>
 </section>

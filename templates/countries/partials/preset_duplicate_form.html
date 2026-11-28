@@ -1,0 +1,12 @@
+<header class="source-modal-heading">
+    <h2 id="preset-copy-title">Duplicate preset</h2>
+    {% if in_dialog %}<button class="source-remove-button" type="button" data-preset-duplicate-close aria-label="Close">{% include 'core/partials/icon.html' with name='close' %}</button>{% endif %}
+</header>
+{% url 'countries:preset_duplicate' preset.pk as copy_url %}
+<form method="post" action="{{ copy_url }}"{% if in_dialog %} hx-post="{{ copy_url }}" hx-target="#preset-duplicate-dialog" hx-push-url="false" hx-disabled-elt="find button"{% endif %}>
+    {% csrf_token %}{{ form.non_field_errors }}
+    <div class="source-modal-fields">
+        <div class="settings-field source-modal-link">{{ form.name.label_tag }}{{ form.name }}{{ form.name.errors }}</div>
+    </div>
+    <div class="source-modal-actions"><button class="journal-button is-primary" type="submit">Create copy</button></div>
+</form>

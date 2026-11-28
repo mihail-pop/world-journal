@@ -4,9 +4,9 @@
         {% if overview %}<a class="journal-button" href="{% url 'journal:edit' overview.pk %}">Edit</a>{% else %}<form method="post" action="{% url 'countries:profile_create' country.pk %}">{% csrf_token %}<button class="journal-button" type="submit">Create</button></form>{% endif %}
     </div></div>
     {% if overview %}
-        <h4 class="country-overview-title"><a href="{{ overview.get_absolute_url }}">{{ overview.title }}</a></h4>
-        <div class="journal-rendered country-overview-preview">{{ overview_preview }}</div>
-        <div class="country-overview-images">{% for image in overview_images %}<figure><img src="{{ image.file.url }}" alt="{{ image.caption|default:image.original_name }}" loading="lazy">{% if image.caption %}<figcaption>{{ image.caption }}</figcaption>{% endif %}</figure>{% endfor %}</div>
-        {% if overview_truncated %}<div class="country-notes-actions"><a class="journal-button" href="{{ overview.get_absolute_url }}">Read more</a></div>{% endif %}
+        <h4 class="country-overview-title" id="overview-note-title"><a href="{{ overview.get_absolute_url }}">{{ overview.title }}</a></h4>
+        <div class="country-overview-preview" data-journal-video-page="{% url 'journal:edit' overview.pk %}">
+            {% include 'journal/_reading_content.html' with entry=overview title_id='overview-note-title' compact=True %}
+        </div>
     {% endif %}
 </section>

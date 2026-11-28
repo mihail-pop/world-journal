@@ -16,7 +16,7 @@
                     <div class="news-board-article-meta">
                         <p class="news-board-byline">{% if card.google and item.publisher %}<span>{{ item.publisher }}</span>{% endif %}{% if item.published_at %}<time datetime="{{ item.published_at|date:'c' }}">{{ item.published_at|date:'M j, H:i' }}</time>{% endif %}</p>
                         <div class="news-board-article-actions">
-                            {% if card.summary_id %}<button class="news-board-summary-button" type="button" aria-label="Article summary" title="Article summary" aria-expanded="false" aria-controls="{{ card.summary_id }}" data-news-summary-toggle>{% include 'core/partials/icon.html' with name='down' %}</button>{% endif %}
+                            {% if card.summary_id %}{% include 'news/partials/summary_toggle.html' with summary_id=card.summary_id %}{% endif %}
                             {% include 'news/partials/bookmark.html' %}
                         </div>
                     </div>

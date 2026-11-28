@@ -1,0 +1,22 @@
+{% firstof item.channel_name item.publisher as channel %}
+{% firstof item.thumbnail_url card.thumbnail_url as thumbnail_url %}
+<li class="country-video-item" data-news-item="{% if archive_card %}archive-{{ item.identity }}{% else %}{{ item.video_id }}{% endif %}" data-video-views="{{ item.view_count|default_if_none:'' }}">
+    <button class="video-thumbnail-frame country-thumbnail-play" type="button" data-video-play data-video-id="{{ item.video_id }}" data-video-title="{{ item.title }}" data-video-channel="{{ channel }}" aria-label="Play {{ item.title }}">
+        <img src="{{ thumbnail_url }}" alt="" width="480" height="360" loading="lazy" decoding="async" referrerpolicy="no-referrer" data-video-thumbnail>
+        <span class="video-thumbnail-fallback" aria-hidden="true">Video</span>
+        <span class="country-thumbnail-symbol" aria-hidden="true">{% include 'core/partials/icon.html' with name='play' %}</span>
+    </button>
+    <div class="video-card-copy">
+        <h4>{{ item.title }}</h4>
+        <div class="country-card-footer">
+            <p class="country-news-byline">
+                <span>{{ channel }}</span>
+                {% if item.published_at %}<time datetime="{{ item.published_at|date:'c' }}">{{ item.published_at|date:'M j, H:i' }}</time>{% elif archive_card %}<span>First seen {{ item.first_seen_at|date:'M j, Y' }}</span>{% endif %}
+                {% if item.view_count != None %}<span>{{ item.view_count|floatformat:'0g' }} views</span>{% endif %}
+            </p>
+            <div class="country-item-actions">
+                {% if archive_card %}<a class="news-save-journal" href="{{ card.save_url }}" hx-boost="true" hx-target="#app-content" hx-push-url="true">Save</a>{% else %}{% include 'news/partials/bookmark.html' %}{% endif %}
+            </div>
+        </div>
+    </div>
+</li>

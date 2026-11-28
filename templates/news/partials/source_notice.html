@@ -1,0 +1,12 @@
+<li class="source-notice">
+    <div class="source-notice-heading">
+        <div class="source-notice-label">
+            <strong data-source-notice-name>{{ error.name }}</strong>
+            <span data-source-notice-category>{{ error.category }}</span>
+        </div>
+        <span class="source-notice-paused" data-source-notice-paused{% if not error.paused %} hidden{% endif %}>Paused</span>
+        <button class="source-retry-button" type="button" data-source-retry data-retry-kind="{{ error.kind }}" data-retry-source="{{ error.source_id }}" aria-label="Retry {{ error.name }} ({{ error.category }})"{% if error.retry_disabled %} disabled{% endif %}{% if error.paused %} hidden{% endif %}>{% if error.retrying %}Retrying…{% else %}Retry{% endif %}</button>
+    </div>
+    <p class="source-notice-message" data-source-notice-message>{{ error.error }}</p>
+    <small class="source-refresh-retry-time" data-source-notice-time{% if not error.retry_text %} hidden{% endif %}>{{ error.retry_text }}</small>
+</li>

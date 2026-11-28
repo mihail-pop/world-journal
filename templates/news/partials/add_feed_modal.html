@@ -1,0 +1,17 @@
+<dialog class="source-modal add-feed-modal" id="add-feed-{{ row.record.pk }}" data-source-feed-modal data-open-on-load="{{ feed_form.errors|yesno:'true,false' }}" aria-labelledby="add-feed-title-{{ row.record.pk }}">
+    <header class="source-modal-heading">
+        <div><h2 id="add-feed-title-{{ row.record.pk }}">Add feed</h2><p>{{ row.name }}</p></div>
+        <button class="source-remove-button" type="button" data-source-modal-close aria-label="Close">{% include 'core/partials/icon.html' with name='close' %}</button>
+    </header>
+    <form method="post" action="{% url 'news:custom_feed_add' row.record.pk %}" hx-disabled-elt="find button" hx-indicator="find .source-check-progress">
+        {% csrf_token %}<input type="hidden" name="country" value="{{ country.pk }}">{{ feed_form.kind }}{{ feed_form.kind.errors }}{{ feed_form.non_field_errors }}
+        <div class="source-modal-fields source-add-fields">
+            <div class="settings-field"><label for="{{ feed_form.location.id_for_label }}">Feed link</label>{{ feed_form.location }}{{ feed_form.location.errors }}</div>
+            <div class="settings-field"><label for="{{ feed_form.name.id_for_label }}">Name (optional)</label>{{ feed_form.name }}{{ feed_form.name.errors }}</div>
+        </div>
+        <footer class="source-modal-actions">
+            <span class="source-check-progress htmx-indicator" role="status">Checking link…</span>
+            <button class="journal-button is-primary" type="submit">Add feed</button>
+        </footer>
+    </form>
+</dialog>

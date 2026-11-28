@@ -35,7 +35,8 @@
                 <div class="preset-list-actions">
                     <a class="journal-button" href="{% url 'countries:preset_edit' preset.pk %}">Edit</a>
                     <a class="journal-button" href="{% url 'core:map' %}?edit_preset={{ preset.pk }}">Select on map</a>
-                    <a class="journal-button" href="{% url 'countries:preset_duplicate' preset.pk %}">Duplicate</a>
+                    {% url 'countries:preset_duplicate' preset.pk as copy_url %}
+                    <a class="journal-button" href="{{ copy_url }}" hx-get="{{ copy_url }}" hx-target="#preset-duplicate-dialog" hx-push-url="false" aria-haspopup="dialog" aria-controls="preset-duplicate-dialog">Duplicate</a>
                     <a class="journal-button preset-list-delete" href="{% url 'countries:preset_delete' preset.pk %}">Delete</a>
                 </div>
             </footer>
@@ -44,4 +45,5 @@
         <div class="preset-list-empty"><p>No presets yet.</p><a class="journal-button is-primary" href="{% url 'countries:preset_new' %}">Create preset</a></div>
         {% endfor %}
     </div>
+    <dialog class="source-modal preset-duplicate-dialog" id="preset-duplicate-dialog" data-preset-duplicate-dialog aria-labelledby="preset-copy-title"></dialog>
 </section>

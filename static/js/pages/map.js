@@ -11,6 +11,7 @@ import { notify } from "../notifications.js";
 import { recordCountrySelection } from "../country_selections.js";
 import { basemapFeaturePreferences, isBasemapCapitalLabel, isBasemapCountryLabel, splitBasemapRegionLabels } from "./basemap_features.js";
 import { factsSelectionChanged, initializeCountryFacts, loadCountryOverview } from "./map_facts.js";
+import { pauseJournalVideos } from "./journal_video.js";
 import { applyPersonalLayers, initializePersonalMap, loadCountryNotes, loadPersonalData, personalSelectionChanged, updateFavoriteMarkerVisibility } from "./map_personal.js";
 import { initializePresetMap, selectPresetCountry, syncPresetEditor } from "./preset_map_editor.js";
 import { WORLD_CAMERA, readViewport, saveViewport } from "../map_camera.js";
@@ -534,8 +535,8 @@ async function loadCountryVideos(controller, code, { retry = false } = {}) {
 function selectCountrySection(controller, section, { focus = false } = {}) {
     const previousSection = controller.page.querySelector('[data-country-section][aria-selected="true"]')?.dataset.countrySection;
     if (section !== previousSection) controller.page.querySelector("[data-country-scroll]").scrollTop = 0;
+    if (previousSection === "overview" && section !== previousSection) pauseJournalVideos();
     if (section === "notes") loadCountryNotes(controller);
-    if (section === "overview") loadCountryOverview(controller);
     for (const button of controller.page.querySelectorAll("[data-country-section]")) {
         const selected = button.dataset.countrySection === section;
         button.setAttribute("aria-selected", String(selected));
@@ -547,6 +548,7 @@ function selectCountrySection(controller, section, { focus = false } = {}) {
     for (const panel of controller.page.querySelectorAll("[data-country-section-panel]")) {
         panel.hidden = panel.dataset.countrySectionPanel !== section;
     }
+    if (section === "overview") loadCountryOverview(controller);
     if (
         section === "articles"
         && controller.selectedCode
@@ -693,11 +695,37 @@ function originalVisibility(controller, layer) {
     return controller.basemapVisibility.get(layer.id);
 }
 
+function isSharedBasemapLabel(groups) {
+    return groups.includes("cityNames") || groups.includes("regionNames");
+}
+
+function updateBasemapLabelOrder(controller) {
+    const { map, basemapLayers, basemapFeatureGroups } = controller;
+    const aboveCountries = !controller.preferences.terrain;
+    if (controller.basemapLabelsAboveCountries === aboveCountries) return;
+    controller.basemapLabelsAboveCountries = aboveCountries;
+    if (aboveCountries) {
+        // Simple and Adventure draw their own land and borders over the basemap.
+        // Put shared labels above those shapes, with the other map labels.
+        for (const { id } of basemapLayers) {
+            if (isSharedBasemapLabel(basemapFeatureGroups.get(id))) map.moveLayer(id, LAYERS.countryNames);
+        }
+    } else {
+        // Restore the provider's label order when returning to Terrain.
+        let nextLayer = LAYERS.fill;
+        for (let index = basemapLayers.length - 1; index >= 0; index -= 1) {
+            const { id } = basemapLayers[index];
+            if (isSharedBasemapLabel(basemapFeatureGroups.get(id))) map.moveLayer(id, nextLayer);
+            nextLayer = id;
+        }
+    }
+}
+
 function applyBasemapPreferences(controller) {
     for (const layer of controller.basemapLayers) {
         const visibility = originalVisibility(controller, layer);
         const groups = controller.basemapFeatureGroups.get(layer.id);
-        const sharedLabel = groups.includes("cityNames") || groups.includes("regionNames");
+        const sharedLabel = isSharedBasemapLabel(groups);
         const hidden = (!controller.preferences.terrain && !sharedLabel)
             || isBasemapCountryLabel(layer)
             || isBasemapCapitalLabel(layer)
@@ -739,6 +767,7 @@ function applyPreferences(controller) {
     if (!controller.layersInstalled) {
         return;
     }
+    updateBasemapLabelOrder(controller);
     applyBasemapPreferences(controller);
     setLayerVisibility(controller.map, LAYERS.simpleBackground, !controller.preferences.terrain);
     setLayerVisibility(
@@ -779,8 +808,7 @@ function applyPreferences(controller) {
     controller.page.dataset.appliedSimpleMode = String(
         controller.preferences.mapType === "plain"
             && isVisible(LAYERS.simpleBackground)
-            && visibleBasemapLayers.every(layer => controller.basemapFeatureGroups.get(layer.id)
-                .some(key => key === "cityNames" || key === "regionNames")),
+            && visibleBasemapLayers.every(layer => isSharedBasemapLabel(controller.basemapFeatureGroups.get(layer.id))),
     );
     controller.page.dataset.visibleBasemapLayers = String(visibleBasemapLayers.length);
     controller.page.dataset.visibleBasemapCountryLabels = String(
@@ -808,6 +836,7 @@ function captureBasemapLayers(controller) {
     controller.basemapFeatureGroups = new Map(controller.basemapLayers.map(layer => (
         [layer.id, basemapFeaturePreferences(layer)]
     )));
+    controller.basemapLabelsAboveCountries = false;
 }
 
 function installCountryLayers(controller) {

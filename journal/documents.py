@@ -248,13 +248,8 @@ def render_document(document, *, limit=None):
                     html = f'<span style="{escape(style, quote=True)}"{contrast}>{html}</span>'
                 elif mark["type"] == "link":
                     href = mark["attrs"]["href"]
-                    from .formatting import render_video, video_token
-                    video = video_token(href, text)
-                    if video and limit is None:
-                        html = render_video([video], 0, {}, {})
-                    else:
-                        extra = ' target="_blank" rel="noopener noreferrer"' if urlsplit(href).scheme else ' class="journal-country-link"'
-                        html = f'<a href="{escape(href, quote=True)}"{extra}>{html}</a>'
+                    extra = ' target="_blank" rel="noopener noreferrer"' if urlsplit(href).scheme else ' class="journal-country-link"'
+                    html = f'<a href="{escape(href, quote=True)}"{extra}>{html}</a>'
             return html
         if kind == "hardBreak":
             return "<br>"

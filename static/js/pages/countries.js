@@ -2,6 +2,7 @@ import { getCountryFeed, rememberCountryFeed } from "../news_cache.js";
 import { applyCountryNewsFilter, replaceCountryMarkup } from "../news_archive.js";
 import { notify } from "../notifications.js";
 import { recordCountrySelection } from "../country_selections.js";
+import { refreshJournalVideos } from "./journal_video.js";
 
 let controller = null;
 let registered = false;
@@ -109,6 +110,7 @@ function renderContent(state, entry) {
     const scroll = state.content.scrollTop;
     const filter = state.content.querySelector('[data-news-filter][aria-pressed="true"]')?.dataset.newsFilter || "all";
     replaceCountryMarkup(state.content,entry.markup);
+    refreshJournalVideos(state.content);
     state.renderedKey = key;
     state.renderedMarkup = entry.markup;
     state.content.setAttribute("aria-busy","false");
@@ -135,6 +137,7 @@ function showMessage(state, message, retry = false) {
     paragraph.className = "country-news-message";
     paragraph.textContent = message;
     state.content.replaceChildren(paragraph);
+    refreshJournalVideos(state.content);
     if (retry) {
         const button = document.createElement("button");
         button.type = "button";

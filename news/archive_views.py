@@ -105,6 +105,7 @@ def earlier_coverage(request):
             if item.published_at:
                 initial["published"] = item.published_at.isoformat()
             cards.append({"item":item, "save_url":reverse("journal:new")+"?"+urlencode(initial),
+                          "summary_id": f"country-summary-archive-{identity}",
                           "thumbnail_url":build_thumbnail_url(item.video_id) if kind == "videos" else "",
                           "kinds":" ".join(sorted(origins.get(identity, ()))), "via_google":"google" in origins.get(identity, ())})
         def page_url():

@@ -779,14 +779,6 @@ body:has(.persistent-player[data-player-state="playing"]) #app-content:not(:has(
     overflow-wrap: anywhere;
 }
 
-.video-card-actions {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 0.5rem 0.8rem;
-    margin-top: 0.65rem;
-}
-
 .video-play-button {
     min-height: 2.25rem;
     padding: 0.3rem 0.8rem;
@@ -795,11 +787,6 @@ body:has(.persistent-player[data-player-state="playing"]) #app-content:not(:has(
     background: var(--button-bg);
     color: var(--text-secondary);
     cursor: pointer;
-}
-
-.video-card-actions a {
-    color: var(--special-color-hover);
-    font-size: 0.78rem;
 }
 
 .video-feed-note {
@@ -1116,9 +1103,6 @@ body:has(.persistent-player[data-player-state="playing"]) #app-content:not(:has(
 .country-overview-preview { font-size: 0.9rem; }
 .country-overview-preview h1 { font-size: 1.5rem; }
 .country-overview-preview h2 { font-size: 1.25rem; }
-.country-overview-images figure { margin: 0.75rem 0; }
-.country-overview-images img { display: block; max-width: 100%; max-height: 14rem; object-fit: contain; }
-.country-overview-images figcaption { font-size: 0.8rem; overflow-wrap: anywhere; }
 .country-saved-research { padding-left: 1rem; }
 .country-saved-research li { margin-bottom: 0.75rem; overflow-wrap: anywhere; }
 .country-saved-research span { display: block; font-size: 0.75rem; color: var(--text-primary); }
@@ -1153,12 +1137,4 @@ body:has(.persistent-player[data-player-state="playing"]) #app-content:not(:has(
 .backup-section { margin-block: 2.5rem; }
 .backup-section h2, .backup-preview h3 { color: var(--text-secondary); }
 .backup-form { margin-block: 1.25rem; }
-.backup-form p { display: flex; flex-wrap: wrap; align-items: center; gap: 0.65rem; }
 .backup-form input[type="file"] { max-width: 100%; min-width: 0; color: var(--text-primary); }
-.backup-form input[type="checkbox"] { accent-color: var(--special-color); }
-.backup-preview { margin-top: 2rem; padding-top: 1rem; border-top: 1px solid var(--overview-border); }
-.backup-table-scroll { overflow-x: auto; max-width: 100%; }
-.backup-summary { width: 100%; border-collapse: collapse; margin-block: 1rem; }
-.backup-summary caption { text-align: left; padding-block: 0.5rem; color: var(--text-secondary); }
-.backup-summary th, .backup-summary td { text-align: left; padding: 0.65rem; border-bottom: 1px solid var(--overview-border); }
-.backup-summary th:first-child { min-width: 10rem; }

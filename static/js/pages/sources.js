@@ -14,6 +14,14 @@ function closeSourceDialog() {
     sourceDialog = null;
 }
 
+function showSourceDialog(dialog) {
+    if (!dialog || dialog.open) return;
+    sourceDialog = dialog;
+    dialog.showModal();
+    document.documentElement.classList.add("source-modal-open");
+    dialog.querySelector('[name="location"], [name$="-location"]').focus({preventScroll: true});
+}
+
 function openSourceDialog(dialog, kind = null) {
     if (!dialog || dialog.open) return;
     const input = dialog.querySelector('[name="kind"]');
@@ -23,10 +31,21 @@ function openSourceDialog(dialog, kind = null) {
     }
     if (kind) input.value = kind;
     updateHelp(dialog, input.value);
-    sourceDialog = dialog;
-    dialog.showModal();
-    document.documentElement.classList.add("source-modal-open");
-    dialog.querySelector('[name="location"]').focus({preventScroll: true});
+    showSourceDialog(dialog);
+}
+
+function bindSourceDialog(dialog, focusOpener, signal) {
+    dialog.addEventListener("close", () => {
+        if (dialog.open || (sourceDialog && sourceDialog !== dialog)) return;
+        document.documentElement.classList.remove("source-modal-open");
+        if (sourceDialog === dialog) sourceDialog = null;
+        if (dialog.isConnected) focusOpener()?.focus({preventScroll: true});
+    }, {signal});
+    dialog.addEventListener("click", event => {
+        if (event.target !== dialog) return;
+        const rect = dialog.getBoundingClientRect();
+        if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) closeSourceDialog();
+    }, {signal});
 }
 
 function cleanupSources() {
@@ -58,32 +77,25 @@ function renderProgress(page, result) {
     const list = details.querySelector("[data-refresh-error-list]");
     const signature = JSON.stringify(result.errors);
     if (list.dataset.errors !== signature) {
-        list.replaceChildren();
-        for (const error of result.errors) {
-            const item = document.createElement("li");
-            const retry = document.createElement("button");
-            retry.type = "button";
-            retry.className = "source-retry-button";
-            retry.dataset.sourceRetry = "";
+        const template = details.querySelector("[data-source-notice-template]");
+        list.replaceChildren(...result.errors.map(error => {
+            const item = template.content.firstElementChild.cloneNode(true);
+            item.querySelector("[data-source-notice-name]").textContent = error.name;
+            item.querySelector("[data-source-notice-category]").textContent = error.category;
+            item.querySelector("[data-source-notice-message]").textContent = error.error;
+            item.querySelector("[data-source-notice-paused]").hidden = !error.paused;
+            const retry = item.querySelector("[data-source-retry]");
             retry.dataset.retryKind = error.kind;
             retry.dataset.retrySource = error.source_id;
-            retry.setAttribute("aria-label", `Retry ${error.category} from ${error.name}`);
+            retry.setAttribute("aria-label", `Retry ${error.name} (${error.category})`);
             retry.disabled = error.retry_disabled;
+            retry.hidden = error.paused;
             retry.textContent = error.retrying ? "Retrying…" : "Retry";
-            const text = document.createElement("div");
-            text.className = "source-refresh-error-text";
-            const name = document.createElement("strong");
-            name.textContent = `${error.category} · ${error.name}`;
-            const message = document.createElement("span");
-            message.textContent = error.error;
-            const next = document.createElement("small");
-            next.className = "source-refresh-retry-time";
+            const next = item.querySelector("[data-source-notice-time]");
             next.hidden = !error.retry_text;
             next.textContent = error.retry_text;
-            text.append(name, message, next);
-            item.append(retry, text);
-            list.append(item);
-        }
+            return item;
+        }));
         list.dataset.errors = signature;
     }
 }
@@ -276,19 +288,18 @@ function initialize() {
     stateFor(page);
     const dialog = page.querySelector("[data-source-modal]");
     updateHelp(dialog, dialog.querySelector('[name="kind"]').value);
-    dialog.addEventListener("close", () => {
-        if (dialog.open) return;
-        document.documentElement.classList.remove("source-modal-open");
-        if (sourceDialog === dialog) sourceDialog = null;
+    bindSourceDialog(dialog, () => {
         const kind = dialog.querySelector('[name="kind"]').value === "youtube" ? "youtube" : "rss";
-        if (dialog.isConnected) page.querySelector(`[data-source-modal-open="${kind}"]`)?.focus({preventScroll: true});
-    }, {signal: modalEvents.signal});
-    dialog.addEventListener("click", event => {
-        if (event.target !== dialog) return;
-        const rect = dialog.getBoundingClientRect();
-        if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) closeSourceDialog();
-    }, {signal: modalEvents.signal});
-    if (dialog.dataset.openOnLoad === "true") {
+        return page.querySelector(`[data-source-modal-open="${kind}"]`);
+    }, modalEvents.signal);
+    for (const feedDialog of page.querySelectorAll("[data-source-feed-modal]")) {
+        bindSourceDialog(feedDialog, () => page.querySelector(`[data-source-feed-open][aria-controls="${feedDialog.id}"]`), modalEvents.signal);
+    }
+    const invalidFeed = page.querySelector('[data-source-feed-modal][data-open-on-load="true"]');
+    if (invalidFeed) {
+        invalidFeed.dataset.openOnLoad = "false";
+        showSourceDialog(invalidFeed);
+    } else if (dialog.dataset.openOnLoad === "true") {
         dialog.dataset.openOnLoad = "false";
         openSourceDialog(dialog);
     }
@@ -316,6 +327,8 @@ export function registerSourceSettings() {
         if (retry) retrySource(retry, retry.closest("[data-source-settings]"));
         const opener = event.target.closest("[data-source-modal-open]");
         if (opener) openSourceDialog(opener.closest("[data-source-settings]").querySelector("[data-source-modal]"), opener.dataset.sourceModalOpen);
+        const feedOpener = event.target.closest("[data-source-feed-open]");
+        if (feedOpener) showSourceDialog(document.getElementById(feedOpener.getAttribute("aria-controls")));
         if (event.target.closest("[data-source-modal-close]")) closeSourceDialog();
         const pacingOpener = event.target.closest("[data-google-pacing-open]");
         if (pacingOpener) pacingOpener.closest("[data-source-settings]").querySelector("[data-google-pacing-dialog]").showModal();

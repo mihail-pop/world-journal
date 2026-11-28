@@ -1,9 +1,11 @@
 """Render country drawers from one cache read, without network calls or feed locks."""
 from datetime import UTC, datetime
 from hashlib import sha256
+from urllib.parse import urlencode
 
 from django.core.cache import cache
 from django.template.loader import render_to_string
+from django.urls import reverse
 
 from news.preferences import effective_registry, freshness_seconds
 
@@ -22,7 +24,13 @@ def country_article_cards(page):
         identity, fingerprint = identities(item, "articles")
         card = seen.get(identity) or seen.get(fingerprint)
         if card is None:
-            card = {"item": item, "kinds": kind, "via_google": kind == "google"}
+            initial = {"type": "article", "title": item.title, "url": item.link,
+                       "source": item.publisher or item.provider_name, "country": page.country_code}
+            if item.published_at:
+                initial["published"] = item.published_at.isoformat()
+            card = {"item": item, "kinds": kind, "via_google": kind == "google",
+                    "summary_id": f"country-summary-current-{identity}",
+                    "save_url": reverse("journal:new") + "?" + urlencode(initial)}
             cards.append(card)
         else:
             card["kinds"] = " ".join(sorted(set(card["kinds"].split()) | {kind}))

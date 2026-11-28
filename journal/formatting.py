@@ -6,7 +6,6 @@ from urllib.parse import urlsplit
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
-from django.template.loader import render_to_string
 from django.utils.html import format_html
 from django.utils.safestring import mark_safe
 from markdown_it import MarkdownIt
@@ -78,15 +77,11 @@ def youtube_links(state):
 
 def render_video(tokens, index, options, env):
     video = tokens[index].meta
-    # Only a validated ID and bounded timestamp reach the shell player. No
-    # iframe or embed HTML supplied in the Markdown is ever accepted.
+    # The reading view upgrades these links to embeds. Other readers can
+    # still open the original video, including from a printed export.
     return str(format_html(
-        '<span class="journal-inline-video"><span class="journal-inline-video-heading">{}</span>'
-        '<span class="journal-inline-video-actions"><button type="button" class="journal-button" data-journal-play '
-        'data-video-id="{}" data-video-title="{}" data-video-channel="YouTube" data-video-start="{}">'
-        '{}Play video</button>'
-        '<a href="https://www.youtube.com/watch?v={}&amp;t={}s" target="_blank" rel="noopener noreferrer">Open on YouTube</a></span></span>',
-        video["title"], video["id"], video["title"], video["seconds"], mark_safe(render_to_string("core/partials/icon.html", {"name": "play"})), video["id"], video["seconds"],
+        '<a href="https://www.youtube.com/watch?v={}&amp;t={}s" target="_blank" rel="noopener noreferrer">{}</a>',
+        video["id"], video["seconds"], video["title"],
     ))
 
 

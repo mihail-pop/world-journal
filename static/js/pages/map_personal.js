@@ -314,6 +314,14 @@ export function registerPresetEditor() {
     editorRegistered = true;
     const syncColors = () => document.querySelectorAll("[data-preset-editor] [data-preset-color]").forEach(control => syncPresetColor(control));
     document.addEventListener("world-journal:page-ready", syncColors);
+    document.body.addEventListener("htmx:afterSwap", event => {
+        const dialog = event.detail.target;
+        if (!dialog?.matches("[data-preset-duplicate-dialog]")) return;
+        if (!dialog.open) dialog.showModal();
+        const name = dialog.querySelector('input[name="name"]');
+        name?.focus();
+        name?.select();
+    });
     document.addEventListener("input", event => {
         const control = event.target.closest("[data-preset-color]");
         if (!control || !event.target.matches("input")) return;
@@ -328,6 +336,11 @@ export function registerPresetEditor() {
         if (event.target.matches("[data-preset-editor]")) queueMicrotask(syncColors);
     });
     document.addEventListener("click", event => {
+        const close = event.target.closest("[data-preset-duplicate-close]");
+        if (close) {
+            close.closest("dialog").close();
+            return;
+        }
         const choice = event.target.closest("[data-preset-color-choice]");
         if (choice) {
             const control = choice.closest("[data-preset-color]");

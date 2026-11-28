@@ -16,7 +16,7 @@ function showStatus(state, message, status) {
     clearTimeout(state.statusTimer);
     if (status === "saved") state.statusTimer = setTimeout(() => {
         if (output.dataset.saveState === "saved") showStatus(state, "Autosave on · all changes saved", "idle");
-    }, 4000);
+    }, 1000);
 }
 
 function trackEditor(form) {
@@ -30,7 +30,7 @@ function trackEditor(form) {
             if (event.target.closest?.("[data-journal-ui]")) return;
             if (state.applying) return;
             state.version += 1;
-            showStatus(state, "Unsaved changes", "dirty");
+            if (!state.pending) showStatus(state, "Unsaved changes", "dirty");
         });
     }
     return state;

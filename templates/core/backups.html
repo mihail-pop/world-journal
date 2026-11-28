@@ -18,20 +18,24 @@
             <p>Keep the downloaded backup file as it is (.zip) for loading.</p>
         </div>
         {% if summary %}
-        <div class="backup-preview" aria-labelledby="preview-title">
-            <h3 id="preview-title">Import preview</h3>
-            <p>Existing IDs stay unchanged. Collections and presets with the same name are reused. Subsections and images belonging to an existing entry are skipped; colors belonging to an existing preset are skipped. Existing country notes and shared preferences are kept.</p>
-            <p class="field-note">This is a merge, not a replacement of your database. A fresh installation restores all records. The summary is recalculated when you confirm if local data has changed. Preview expires after 24 hours.</p>
-            <div class="backup-table-scroll"><table class="backup-summary"><caption>Records in this backup</caption><thead><tr><th scope="col">Data</th><th scope="col">In backup</th><th scope="col">Add</th><th scope="col">Keep existing / skip</th><th scope="col">Reuse</th></tr></thead><tbody>
-                {% for row in summary %}<tr><th scope="row">{{ row.label }}</th><td>{{ row.total }}</td><td>{{ row.add }}</td><td>{{ row.skip }}</td><td>{{ row.reuse }}</td></tr>{% endfor %}
-            </tbody></table></div>
-            <form method="post" action="{% url 'core:backups' %}" class="backup-form" hx-disabled-elt="find button" hx-indicator="find .htmx-indicator">
-                {% csrf_token %}<input type="hidden" name="action" value="confirm">
-                {{ confirmation_form.as_p }}
-                <button class="journal-button is-primary" type="submit">Confirm import</button><span class="htmx-indicator" role="status">Importing…</span>
+        <section class="backup-preview" aria-labelledby="preview-title">
+            <header class="backup-preview-heading">
+                <h3 id="preview-title">Review backup</h3>
+                <form method="post" action="{% url 'core:backups' %}" hx-disabled-elt="find button">{% csrf_token %}<input type="hidden" name="action" value="cancel"><button class="journal-icon-button backup-preview-close" type="submit" aria-label="Discard backup preview">{% include 'core/partials/icon.html' with name='close' %}</button></form>
+            </header>
+            <p class="backup-preview-note">Import adds new items and keeps your existing data.</p>
+            {% if preview_rows %}
+            <table class="backup-summary" aria-label="What will be imported"><thead><tr><th scope="col">Items</th><th scope="col">Add</th><th scope="col">Skip</th></tr></thead><tbody>
+                {% for row in preview_rows %}<tr><th scope="row">{{ row.label }}</th><td>{{ row.add }}</td><td>{{ row.skipped }}</td></tr>{% endfor %}
+            </tbody></table>
+            {% endif %}
+            <form method="post" action="{% url 'core:backups' %}" class="backup-confirm-form" hx-disabled-elt="find button, .backup-preview-close" hx-indicator="find .htmx-indicator">
+                {% csrf_token %}<input type="hidden" name="action" value="confirm"><input type="hidden" name="confirm" value="on">
+                {{ confirmation_form.token }}
+                {{ confirmation_form.non_field_errors }}{{ confirmation_form.token.errors }}{{ confirmation_form.confirm.errors }}
+                <div class="backup-confirm-actions"><span class="htmx-indicator" role="status">Importing…</span><button class="journal-button is-primary" type="submit">Import backup</button></div>
             </form>
-            <form method="post" action="{% url 'core:backups' %}">{% csrf_token %}<input type="hidden" name="action" value="cancel"><button class="journal-button" type="submit">Discard preview</button></form>
-        </div>
+        </section>
         {% endif %}
         {% if not summary %}{{ confirmation_form.non_field_errors }}{% endif %}
     </section>

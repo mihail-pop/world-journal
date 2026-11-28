@@ -2,7 +2,7 @@ import { registerJournalAutosave } from "./journal_autosave.js";
 import { registerJournalList } from "./journal_list.js";
 import { registerInfiniteScroll } from "../infinite_scroll.js";
 import { registerJournalRichtext, refreshRichEditors, focusRichEditor } from "./journal_richtext.js";
-import { refreshJournalVideos, pauseJournalVideos, journalVideoDetails, clearJournalVideos } from "./journal_video.js";
+import { refreshJournalVideos, pauseJournalVideos, journalVideoQueue, clearJournalVideos } from "./journal_video.js";
 
 let registered = false;
 const eventDates = new WeakMap();
@@ -179,9 +179,12 @@ export function registerJournalPage() {
         const play = event.target.closest("[data-journal-play]");
         if (play) {
             const entryPath = location.pathname.match(/^\/journal\/([a-f0-9-]{36})\//);
-            const details = journalVideoDetails(play);
-            pauseJournalVideos();
-            document.dispatchEvent(new CustomEvent("world-journal:play-video", {detail: {...details, saveUrl: entryPath ? `/journal/${entryPath[1]}/edit/` : undefined}}));
+            const queue = journalVideoQueue(play, entryPath ? `/journal/${entryPath[1]}/edit/` : undefined);
+            if (queue.length) {
+                document.dispatchEvent(new CustomEvent("world-journal:play-video", {
+                    detail: {...queue[0], queue, repeatQueue: false},
+                }));
+            }
             return;
         }
         const editor = event.target.closest("[data-journal-editor]");

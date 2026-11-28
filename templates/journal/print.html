@@ -13,8 +13,8 @@
     <nav class="journal-print-controls"><button type="button" data-print-document>Print / Save as PDF</button></nav>
     <main class="journal-print-paper journal-prose">
         <h1>{{ entry.title }}</h1>
-        {% include 'journal/_content.html' with content=entry %}
-        {% for section in entry.sections.all %}<section><h2>{{ section.title }}</h2>{% include 'journal/_content.html' with content=section %}</section>{% endfor %}
+        {% include 'journal/_content.html' with content=entry print_view=True %}
+        {% for section in entry.sections.all %}<section><h2>{{ section.title }}</h2>{% include 'journal/_content.html' with content=section print_view=True %}</section>{% endfor %}
     </main>
 </body>
 </html>

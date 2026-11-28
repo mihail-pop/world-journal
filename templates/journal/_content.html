@@ -1,4 +1,14 @@
 {% load journal_tags %}
-{% if content.youtube_video_id %}{% include 'journal/_video.html' with editable=False %}{% endif %}
+{% if content.youtube_video_id and not print_view %}{% include 'journal/_video.html' with editable=False main_video=main_content %}{% endif %}
 {% if content.body %}<div class="journal-rendered">{{ content|journal_body }}</div>{% endif %}
-{% if content.source_url %}<div class="journal-source-reference"><a href="{{ content.source_url }}" target="_blank" rel="noopener noreferrer">Open {% if content.source_name %}{{ content.source_name }}{% else %}source{% endif %} {% include 'core/partials/icon.html' with name='external' %}</a>{% if content.source_published_at %}<span>Published {{ content.source_published_at|date:'M j, Y H:i' }}</span>{% endif %}</div>{% endif %}
+{% if not print_view or content.youtube_video_id or content.source_url or content.source_published_at %}
+    <div class="journal-source-reference"{% if not print_view %} data-journal-video-actions{% endif %}>
+        {% if print_view or not content.youtube_video_id %}
+            {% firstof content.source_url content.watch_url as reference_url %}
+            {% if reference_url %}
+                <a {% if not print_view %}class="journal-button" hx-boost="false"{% endif %} href="{{ reference_url }}" target="_blank" rel="noopener noreferrer">{% if content.entry_type == 'article' and not print_view %}Article{% else %}Open {{ content.source_name|default:"source" }}{% endif %}</a>
+            {% endif %}
+        {% endif %}
+        {% if content.source_published_at %}<span>Published <time datetime="{{ content.source_published_at|date:'c' }}">{{ content.source_published_at|date:'M j, Y H:i' }}</time></span>{% endif %}
+    </div>
+{% endif %}

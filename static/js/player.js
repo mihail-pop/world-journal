@@ -224,7 +224,7 @@ export function initializePlayer() {
     function queuedNext() {
         if (!session?.queue.length) return null;
         const index = session.queue.findIndex(item => item.videoId === current()?.videoId);
-        return session.queue[(index + 1) % session.queue.length];
+        return session.queue[index + 1] ?? (session.repeatQueue !== false ? session.queue[0] : null);
     }
     function renderHistory() {
         history.replaceChildren();
@@ -300,12 +300,12 @@ export function initializePlayer() {
         }
         return [...unique.values()].slice(0, 200);
     }
-    function start(detail, queue = visibleQueue()) {
+    function start(detail, queue = visibleQueue(), repeatQueue = true) {
         const item = video(detail);
         if (!item) return;
         const owner = lease();
         if (!popout && alive(owner) && owner.popup) {
-            write(COMMAND, {id: randomId(), type: "play", detail: item, queue});
+            write(COMMAND, {id: randomId(), type: "play", detail: item, queue, repeatQueue});
             popupWindow?.focus();
             return;
         }
@@ -315,6 +315,7 @@ export function initializePlayer() {
         if (session.history.length > 200) session.history.shift();
         session.index = session.history.length - 1;
         session.queue = queue.map(video).filter(Boolean).slice(0, 200);
+        session.repeatQueue = repeatQueue;
         session.time = item.startSeconds;
         session.paused = false;
         session.owner = popout ? "popup" : tab;
@@ -329,7 +330,7 @@ export function initializePlayer() {
             void renderVideo();
         } else {
             const item = queuedNext();
-            if (item) start(item, session.queue);
+            if (item) start(item, session.queue, session.repeatQueue);
             else if (ended) { session.paused = true; persist(); }
         }
     }
@@ -430,7 +431,7 @@ export function initializePlayer() {
         };
         for (const type of ["pointerup", "pointercancel", "lostpointercapture"]) zone.addEventListener(type, finish);
     }
-    document.addEventListener("world-journal:play-video", event => start(event.detail));
+    document.addEventListener("world-journal:play-video", event => start(event.detail, event.detail?.queue, event.detail?.repeatQueue));
     document.addEventListener("world-journal:page-ready", scheduleSize);
     window.addEventListener("resize", scheduleSize);
     window.visualViewport?.addEventListener("resize", scheduleSize);
@@ -449,7 +450,7 @@ export function initializePlayer() {
             else if (!popout && !session && saved.owner === tab) restore(saved);
         } else if (event.key === COMMAND && popout && session) {
             const command = read(COMMAND);
-            if (command?.type === "play") start(command.detail, command.queue);
+            if (command?.type === "play") start(command.detail, command.queue, command.repeatQueue);
         } else if (event.key === LAYOUT) { layout = read(LAYOUT, {}); size(); }
     });
     window.addEventListener("message", event => {

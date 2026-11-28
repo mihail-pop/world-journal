@@ -36,14 +36,7 @@
     </div>
     {% endif %}
     {% if row.feeds %}
-    <details class="source-add-feed" {% if row.add_feed_form.errors %}open{% endif %}>
-        <summary>Add another news feed</summary>
-        <form method="post" action="{% url 'news:custom_feed_add' row.record.pk %}" hx-disabled-elt="find button" hx-indicator="find .source-check-progress">
-            {% csrf_token %}<input type="hidden" name="country" value="{{ country.pk }}">{{ row.add_feed_form.kind }}{{ row.add_feed_form.non_field_errors }}
-            <div class="settings-field"><label for="{{ row.add_feed_form.location.id_for_label }}">News feed link</label>{{ row.add_feed_form.location }}{{ row.add_feed_form.location.errors }}</div>
-            <div class="settings-field"><label for="{{ row.add_feed_form.name.id_for_label }}">Name (optional)</label>{{ row.add_feed_form.name }}{{ row.add_feed_form.name.errors }}</div>
-            <button class="journal-button" type="submit">Add feed</button><span class="source-check-progress htmx-indicator">Checking link…</span>
-        </form>
-    </details>
+    <button class="journal-icon-button source-card-add-feed" type="button" data-source-feed-open aria-label="Add a feed to {{ row.name }}" aria-haspopup="dialog" aria-controls="add-feed-{{ row.record.pk }}">{% include 'core/partials/icon.html' with name='plus' %}</button>
+    {% include 'news/partials/add_feed_modal.html' with feed_form=row.add_feed_form %}
     {% endif %}
 </article>

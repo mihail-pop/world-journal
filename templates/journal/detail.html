@@ -1,4 +1,4 @@
-<section class="page page-standard journal-page journal-reader" data-page="journal" aria-labelledby="journal-detail-title" hx-boost="true" hx-target="#app-content" hx-push-url="true">
+<section class="page page-standard journal-page journal-reader" data-page="journal" data-journal-video-page="{% url 'journal:edit' entry.pk %}" aria-labelledby="journal-detail-title" hx-boost="true" hx-target="#app-content" hx-push-url="true">
     <div class="journal-reader-toolbar">
         <a class="journal-icon-button" href="{% url 'journal:list' %}" aria-label="Back to Journal">{% include 'core/partials/icon.html' with name='arrow-left' %}</a>
         <div class="journal-reader-labels">
@@ -14,13 +14,7 @@
     </div>
     {% if entry.sections.all %}<nav class="journal-contents" aria-label="Writing sections"><a href="#main-note" hx-boost="false">Main text</a>{% for section in entry.sections.all %}<a href="#section-{{ section.pk }}" hx-boost="false">{{ section.title }}</a>{% endfor %}</nav>{% endif %}
     <header class="journal-reader-heading"><h1 id="journal-detail-title">{{ entry.title }}</h1></header>
-    <article class="journal-reading-surface journal-prose" id="main-note" aria-labelledby="journal-detail-title">{% include 'journal/_content.html' with content=entry %}{% if entry.body_format != 'richtext' %}{% include 'journal/_images.html' with images=main_attachments %}{% endif %}</article>
-    {% for section in entry.sections.all %}
-        <section class="journal-reader-section" id="section-{{ section.pk }}" aria-labelledby="section-title-{{ section.pk }}">
-            <h2 id="section-title-{{ section.pk }}">{{ section.title }}</h2>
-            <article class="journal-reading-surface journal-prose" aria-labelledby="section-title-{{ section.pk }}">{% include 'journal/_content.html' with content=section %}{% if section.body_format != 'richtext' %}{% include 'journal/_images.html' with images=section.attachments.all %}{% endif %}</article>
-        </section>
-    {% endfor %}
+    {% include 'journal/_reading_content.html' with title_id='journal-detail-title' %}
     <footer class="journal-reader-footer">
         <dl class="journal-reader-dates">
             <div><dt>Saved</dt><dd><time datetime="{{ entry.created_at|date:'c' }}">{{ entry.created_at|date:'M j, Y H:i' }}</time></dd></div>

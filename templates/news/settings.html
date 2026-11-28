@@ -12,11 +12,9 @@
                 <p class="source-refresh-current" data-refresh-current>{{ refresh_status.current_label }}</p>
                 <form method="post" action="{% url 'news:refresh_all' %}" data-refresh-all-form>{% csrf_token %}<input type="hidden" name="country" value="{{ country.pk }}"><button class="journal-button" type="submit" data-refresh-all {% if refresh_status.busy or not refresh_status.enabled %}disabled{% endif %}>Refresh now</button></form>
                 <details class="source-refresh-errors" data-refresh-errors {% if not refresh_status.errors %}hidden{% endif %}>
-                    <summary data-refresh-error-summary>Sources needing attention</summary>
-                    <ul data-refresh-error-list>{% for error in refresh_status.errors %}<li>
-                        <button class="source-retry-button" type="button" data-source-retry data-retry-kind="{{ error.kind }}" data-retry-source="{{ error.source_id }}" aria-label="Retry {{ error.category }} from {{ error.name }}" {% if error.retry_disabled %}disabled{% endif %}>{% if error.retrying %}Retrying…{% else %}Retry{% endif %}</button>
-                        <div class="source-refresh-error-text"><strong>{{ error.category }} · {{ error.name }}</strong><span>{{ error.error }}</span><small class="source-refresh-retry-time" {% if not error.retry_text %}hidden{% endif %}>{{ error.retry_text }}</small></div>
-                    </li>{% endfor %}</ul>
+                    <summary data-refresh-error-summary>Sources needing attention {% include 'core/partials/icon.html' with name='down' %}</summary>
+                    <ul data-refresh-error-list>{% for error in refresh_status.errors %}{% include 'news/partials/source_notice.html' %}{% endfor %}</ul>
+                    <template data-source-notice-template>{% include 'news/partials/source_notice.html' %}</template>
                 </details>
             </div>
             <p class="source-tile-description">Refresh news from your selected sources. You can keep reading while it updates.</p>
@@ -27,7 +25,6 @@
             <div class="settings-field"><label for="{{ form.freshness_minutes.id_for_label }}">Refresh interval</label>{{ form.freshness_minutes }}{{ form.freshness_minutes.errors }}</div>
             <div class="settings-field"><label for="{{ form.archive_storage_mb.id_for_label }}">Archive storage</label>{{ form.archive_storage_mb }}{{ form.archive_storage_mb.errors }}</div>
             <p class="source-tile-description">Estimated storage for 90 days: around 1.5 GB.</p>
-            <noscript><button type="submit" class="journal-button is-primary">Save source preferences</button></noscript>
         </form>
     </div>
     {{ refresh_status|json_script:'source-refresh-snapshot' }}
@@ -54,5 +51,4 @@
     </section>
     {% include 'news/partials/source_modal.html' %}
     {% include 'news/partials/google_pacing.html' with pacing=refresh_status.google_pacing %}
-    <noscript><button class="journal-button is-primary" type="submit" form="news-preferences">Save source preferences</button></noscript>
 </section>

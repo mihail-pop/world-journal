@@ -1,0 +1,15 @@
+<li class="country-news-item" data-country-article data-news-section="{{ card.kinds }}"{% if archive_card %} data-news-item="archive-{{ item.identity }}"{% endif %}>
+    <a class="country-news-link" href="{{ item.link }}" target="_blank" rel="noopener noreferrer">{{ item.title }}</a>
+    <div class="country-card-footer">
+        <p class="country-news-byline">
+            <span>{% firstof item.publisher item.provider_name %}</span>
+            {% if card.via_google %}<span>via Google News</span>{% endif %}
+            {% if item.published_at %}<time datetime="{{ item.published_at|date:'c' }}">{{ item.published_at|date:'M j, Y, H:i' }}</time>{% elif archive_card %}<span>First seen {{ item.first_seen_at|date:'M j, Y' }}</span>{% endif %}
+        </p>
+        <div class="country-item-actions">
+            {% if item.summary %}{% include 'news/partials/summary_toggle.html' with summary_id=card.summary_id %}{% endif %}
+            <a class="news-save-journal" href="{{ card.save_url }}" hx-boost="true" hx-target="#app-content" hx-push-url="true">Save</a>
+        </div>
+    </div>
+    {% if item.summary %}<p class="news-board-summary-text country-news-summary" id="{{ card.summary_id }}">{{ item.summary }}</p>{% endif %}
+</li>

@@ -7,14 +7,7 @@
     {% if not news_page.google.source.enabled_by_default %}<p class="country-news-message" data-news-section="google">Google News is switched off. <a href="{% url 'news:settings' %}" hx-boost="true" hx-target="#app-content" hx-push-url="true">Manage sources</a></p>{% endif %}
     {% if not news_page.regional_sources %}<p class="country-news-message" data-news-section="regional">Other sources are switched off. <a href="{% url 'news:settings' %}" hx-boost="true" hx-target="#app-content" hx-push-url="true">Manage sources</a></p>{% endif %}
     <ol class="country-news-list">
-        {% for card in article_cards %}{% with item=card.item %}
-        <li class="country-news-item" data-country-article data-news-section="{{ card.kinds }}">
-            <a class="country-news-link" href="{{ item.link }}" target="_blank" rel="noopener noreferrer">{{ item.title }}</a>
-            <p class="country-news-byline"><span>{{ item.publisher|default:item.provider_name }}</span>{% if card.via_google %}<span>via Google News</span>{% endif %}{% if item.published_at %}<time datetime="{{ item.published_at|date:'c' }}">{{ item.published_at|date:'M j, H:i' }}</time>{% endif %}</p>
-            {% if item.summary %}<details class="news-summary-details"><summary>Summary</summary><p class="country-news-summary">{{ item.summary }}</p></details>{% endif %}
-            <div class="country-item-actions"><a class="news-save-journal" href="{% url 'journal:new' %}?type=article&amp;title={{ item.title|urlencode }}&amp;url={{ item.link|urlencode }}&amp;source={{ item.publisher|default:item.provider_name|urlencode }}&amp;country={{ news_page.country_code }}{% if item.published_at %}&amp;published={{ item.published_at|date:'c'|urlencode }}{% endif %}" hx-boost="true" hx-target="#app-content" hx-push-url="true">Save</a></div>
-        </li>
-        {% endwith %}{% endfor %}
+        {% for card in article_cards %}{% include 'news/partials/country_article.html' with item=card.item %}{% endfor %}
     </ol>
     {% include 'news/partials/coverage_tail.html' %}
 </div>
